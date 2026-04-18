@@ -34,6 +34,20 @@ struct Sprite {
 	U32 animFrames;
 };
 
+Sprite rotate90(Sprite& s) {
+	RGBA8* newData = globalArena.alloc_aligned<RGBA8>(s.width * s.height * s.animFrames, 4);
+	for (U32 y = 0; y < s.height; y++) {
+		for (U32 x = 0; x < s.width; x++) {
+			newData[x * (s.height * s.animFrames) + s.height - y - 1] = s.tex->pixels[y * s.tex->width + x];
+		}
+	}
+	Texture* tex = globalArena.alloc<Texture>(1);
+	tex->pixels = newData;
+	tex->width = s.height * 3;
+	tex->height = s.width;
+	return Sprite{ tex, 0, 0, s.height, s.width, s.animFrames };
+}
+
 Texture scrung;
 Sprite scrungPart;
 
@@ -74,7 +88,7 @@ struct {
 void load() {
 	scrung = load_texture("scrung.png"a);
 	scrungPart = Sprite{ &scrung, 128, 128, 128, 128, 1 };
-	tileset = load_texture("tileset_v1.png"a);
+	tileset = load_texture("tileset_v2.png"a);
 	tile.undef = Sprite{ &tileset, 0, 0, 16, 16, 1 };
 	tile.grass = Sprite{ &tileset, 16, 0, 16, 16, 1 };
 	tile.grassIron = Sprite{ &tileset, 32, 0, 16, 16, 1 };
