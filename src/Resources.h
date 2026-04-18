@@ -37,9 +37,64 @@ struct Sprite {
 Texture scrung;
 Sprite scrungPart;
 
+Texture tileset;
+struct {
+	Sprite undef;
+	Sprite grass;
+	Sprite grassIron;
+	Sprite grassCopper;
+	Sprite grassFlowers;
+	Sprite sand;
+	Sprite beach;
+	Sprite water;
+	Sprite assemblerSmall;
+	Sprite assemblerLarge;
+	Sprite hive;
+	Sprite hiveLarge;
+	struct {
+		Sprite right;
+		Sprite left;
+		Sprite up;
+		Sprite down;
+		Sprite bottomToRight;
+		Sprite bottomToLeft;
+		Sprite leftToUp;
+		Sprite leftToDown;
+		Sprite rightToUp;
+		Sprite rightToDown;
+		Sprite upToLeft;
+		Sprite upToRight;
+	} belt;
+} tile;
+
 void load() {
 	scrung = load_texture("scrung.png"a);
 	scrungPart = Sprite{ &scrung, 128, 128, 128, 128, 1 };
+	tileset = load_texture("tileset_v1.png"a);
+	tile.undef = Sprite{ &tileset, 0, 0, 16, 16, 1 };
+	tile.grass = Sprite{ &tileset, 16, 0, 16, 16, 1 };
+	tile.grassIron = Sprite{ &tileset, 32, 0, 16, 16, 1 };
+	tile.grassCopper = Sprite{ &tileset, 32, 16, 16, 16, 1 };
+	tile.grassFlowers = Sprite{ &tileset, 32, 32, 16, 16, 1 };
+	tile.sand = Sprite{ &tileset, 0, 16, 16, 16, 1 };
+	tile.beach = Sprite{ &tileset, 16, 16, 16, 16, 1 };
+	tile.water = Sprite{ &tileset, 0, 32, 16, 16, 1 };
+	tile.assemblerSmall = Sprite{ &tileset, 16, 48, 16, 16, 1 };
+	tile.assemblerLarge = Sprite{ &tileset, 0, 96, 32, 32, 1 };
+	tile.hive = Sprite{ &tileset, 16, 32, 16, 16, 1 };
+	tile.hiveLarge = Sprite{ &tileset, 0, 64, 16, 16, 1 };
+	tile.belt.right = Sprite{ &tileset, 64, 0, 16, 16, 3 };
+	tile.belt.left = Sprite{ &tileset, 64, 0, 16, 16, 3 };
+	tile.belt.up = Sprite{ &tileset, 64, 32, 16, 16, 3 };
+	tile.belt.down = Sprite{ &tileset, 64, 0, 16, 16, 3 };
+	tile.belt.bottomToRight = Sprite{ &tileset, 64, 16, 16, 16, 3 };
+	tile.belt.bottomToLeft = Sprite{ &tileset, 64, 64, 16, 16, 3 };
+	tile.belt.leftToUp = Sprite{ &tileset, 64, 80, 16, 16, 3 };
+	tile.belt.leftToDown = Sprite{ &tileset, 64, 96, 16, 16, 3 };
+	tile.belt.rightToUp = Sprite{ &tileset, 64, 48, 16, 16, 3 };
+	tile.belt.rightToDown = Sprite{ &tileset, 64, 128, 16, 16, 3 };
+	tile.belt.upToLeft = Sprite{ &tileset, 64, 112, 16, 16, 3 };
+	tile.belt.upToRight = Sprite{ &tileset, 64, 144, 16, 16, 3 };
 }
 
 }
