@@ -13,7 +13,7 @@ void mouse_callback(Win32::MouseButton button, Win32::MouseValue state) {
 void render() {
 	memset(Win32::framebuffer, 0, Win32::framebufferWidth * Win32::framebufferHeight * sizeof(RGBA8));
 	F32 time = fractf64(current_time_seconds());
-	Graphics::blit_image(Resources::scrung, 0, I32((sinf32(time) * 0.5F + 0.5F) * 100.0F));
+	Graphics::blit_texture(Resources::scrung, 0, I32((sinf32(time) * 0.5F + 0.5F) * 100.0F), 2);
 }
 
 U32 run_cyber5eagull() {

@@ -25,10 +25,21 @@ Texture load_texture(StrA path) {
 	return result;
 }
 
+struct Sprite {
+	Texture* tex;
+	U32 x;
+	U32 y;
+	U32 width;
+	U32 height;
+	U32 animFrames;
+};
+
 Texture scrung;
+Sprite scrungPart;
 
 void load() {
 	scrung = load_texture("scrung.png"a);
+	scrungPart = Sprite{ &scrung, 128, 128, 128, 128, 1 };
 }
 
 }

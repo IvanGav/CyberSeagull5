@@ -441,10 +441,10 @@ bool init(U32 width, U32 height, void (*keyboardCallbackIn)(Key, ButtonState), v
 	windowClass.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
 	windowClass.hIcon = HICON(icon);
 	windowClass.hIconSm = HICON(icon);
-	const char* className = "Star Chicken View Window";
+	const char* className = "Cyber5eagull";
 	windowClass.lpszClassName = className;
 	if (RegisterClassExA(&windowClass)) {
-		window = CreateWindowExA(0, className, "Star Chicken Desktop View", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, int(width), int(height), NULL, NULL, instance, NULL);
+		window = CreateWindowExA(0, className, "Cyber5eagull", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, int(width), int(height), NULL, NULL, instance, NULL);
 		if (window) {
 			windowWidth = width;
 			windowHeight = height;
