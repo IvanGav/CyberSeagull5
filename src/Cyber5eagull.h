@@ -2,6 +2,7 @@
 #include "Win32.h"
 #include "Resources.h"
 #include "Graphics.h"
+#include "TileSpace.h" 
 
 namespace Cyber5eagull {
 
@@ -23,6 +24,7 @@ U32 run_cyber5eagull() {
 	}
 	
 	// init
+	World::set_tile_space(V2U32{ 0, 0 }, V2U32{ 32, 32 });
 	Resources::load();
 	Win32::show_window();
 
