@@ -1,191 +1,240 @@
 #pragma once
 
 #include "drillengine/DrillLib.h"
-#include <math.h>
+#include <bitset>
 
 namespace Bee {
 
-	enum class TaskType {
-		None,
-		Gather,
-		Mine,
-		Pollinate,
-		Build,
-		MoveOnly,
-	};
+#define DEFAULT_SPEED 10.0f
 
-	enum class State {
-		Idle,
-		FlyingToTask,
-		Working,
-		ReturningHome,
-	};
+enum class TaskType {
+	TASK_NONE = 0,
+	TASK_SHORE,
+	TASK_ORE,
+	TASK_FLOWER,
+	TASK_BUILD,
+	TASK_GENERIC,
+};
 
-	struct Task {
-		TaskType type = TaskType::None;
-		F32 targetX = 0.0F;
-		F32 targetY = 0.0F;
-		F32 workDurationSeconds = 0.0F;
+enum class State {
+	STATE_IDLE = 0,
+	STATE_TRAVEL_TO_TARGET,
+	STATE_WORKING,
+	STATE_TRAVEL_HOME,
+};
 
-		// Persistent tasks keep the bee assigned until cancelled.
-		// This is for uncompleteable tasks like miningg	
-		bool persistent = false;
+struct Task {
+	TaskType type = TaskType::TASK_NONE;
+	V2U32 targetTile{};
+	F32 workDurationSeconds = 0.0F;
+	B32 persistent = B32_FALSE;
+	B32 returnHomeAfterWork = B32_TRUE;
+};
 
-		// If true, the bee returns to its hive after each work cycle.
-		// If false, the bee stays on site and then starts the next cycle.
-		// Just here for like conveyor mining(false if conveyor mining).
-		bool returnHomeAfterWork = true;
-	};
+struct UpdateResult {
+	B32 reachedTarget = B32_FALSE;
+	B32 startedWorking = B32_FALSE;
+	B32 finishedWork = B32_FALSE;
+	B32 reachedHome = B32_FALSE;
+	B32 taskFinished = B32_FALSE;
+};
 
-	struct UpdateResult {
-		bool reachedTask = false;
-		bool finishedWorkCycle = false;
-		bool deliveredItem = false;
-		bool taskFinished = false;
-	};
+class Bee {
+public:
+	static constexpr F32 arrivalEpsilon = 0.01F;
+	
+	
 
-	class Bee {
-	public:
-		F32 x = 0.0F;
-		F32 y = 0.0F;
-		F32 homeX = 0.0F;
-		F32 homeY = 0.0F;
-		F32 speed = 120.0F;
+	V2F32 position{};
+	V2F32 velocity{};
+	V2U32 homeTile{};
+	V2U32 tileWorldOrigin{};
+	V2U32 tileWorldSize{ 1, 1 };
+	F32 moveSpeed = DEFAULT_SPEED;
+	F32 workTimerSeconds = 0.0F;
+	State state = State::STATE_IDLE;
+	Task activeTask{};
+	B32 hasTask = B32_FALSE;
 
-		State state = State::Idle;
-		Task task{};
-		F32 workTimerSeconds = 0.0F;
-		bool carryingItem = false;
+	Bee() = default;
+	Bee(V2U32 spawnHomeTile, F32 speed = DEFAULT_SPEED)
+		: homeTile(spawnHomeTile), moveSpeed(speed) {
+		position = home_world_position();
+	}
+	Bee(V2U32 spawnHomeTile, V2U32 inTileWorldOrigin, V2U32 inTileWorldSize, F32 speed = DEFAULT_SPEED)
+		: homeTile(spawnHomeTile), tileWorldOrigin(inTileWorldOrigin), tileWorldSize(inTileWorldSize), moveSpeed(speed) {
+		position = home_world_position();
+	}
 
-		Bee() = default;
-		Bee(F32 spawnX, F32 spawnY, F32 moveSpeed = 120.0F) {
-			x = spawnX;
-			y = spawnY;
-			homeX = spawnX;
-			homeY = spawnY;
-			speed = moveSpeed;
-		}
+	FINLINE void set_home(V2U32 newHomeTile) {
+		homeTile = newHomeTile;
+	}
 
-		bool is_busy() const {
-			return state != State::Idle;
-		}
+	FINLINE void set_tile_transform(V2U32 newTileWorldOrigin, V2U32 newTileWorldSize) {
+		tileWorldOrigin = newTileWorldOrigin;
+		tileWorldSize = newTileWorldSize;
+	}
 
-		void set_home(F32 newHomeX, F32 newHomeY) {
-			homeX = newHomeX;
-			homeY = newHomeY;
-			if (state == State::Idle) {
-				x = homeX;
-				y = homeY;
+	FINLINE void teleport(V2F32 newPosition) {
+		position = newPosition;
+		velocity = V2F32{};
+	}
+
+	FINLINE void snap_to_home() {
+		position = home_world_position();
+		velocity = V2F32{};
+	}
+
+	FINLINE B32 busy() const {
+		return state != State::STATE_IDLE || hasTask;
+	}
+
+	FINLINE void assign_task(const Task& task) {
+		activeTask = task;
+		hasTask = task.type != TaskType::TASK_NONE;
+		workTimerSeconds = 0.0F;
+		velocity = V2F32{};
+		state = hasTask ? State::STATE_TRAVEL_TO_TARGET : State::STATE_IDLE;
+	}
+
+	FINLINE void cancel_task() {
+		activeTask = Task{};
+		hasTask = B32_FALSE;
+		workTimerSeconds = 0.0F;
+		velocity = V2F32{};
+		state = is_at(home_world_position()) ? State::STATE_IDLE : State::STATE_TRAVEL_HOME;
+	}
+
+	UpdateResult update(F32 dtSeconds) {
+		UpdateResult result{};
+		F32 dt = max(dtSeconds, 0.0F);
+
+		switch (state) {
+		case State::STATE_IDLE: {
+			velocity = V2F32{};
+		} break;
+
+		case State::STATE_TRAVEL_TO_TARGET: {
+			if (!hasTask) {
+				state = State::STATE_TRAVEL_HOME;
+				break;
 			}
-		}
 
-		bool assign_task(const Task& newTask) {
-			if (is_busy() || newTask.type == TaskType::None) {
-				return false;
-			}
-			task = newTask;
-			workTimerSeconds = 0.0F;
-			carryingItem = false;
-			state = State::FlyingToTask;
-			return true;
-		}
+			V2F32 targetPosition = task_world_position(activeTask);
+			move_toward(targetPosition, dt);
+			if (is_at(targetPosition)) {
+				position = targetPosition;
+				velocity = V2F32{};
+				state = State::STATE_WORKING;
+				workTimerSeconds = 0.0F;
+				result.reachedTarget = B32_TRUE;
+				result.startedWorking = B32_TRUE;
 
-		void cancel_task() {
-			if (state == State::Idle) {
-				return;
-			}
-			workTimerSeconds = 0.0F;
-			carryingItem = false;
-			state = State::ReturningHome;
-			task.persistent = false;
-		}
-
-		UpdateResult update(F32 dt) {
-			UpdateResult result{};
-			if (dt <= 0.0F) {
-				return result;
-			}
-
-			switch (state) {
-			case State::Idle: {
-			} break;
-
-			case State::FlyingToTask: {
-				if (move_towards(x, y, task.targetX, task.targetY, speed * dt)) {
-					state = State::Working;
-					workTimerSeconds = 0.0F;
-					result.reachedTask = true;
+				if (activeTask.workDurationSeconds <= 0.0F) {
+					finish_work_cycle(&result);
 				}
-			} break;
+			}
+		} break;
 
-			case State::Working: {
-				workTimerSeconds += dt;
-				if (workTimerSeconds >= task.workDurationSeconds) {
-					workTimerSeconds = 0.0F;
-					result.finishedWorkCycle = true;
+		case State::STATE_WORKING: {
+			if (!hasTask) {
+				state = State::STATE_TRAVEL_HOME;
+				velocity = V2F32{};
+				break;
+			}
 
-					if (task.returnHomeAfterWork) {
-						carryingItem = true;
-						state = State::ReturningHome;
-					}
-					else if (!task.persistent) {
-						finish_task();
-						result.taskFinished = true;
-					}
+			velocity = V2F32{};
+			workTimerSeconds += dt;
+			if (workTimerSeconds >= activeTask.workDurationSeconds) {
+				finish_work_cycle(&result);
+			}
+		} break;
+
+		case State::STATE_TRAVEL_HOME: {
+			V2F32 homePosition = home_world_position();
+			move_toward(homePosition, dt);
+			if (is_at(homePosition)) {
+				position = homePosition;
+				velocity = V2F32{};
+				result.reachedHome = B32_TRUE;
+
+				if (hasTask && activeTask.persistent) {
+					state = State::STATE_TRAVEL_TO_TARGET;
 				}
-			} break;
-
-			case State::ReturningHome: {
-				if (move_towards(x, y, homeX, homeY, speed * dt)) {
-					if (carryingItem) {
-						carryingItem = false;
-						result.deliveredItem = true;
-					}
-
-					if (task.persistent) {
-						state = State::FlyingToTask;
-					}
-					else {
-						finish_task();
-						result.taskFinished = true;
-					}
+				else {
+					state = State::STATE_IDLE;
+					activeTask = Task{};
+					hasTask = B32_FALSE;
+					result.taskFinished = B32_TRUE ? B32_FALSE | 0 : (U32)(reinterpret_cast<char*>(static_cast<B32>(true)));
 				}
-			} break;
 			}
-
-			return result;
+		} break;
 		}
 
-	private:
-		static bool move_towards(F32& fromX, F32& fromY, F32 toX, F32 toY, F32 maxDistance) {
-			F32 dx = toX - fromX;
-			F32 dy = toY - fromY;
-			F32 distanceSq = dx * dx + dy * dy;
-			if (distanceSq <= 0.000001F) {
-				fromX = toX;
-				fromY = toY;
-				return true;
-			}
+		return result;
+	}
 
-			F32 distance = sqrtf(distanceSq);
-			if (distance <= maxDistance) {
-				fromX = toX;
-				fromY = toY;
-				return true;
-			}
+	FINLINE V2F32 home_world_position() const {
+		return tile_to_world_center(homeTile);
+	}
 
-			F32 scale = maxDistance / distance;
-			fromX += dx * scale;
-			fromY += dy * scale;
-			return false;
+	FINLINE V2F32 task_world_position(const Task& task) const {
+		return tile_to_world_center(task.targetTile);
+	}
+
+private:
+	FINLINE static V2F32 to_v2f(V2U32 v) {
+		return V2F32{ F32(v.x), F32(v.y) };
+	}
+
+	FINLINE V2F32 tile_to_world_center(V2U32 tile) const {
+		V2F32 originAsFloat = to_v2f(tileWorldOrigin);
+		V2F32 sizeAsFloat = to_v2f(tileWorldSize);
+		return originAsFloat + to_v2f(tile) * sizeAsFloat + sizeAsFloat * 0.5F;
+	}
+
+	FINLINE B32 is_at(V2F32 target) const {
+		return distance_sq(position, target) <= arrivalEpsilon * arrivalEpsilon;
+	}
+
+	FINLINE void move_toward(V2F32 target, F32 dt) {
+		V2F32 delta = target - position;
+		F32 distSq = length_sq(delta);
+		if (distSq <= arrivalEpsilon * arrivalEpsilon) {
+			position = target;
+			velocity = V2F32{};
+			return;
 		}
 
-		void finish_task() {
-			task = {};
-			state = State::Idle;
-			workTimerSeconds = 0.0F;
-			carryingItem = false;
+		F32 maxStep = moveSpeed * dt;
+		if (distSq <= maxStep * maxStep) {
+			velocity = dt > 0.0F ? delta / dt : V2F32{};
+			position = target;
+			return;
 		}
-	};
+
+		V2F32 direction = delta / sqrtf32(distSq);
+		velocity = direction * moveSpeed;
+		position += velocity * dt;
+	}
+
+	FINLINE void finish_work_cycle(UpdateResult* result) {
+		result->finishedWork = B32_TRUE;
+		workTimerSeconds = 0.0F;
+
+		if (activeTask.returnHomeAfterWork) {
+			state = State::STATE_TRAVEL_HOME;
+		}
+		else if (activeTask.persistent) {
+			state = State::STATE_WORKING;
+		}
+		else {
+			state = State::STATE_IDLE;
+			activeTask = Task{};
+			hasTask = B32_FALSE;
+			result->taskFinished = B32_TRUE;
+		}
+	}
+};
 
 }
