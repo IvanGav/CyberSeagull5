@@ -157,6 +157,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Bee.h" />
+    <ClInclude Include="src\BeeTasks.h" />
     <ClInclude Include="src\Cyber5eagull.h" />
     <ClInclude Include="src\drillengine\DrillLib.h" />
     <ClInclude Include="src\drillengine\DrillLibDefs.h" />
@@ -166,6 +167,7 @@
     <ClInclude Include="src\drillengine\SerializeToolsPowerOf5Table.txt" />
     <ClInclude Include="src\Graphics.h" />
     <ClInclude Include="src\Resources.h" />
+    <ClInclude Include="src\TileSpace.h" />
     <ClInclude Include="src\Win32.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

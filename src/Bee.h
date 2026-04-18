@@ -46,9 +46,13 @@ public:
 		return state != State::STATE_IDLE || hasTask;
 	}
 
+	B32 idle() const {
+		return !busy();
+	}
+
 	void assign_task(const Task& task) {
 		activeTask = task;
-		hasTask = task.type != TaskType::TASK_NONE;
+		hasTask = task_is_valid(task);
 		workTimerSeconds = 0.0F;
 		velocity = V2F32{};
 		state = hasTask ? State::STATE_TRAVEL_TO_TARGET : State::STATE_IDLE;
@@ -132,11 +136,11 @@ public:
 	}
 
 	V2F32 home_world_position() const {
-		return World::tile_space().tile_to_world_center(homeTile);
+		return TileSpace::tile_to_world_center(homeTile);
 	}
 
 	V2F32 task_world_position(const Task& task) const {
-		return World::tile_space().tile_to_world_center(task.targetTile);
+		return TileSpace::tile_to_world_center(task.targetTile);
 	}
 
 private:

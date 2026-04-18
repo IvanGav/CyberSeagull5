@@ -4,6 +4,7 @@
 #include "Graphics.h"
 #include "TileSpace.h" 
 
+
 namespace Cyber5eagull {
 
 void keyboard_callback(Win32::Key key, Win32::ButtonState state) {
@@ -23,8 +24,6 @@ U32 run_cyber5eagull() {
 		abort("Window init failed"a);
 	}
 	
-	// init
-	World::set_tile_space(V2U32{ 0, 0 }, V2U32{ 32, 32 });
 	Resources::load();
 	Win32::show_window();
 
