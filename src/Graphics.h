@@ -36,8 +36,8 @@ void blit_texture(Resources::Texture& tex, I32 x, I32 y, I32 scaleFactor) {
 //	}
 //}
 
-voi/*d display_num(U32 text, I32 x, I32 y, I32 fontSize) {
-	while(text)
-}*/
+//void display_num(U32 text, I32 x, I32 y, I32 fontSize) {
+//	while(text)
+//}
 
 }
