@@ -3,6 +3,7 @@
 #include "drillengine/DrillLib.h"
 #include "BeeTasks.h"
 #include "TileSpace.h"
+#include "Sounds.h"
 
 namespace Bee {
 
@@ -58,6 +59,7 @@ public:
     V2F32 homeOffsetWorld{ 0.5F, 0.5F };
     F32 moveSpeed = DEFAULT_SPEED;
     F32 workTimerSeconds = 0.0F;
+    F32 pickaxeSoundTimer = 0.0F;
     F32 travelTimerSeconds = 0.0F;
     F32 flightPhaseTurns = 0.0F;
     State state = State::STATE_IDLE;
@@ -218,6 +220,13 @@ public:
 
             velocity = V2F32{};
             workTimerSeconds += dt;
+            pickaxeSoundTimer -= dt;
+            if (pickaxeSoundTimer <= 0.0F) {
+                Sounds::play_sound(Sounds::pickaxe, 0.2F);
+                U32 r;
+                _rdrand32_step(&r);
+                pickaxeSoundTimer = 0.5F + (r % 10000) / 10000.0F * 0.25F;
+            }
             if (workTimerSeconds >= activeTask.workDurationSeconds) {
                 finish_work_cycle(&result);
             }
@@ -233,6 +242,7 @@ public:
                 invalidate_navigation_path();
 
                 if (hasTask && activeTask.persistent) {
+                    Sounds::play_sound(Sounds::bees);
                     state = State::STATE_TRAVEL_TO_TARGET;
                 }
                 else {

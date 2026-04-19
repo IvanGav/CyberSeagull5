@@ -1,4 +1,5 @@
 #pragma once
+#include "drillengine/WASAPIInterface.h"
 #include "Win32.h"
 #include "Resources.h"
 #include "Graphics.h"
@@ -11,6 +12,7 @@
 #include "SelectUI.h"
 #include "EditorInteraction.h"
 #include "Recipe.h"
+#include "Sounds.h"
 
 namespace Cyber5eagull {
 
@@ -135,6 +137,22 @@ void render() {
 	lastFrameTime = currentFrameTime;
 }
 
+HANDLE audioThread;
+B32 audioThreadShouldShutdown;
+
+void fill_audio_buffer(F32* buffer, U32 numSamples, U32 numChannels, F32 timeAmount) {
+	Sounds::mix_into_buffer(buffer, numSamples, numChannels, timeAmount);
+	Sounds::audioPlaybackTime += timeAmount;
+}
+
+DWORD WINAPI audio_thread_func(LPVOID) {
+	WASAPIInterface::init_wasapi(fill_audio_buffer);
+	while (!audioThreadShouldShutdown) {
+		WASAPIInterface::do_audio();
+	}
+	return 0;
+}
+
 U32 run_cyber5eagull() {
 	timeBeginPeriod(1);
 	if (!Win32::init(U32(1920 / 2), U32(1080 / 2), EditorInteraction::keyboard_callback, EditorInteraction::mouse_callback)) {
@@ -143,6 +161,12 @@ U32 run_cyber5eagull() {
 	lastFrameTime = current_time_seconds();
 
 	Resources::load();
+	Sounds::load_sources();
+	audioThread = CreateThread(NULL, 64 * KILOBYTE, audio_thread_func, NULL, 0, NULL);
+	if (audioThread == NULL) {
+		printf("Failed to create audio thread, code: %\n"a, Win32::ErrCode{ GetLastError() });
+		return 1;
+	}
 	Recipe::init();
 	//SelectUI::debug_selections(); // TODO debug selections for now; don't need this later
 	Inventory::init();
@@ -166,6 +190,14 @@ U32 run_cyber5eagull() {
 		InvalidateRect(Win32::window, NULL, FALSE);
 		UpdateWindow(Win32::window);
 	}
+
+	audioThreadShouldShutdown = true;
+	if (WaitForSingleObject(audioThread, INFINITE) == WAIT_FAILED) {
+		printf("Failed to join audio thread, code:  %\n"a, Win32::ErrCode{ GetLastError() });
+	} else {
+		CloseHandle(audioThread);
+	}
+	Win32::destroy();
 
 	timeEndPeriod(1);
 	return 0;
