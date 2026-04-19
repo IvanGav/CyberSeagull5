@@ -3,24 +3,44 @@
 #include "drillengine/DrillLib.h";
 #include "Graphics.h"
 #include "Win32.h"
+#include "Resources.h"
 
 namespace Inventory {
-	typedef U32 Res;
-	U32 res_font_size = 16;
+	typedef U32 Item;
+
+	enum ItemType : U8 {
+		ITEM_IRON_ORE,
+		ITEM_COPPER_ORE,
+		ITEM_GULL,
+		ITEM_COPPER_CABLE,
+		ITEM_IRON_PLATE,
+		ITEM_Count
+	};
+
+	Resources::Sprite* itemSprite[ITEM_Count];
+
+	U32 item_font_size = 16;
 	U32 x_off = 10;
 	U32 y_off = 20;
 
-	ArenaArrayList<Res> inv; // inv[Res] = how many of that resource is in the invenotry
+	ArenaArrayList<Item> inv; // inv[Item] = how many of that resource is in the invenotry
 
 	// Call to create space for `item_count` resources in the inventory (0..inv_count)
-	void init_inv(U32 item_count) {
+	void init() {
 		inv.clear();
-		inv.resize(item_count);
+		inv.resize(ITEM_Count);
+
+		itemSprite[ITEM_IRON_ORE] = &Resources::tile.item.ironOre;
+		itemSprite[ITEM_COPPER_ORE] = &Resources::tile.item.copperOre;
+		itemSprite[ITEM_GULL] = &Resources::tile.item.gull;
+		itemSprite[ITEM_COPPER_CABLE] = &Resources::tile.item.copperCable;
+		itemSprite[ITEM_IRON_PLATE] = &Resources::tile.item.ironPlate;
 	}
 
 	void draw_inv() {
 		for (U32 i = 0; i < inv.size; i++) {
-			Graphics::display_num(Inventory::inv[i], x_off, y_off + (res_font_size + 2) * i, res_font_size);
+			Graphics::blit_sprite_cutout(*itemSprite[i], x_off, y_off + (item_font_size + 2) * i, item_font_size/16, 0);
+			Graphics::display_num(Inventory::inv[i], x_off + item_font_size, y_off + (item_font_size + 2) * i, item_font_size);
 		}
 	}
 };

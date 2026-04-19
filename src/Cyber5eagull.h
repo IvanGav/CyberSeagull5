@@ -54,7 +54,7 @@ U32 run_cyber5eagull() {
 	Resources::load();
 	World::init(V2U{ 40, 40 });
 	Win32::show_window();
-	Inventory::init_inv(4);
+	Inventory::init();
 	Inventory::inv[3] = 1969;
 
 
@@ -62,6 +62,7 @@ U32 run_cyber5eagull() {
 		Inventory::inv[0] = (U32)(camera.x * 10);
 		Inventory::inv[1] = (U32)(camera.y * 10);
 		Inventory::inv[2] = (U32)(dt * 10000);
+		World::beach_update(dt);
 		swap(&frameArena, &lastFrameArena);
 		frameArena.reset();
 		Win32::poll_events();
