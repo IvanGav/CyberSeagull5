@@ -48,7 +48,6 @@ namespace Recipe {
 		RecipeGroup belt;
 		RecipeGroup smelter;
 		RecipeGroup assembler;
-		RecipeGroup furnace;
 		RecipeGroup bigAssembler;
 	} recipeGroups;
 
@@ -95,7 +94,7 @@ namespace Recipe {
 		};
 
 		recipeGroups.belt = RecipeGroup::make(make_arena_array_list(globalArena, &recipeList.unit));
-		recipeGroups.furnace = RecipeGroup::make(make_arena_array_list(globalArena, &recipeList.ironSmelt,&recipeList.copperCable));
+		recipeGroups.smelter = RecipeGroup::make(make_arena_array_list(globalArena, &recipeList.ironSmelt,&recipeList.copperCable));
 		recipeGroups.assembler = RecipeGroup::make(make_arena_array_list(globalArena, &recipeList.greenCircuit, &recipeList.ironGear));
 		recipeGroups.bigAssembler = RecipeGroup::make(make_arena_array_list(globalArena, &recipeList.nuclearHeart, &recipeList.camera, &recipeList.cyberSeagull));
 	}

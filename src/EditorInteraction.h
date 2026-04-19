@@ -41,7 +41,6 @@ BuildMenuEntry buildMenuEntries[BUILD_MENU_ITEM_COUNT] = {
 	{ BuildMenuEntryType::ENTRY_BRUSH, CreativeBrush::ASSEMBLER_SMALL },
 	{ BuildMenuEntryType::ENTRY_BRUSH, CreativeBrush::ASSEMBLER_LARGE },
 	{ BuildMenuEntryType::ENTRY_BRUSH, CreativeBrush::SPLITTER },
-	{ BuildMenuEntryType::ENTRY_BRUSH, CreativeBrush::MERGER },
 	{ BuildMenuEntryType::ENTRY_BRUSH, CreativeBrush::HIVE_SMALL },
 	{ BuildMenuEntryType::ENTRY_BRUSH, CreativeBrush::HIVE_BIG },
 };

@@ -197,12 +197,6 @@ void init_build_definitions() {
         add_build_cost(def, Inventory::ITEM_COPPER_ORE, 4u);
     }
     {
-        BuildDefinition* def = &buildDefinitions[4];
-        def->brush = CreativeBrush::MERGER;
-        add_build_cost(def, Inventory::ITEM_IRON_ORE, 8u);
-        add_build_cost(def, Inventory::ITEM_COPPER_ORE, 4u);
-    }
-    {
         BuildDefinition* def = &buildDefinitions[5];
         def->brush = CreativeBrush::HIVE_SMALL;
         add_build_cost(def, Inventory::ITEM_HONEY, 12u);
@@ -387,7 +381,6 @@ FINLINE CreativeBrush brush_for_machine_type(const Factory::Machine* machine) {
     case Factory::MACHINE_SMELTER: return CreativeBrush::ASSEMBLER_SMALL;
     case Factory::MACHINE_ASSEMBLER: return CreativeBrush::ASSEMBLER_LARGE;
     case Factory::MACHINE_SPLITTER: return CreativeBrush::SPLITTER;
-    case Factory::MACHINE_MERGER: return CreativeBrush::MERGER;
     default: return CreativeBrush::TASK_SELECT;
     }
 }
@@ -1345,17 +1338,6 @@ void apply_creative_brush(CreativeBrush brush, V2U32 tile, Rotation2 orientation
             break;
         }
         if (!place_structure(tile, Factory::MACHINE_SPLITTER, orientation, freePlacement ? B32_FALSE : B32_TRUE)) {
-            if (!freePlacement) {
-                refund_build_cost(brush);
-            }
-        }
-    } break;
-
-    case CreativeBrush::MERGER: {
-        if (!freePlacement && !spend_for_build(brush)) {
-            break;
-        }
-        if (!place_structure(tile, Factory::MACHINE_MERGER, orientation, freePlacement ? B32_FALSE : B32_TRUE)) {
             if (!freePlacement) {
                 refund_build_cost(brush);
             }

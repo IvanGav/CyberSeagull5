@@ -526,7 +526,7 @@ void apply_machine_def(Machine* machine, const MachineDef& def) {
 	}
 	else {
 		//machine->selectedRecipe = Recipe::RecipeRef{};
-    machine->selectedRecipe = Recipe::RecipeRef::from(machine->recipes->options[0]);
+		machine->selectedRecipe = Recipe::RecipeRef::from(machine->recipes->options[0]);
 	}
 }
 
