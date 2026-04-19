@@ -69,6 +69,7 @@ struct {
 	Sprite merger;
 	Sprite beeFly;
 	Sprite beeMine;
+	Sprite beeCarry;
 	struct {
 		Sprite right;
 		Sprite left;
@@ -113,6 +114,7 @@ void load() {
 	tile.merger = Sprite{ &tileset, 32, 64, 16, 16, 1 };
 	tile.beeFly = Sprite{ &tileset, 0, 160, 16, 16, 4 };
 	tile.beeMine = Sprite{ &tileset, 0, 144, 16, 16, 4 };
+	tile.beeCarry = Sprite{ &tileset, 0, 176, 16, 16, 4 };
 	tile.belt.right = Sprite{ &tileset, 64, 0, 16, 16, 3 };
 	tile.belt.left = Sprite{ &tileset, 64, 160, 16, 16, 3 };
 	tile.belt.up = Sprite{ &tileset, 64, 32, 16, 16, 3 };
