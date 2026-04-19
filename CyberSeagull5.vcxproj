@@ -169,12 +169,14 @@
     <ClInclude Include="src\drillengine\PNG.h" />
     <ClInclude Include="src\drillengine\SerializeTools.h" />
     <ClInclude Include="src\drillengine\SerializeToolsPowerOf5Table.txt" />
+    <ClInclude Include="src\drillengine\WASAPIInterface.h" />
     <ClInclude Include="src\EditorInteraction.h" />
     <ClInclude Include="src\Factory.h" />
     <ClInclude Include="src\Graphics.h" />
     <ClInclude Include="src\Recipe.h" />
     <ClInclude Include="src\Resources.h" />
     <ClInclude Include="src\SelectUI.h" />
+    <ClInclude Include="src\Sounds.h" />
     <ClInclude Include="src\TerrainGen.h" />
     <ClInclude Include="src\TileSpace.h" />
     <ClInclude Include="src\Win32.h" />
