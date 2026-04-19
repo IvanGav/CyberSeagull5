@@ -19,7 +19,7 @@ namespace Inventory {
 
 	Resources::Sprite* itemSprite[ITEM_Count];
 
-	U32 item_font_size = 16;
+	U32 item_font_size = 32;
 	U32 x_off = 10;
 	U32 y_off = 20;
 

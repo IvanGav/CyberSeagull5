@@ -71,16 +71,16 @@ struct {
 	Sprite beeMine;
 	Sprite beeCarry;
 	struct {
-		Sprite right;
-		Sprite left;
-		Sprite up;
-		Sprite down;
-		Sprite bottomToRight;
-		Sprite bottomToLeft;
+		Sprite downToUp;
+		Sprite downToRight;
+		Sprite downToLeft;
+		Sprite leftToRight;
 		Sprite leftToUp;
 		Sprite leftToDown;
+		Sprite rightToLeft;
 		Sprite rightToUp;
 		Sprite rightToDown;
+		Sprite upToDown;
 		Sprite upToLeft;
 		Sprite upToRight;
 	} belt;
@@ -97,7 +97,7 @@ struct {
 void load() {
 	scrung = load_texture("scrung.png"a);
 	scrungPart = Sprite{ &scrung, 128, 128, 128, 128, 1 };
-	tileset = load_texture("tileset_v3.png"a);
+	tileset = load_texture("tileset_v4.png"a);
 	tile.undef = Sprite{ &tileset, 0, 0, 16, 16, 1 };
 	tile.grass = Sprite{ &tileset, 16, 0, 16, 16, 1 };
 	tile.grassIron = Sprite{ &tileset, 32, 0, 16, 16, 1 };
@@ -115,12 +115,12 @@ void load() {
 	tile.beeFly = Sprite{ &tileset, 0, 160, 16, 16, 4 };
 	tile.beeMine = Sprite{ &tileset, 0, 144, 16, 16, 4 };
 	tile.beeCarry = Sprite{ &tileset, 0, 176, 16, 16, 4 };
-	tile.belt.right = Sprite{ &tileset, 64, 0, 16, 16, 3 };
-	tile.belt.left = Sprite{ &tileset, 64, 160, 16, 16, 3 };
-	tile.belt.up = Sprite{ &tileset, 64, 32, 16, 16, 3 };
-	tile.belt.down = Sprite{ &tileset, 64, 176, 16, 16, 3 };
-	tile.belt.bottomToRight = Sprite{ &tileset, 64, 16, 16, 16, 3 };
-	tile.belt.bottomToLeft = Sprite{ &tileset, 64, 64, 16, 16, 3 };
+	tile.belt.leftToRight = Sprite{ &tileset, 64, 0, 16, 16, 3 };
+	tile.belt.rightToLeft = Sprite{ &tileset, 64, 160, 16, 16, 3 };
+	tile.belt.downToUp = Sprite{ &tileset, 64, 16, 16, 16, 3 };
+	tile.belt.upToDown = Sprite{ &tileset, 64, 176, 16, 16, 3 };
+	tile.belt.downToRight = Sprite{ &tileset, 64, 32, 16, 16, 3 };
+	tile.belt.downToLeft = Sprite{ &tileset, 64, 64, 16, 16, 3 };
 	tile.belt.leftToUp = Sprite{ &tileset, 64, 80, 16, 16, 3 };
 	tile.belt.leftToDown = Sprite{ &tileset, 64, 96, 16, 16, 3 };
 	tile.belt.rightToUp = Sprite{ &tileset, 64, 48, 16, 16, 3 };

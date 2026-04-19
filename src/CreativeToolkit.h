@@ -1,5 +1,26 @@
 #pragma once
 
+namespace Cyber5eagull {
+extern F64 lastFrameTime;
+extern F32 dt;
+
+extern V2F camera;
+extern I32 worldTileScale;
+extern V2U32 hiveTile;
+extern B32 placingConveyor;
+extern Direction2 lastConveyorInputSide;
+extern Direction2 lastConveyorOutputSide;
+extern Factory::MachineHandle lastConveyor;
+I32 world_tile_pixels();
+F32 world_tile_pixels_f32();
+void clamp_camera();
+V2F32 screen_to_world(V2F32 screenPosition);
+void center_camera_on_tile(V2U32 tile);
+void zoom_camera_at_screen(I32 zoomDelta, V2F32 screenAnchor);
+void pan_camera_horizontally(I32 direction);
+B32 mouse_to_tile(V2U32* tileOut);
+}
+
 namespace Cyber5eagull::CreativeToolkit {
 
 using BeeDemo::CreativeBrush;
@@ -105,7 +126,7 @@ void render_tilesheet_picker() {
 	if (selectedSprite == &Resources::tile.sand) highlight_tileset_cell(0, 1, RGBA8{ 255, 255, 80, 255 });
 	if (selectedSprite == &Resources::tile.beach) highlight_tileset_cell(1, 1, RGBA8{ 255, 255, 80, 255 });
 	if (selectedSprite == &Resources::tile.water) highlight_tileset_cell(0, 2, RGBA8{ 255, 255, 80, 255 });
-	if (selectedSprite == &Resources::tile.belt.right) highlight_tileset_cell(4, 0, RGBA8{ 255, 255, 80, 255 });
+	if (selectedSprite == &Resources::tile.belt.leftToRight) highlight_tileset_cell(4, 0, RGBA8{ 255, 255, 80, 255 });
 	if (selectedBrush == CreativeBrush::HIVE_SMALL) highlight_tileset_cell(1, 2, RGBA8{ 255, 255, 80, 255 });
 	if (selectedBrush == CreativeBrush::HIVE_BIG) highlight_tileset_cell(0, 4, RGBA8{ 255, 255, 80, 255 });
 }
@@ -225,14 +246,26 @@ void mouse_callback(Win32::MouseButton button, Win32::MouseValue state) {
 	}
 
 	if (button == Win32::MOUSE_BUTTON_LEFT && state.state == Win32::BUTTON_STATE_DOWN) {
-		V2F32 mouse = Win32::get_mouse();
-		if (tilesheetVisible) {
-			uiLeftCapture = handle_tilesheet_click(mouse);
-			return;
+		if (Win32::keyboardState[Win32::KEY_CTRL]) {
+			V2U32 clickedTile{};
+			if (mouse_to_tile(&clickedTile)) {
+				lastConveyorInputSide = DIRECTION2_LEFT;
+				lastConveyorOutputSide = DIRECTION2_RIGHT;
+				Factory::MachineDef belt = Factory::get_belt(lastConveyorInputSide, lastConveyorOutputSide);
+				lastConveyor = Factory::try_place_machine(clickedTile, belt);
+				placingConveyor = true;
+			}
+		} else {
+			V2F32 mouse = Win32::get_mouse();
+			if (tilesheetVisible) {
+				uiLeftCapture = handle_tilesheet_click(mouse);
+				return;
+			}
 		}
 	}
 
 	if ((button == Win32::MOUSE_BUTTON_LEFT || button == Win32::MOUSE_BUTTON_RIGHT) && state.state == Win32::BUTTON_STATE_UP) {
+		placingConveyor = false;
 		hasLastDraggedTile = B32_FALSE;
 		if (button == Win32::MOUSE_BUTTON_LEFT) {
 			cameraDragActive = B32_FALSE;

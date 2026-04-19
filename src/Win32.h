@@ -360,14 +360,6 @@ LRESULT CALLBACK window_callback(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
 		// DRAW HERE
 		PAINTSTRUCT paint;
 		HDC hdc = BeginPaint(window, &paint);
-		static F64 lastTime = 0;
-		F64 time = current_time_seconds();
-		MEMORY_ARENA_FRAME(globalArena) {
-			StrA frameTimeTxt = strafmt(globalArena, "%"a, (time - lastTime) * 1000.0);
-			lastTime = time;
-			TextOutA(hdc, 0, 0, frameTimeTxt.str, frameTimeTxt.length);
-		}
-		//GrayStringA(hdc, NULL, NULL, (LPARAM)"Quack", 5, 0, 100, 0, 0);
 		BitBlt(hdc, 0, 0, framebufferWidth, framebufferHeight, drawHdc, 0, 0, SRCCOPY);
 		EndPaint(window, &paint);
 	} break;
