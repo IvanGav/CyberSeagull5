@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Bee.h"
+#include "Sounds.h"
 
 namespace BeeSystem {
 
@@ -261,6 +262,7 @@ private:
 			bees[beeIndex].set_home_anchor(home.tile, home.offsetWorld);
 			bees[beeIndex].snap_to_home();
 			bees[beeIndex].assign_task(queued.task);
+			Sounds::play_sound(Sounds::bees);
 			queued.assignedBee = beeIndex;
 			push_event(EventType::EVENT_TASK_ASSIGNED, U32(beeIndex), queued.task);
 		}

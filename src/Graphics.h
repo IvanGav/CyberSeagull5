@@ -86,27 +86,61 @@ void display_num(U32 text, I32 x, I32 y, I32 fontSize) {
 }
 
 void border(I32 x, I32 y, I32 sizeX, I32 sizeY, I32 borderSize, RGBA8 color) {
-	if (x + (y + sizeY) * sizeX > Win32::framebufferWidth * Win32::framebufferHeight) {
-		__debugbreak();
-		return; // silently fail; TODO fix later so it properly clips
+	if (!Win32::framebuffer || sizeX <= 0 || sizeY <= 0 || borderSize <= 0) {
+		return;
 	}
-	DEBUG_ASSERT(sizeX > borderSize*2 && sizeY > borderSize*2, "Size of the box must be at least as big as twice the border size");
-	I32 dstX = max(x, 0);
-	I32 dstY = max(y, 0);
-	for (I32 boxY = 0; boxY < borderSize; boxY++) {
-		RGBA8* dst = &Win32::framebuffer[(dstY + boxY) * Win32::framebufferWidth] + dstX;
-		RGBA8* dst2 = &Win32::framebuffer[(dstY + boxY + (sizeY - borderSize)) * Win32::framebufferWidth] + dstX;
-		for (I32 boxX = 0; boxX < sizeX; boxX++) {
-			dst[boxX] = color;
-			dst2[boxX] = color;
+
+	I32 fbW = Win32::framebufferWidth;
+	I32 fbH = Win32::framebufferHeight;
+	if (fbW <= 0 || fbH <= 0) {
+		return;
+	}
+
+	I32 x0 = x;
+	I32 y0 = y;
+	I32 x1 = x + sizeX;
+	I32 y1 = y + sizeY;
+	if (x1 <= 0 || y1 <= 0 || x0 >= fbW || y0 >= fbH) {
+		return;
+	}
+
+	borderSize = min(borderSize, min(sizeX, sizeY) / 2);
+	if (borderSize <= 0) {
+		return;
+	}
+
+	I32 topY0 = max(y0, 0);
+	I32 topY1 = min(y0 + borderSize, fbH);
+	I32 botY0 = max(y1 - borderSize, 0);
+	I32 botY1 = min(y1, fbH);
+	I32 leftX0 = max(x0, 0);
+	I32 leftX1 = min(x0 + borderSize, fbW);
+	I32 rightX0 = max(x1 - borderSize, 0);
+	I32 rightX1 = min(x1, fbW);
+	I32 midY0 = max(y0 + borderSize, 0);
+	I32 midY1 = min(y1 - borderSize, fbH);
+	I32 spanX0 = max(x0, 0);
+	I32 spanX1 = min(x1, fbW);
+
+	for (I32 py = topY0; py < topY1; py++) {
+		RGBA8* row = &Win32::framebuffer[py * fbW];
+		for (I32 px = spanX0; px < spanX1; px++) {
+			row[px] = color;
 		}
 	}
-	for (I32 boxX = 0; boxX < borderSize; boxX++) {
-		RGBA8* dst = &Win32::framebuffer[(dstY + borderSize) * Win32::framebufferWidth] + dstX + boxX;
-		RGBA8* dst2 = &Win32::framebuffer[(dstY + borderSize) * Win32::framebufferWidth] + (dstX + boxX + (sizeX - borderSize));
-		for (I32 boxY = 0; boxY < sizeY - borderSize; boxY++) {
-			dst[boxY * Win32::framebufferWidth] = color;
-			dst2[boxY * Win32::framebufferWidth] = color;
+	for (I32 py = botY0; py < botY1; py++) {
+		RGBA8* row = &Win32::framebuffer[py * fbW];
+		for (I32 px = spanX0; px < spanX1; px++) {
+			row[px] = color;
+		}
+	}
+	for (I32 py = midY0; py < midY1; py++) {
+		RGBA8* row = &Win32::framebuffer[py * fbW];
+		for (I32 px = leftX0; px < leftX1; px++) {
+			row[px] = color;
+		}
+		for (I32 px = rightX0; px < rightX1; px++) {
+			row[px] = color;
 		}
 	}
 }
@@ -114,18 +148,38 @@ void border(I32 x, I32 y, I32 sizeX, I32 sizeY, I32 borderSize, RGBA8 color) {
 // Really terrible box, but at least with a border..
 // sizeX and sizeY **do** include the border
 void box(I32 x, I32 y, I32 sizeX, I32 sizeY, I32 borderSize, RGBA8 borderColor, RGBA8 fillColor) {
-	if (x + (y + sizeY) * sizeX > Win32::framebufferWidth * Win32::framebufferHeight) {
-		__debugbreak();
-		return; // silently fail; TODO fix later so it properly clips
+	if (!Win32::framebuffer || sizeX <= 0 || sizeY <= 0) {
+		return;
 	}
-	DEBUG_ASSERT(sizeX > 4 && sizeY > 4, "Size of the box must be at least 4 pixels");
-	I32 dstX = max(x, 0);
-	I32 dstY = max(y, 0);
+
+	I32 fbW = Win32::framebufferWidth;
+	I32 fbH = Win32::framebufferHeight;
+	if (fbW <= 0 || fbH <= 0) {
+		return;
+	}
+
+	I32 x0 = max(x, 0);
+	I32 y0 = max(y, 0);
+	I32 x1 = min(x + sizeX, fbW);
+	I32 y1 = min(y + sizeY, fbH);
+	if (x0 >= x1 || y0 >= y1) {
+		return;
+	}
+
 	Graphics::border(x, y, sizeX, sizeY, borderSize, borderColor);
-	for (I32 boxY = borderSize; boxY < sizeY - borderSize; boxY++) {
-		RGBA8* dst = &Win32::framebuffer[(dstY + boxY) * Win32::framebufferWidth] + dstX;
-		for (I32 boxX = borderSize; boxX < sizeX - borderSize; boxX++) {
-			dst[boxX] = fillColor;
+
+	I32 fillX0 = max(x + borderSize, 0);
+	I32 fillY0 = max(y + borderSize, 0);
+	I32 fillX1 = min(x + sizeX - borderSize, fbW);
+	I32 fillY1 = min(y + sizeY - borderSize, fbH);
+	if (fillX0 >= fillX1 || fillY0 >= fillY1) {
+		return;
+	}
+
+	for (I32 py = fillY0; py < fillY1; py++) {
+		RGBA8* row = &Win32::framebuffer[py * fbW];
+		for (I32 px = fillX0; px < fillX1; px++) {
+			row[px] = fillColor;
 		}
 	}
 }
