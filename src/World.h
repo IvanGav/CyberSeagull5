@@ -82,7 +82,6 @@ struct BeachTileInfo {
 			Inventory::ITEM_GULL,
 			Inventory::ITEM_FEATHER,
 			Inventory::ITEM_GEAR,
-			Inventory::ITEM_CAMERA,
 			Inventory::ITEM_URANIUM,
 		};
 
