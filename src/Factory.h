@@ -20,6 +20,7 @@ struct ItemStack {
 enum MachineType : U32 {
 	MACHINE_NONE,
 	MACHINE_BELT,
+	MACHINE_SMELTER,
 	MACHINE_ASSEMBLER,
 	MACHINE_SPLITTER,
 	MACHINE_MERGER,
@@ -194,11 +195,80 @@ FINLINE B32 machine_is_belt(const Machine* machine) {
 	return machine && machine->generation != 0 && machine->type == MACHINE_BELT ? B32_TRUE : B32_FALSE;
 }
 
+FINLINE B32 machine_is_processing_structure(const Machine* machine) {
+	return machine && machine->generation != 0 && (machine->type == MACHINE_SMELTER || machine->type == MACHINE_ASSEMBLER) ? B32_TRUE : B32_FALSE;
+}
+
+B32 machine_processing_result(MachineType type, Inventory::ItemType inputItem, Inventory::ItemType* outputItemOut) {
+	switch (type) {
+	case MACHINE_SMELTER:
+		if (inputItem == Inventory::ITEM_IRON_ORE) {
+			*outputItemOut = Inventory::ITEM_IRON_PLATE;
+			return B32_TRUE;
+		}
+		if (inputItem == Inventory::ITEM_COPPER_ORE) {
+			*outputItemOut = Inventory::ITEM_COPPER_CABLE;
+			return B32_TRUE;
+		}
+		break;
+	case MACHINE_ASSEMBLER:
+		if (inputItem == Inventory::ITEM_IRON_PLATE) {
+			*outputItemOut = Inventory::ITEM_GEAR;
+			return B32_TRUE;
+		}
+		if (inputItem == Inventory::ITEM_COPPER_CABLE) {
+			*outputItemOut = Inventory::ITEM_GREEN_CIRCUIT;
+			return B32_TRUE;
+		}
+		break;
+	default:
+		break;
+	}
+	return B32_FALSE;
+}
+
+FINLINE B32 machine_inventory_is_recipe_input(const Machine* machine) {
+	if (!machine || machine->generation == 0 || machine->inventory.count == 0) {
+		return B32_FALSE;
+	}
+	Inventory::ItemType outputItem{};
+	return machine_processing_result(machine->type, machine->inventory.item, &outputItem);
+}
+
+MachineDef get_smelter(Rotation2 orientation) {
+	MachineDef result{};
+	result.type = MACHINE_SMELTER;
+	result.size = V2U{ 1, 1 };
+	result.sprite = &Resources::tile.assemblerSmall;
+	result.inventoryStackSize = 1;
+	result.processAtOnce = 1;
+	result.maxProcessTime = 1.25F;
+
+	switch (orientation) {
+	case ROTATION2_0:
+	default:
+		result.ioDefs[0] = IODef{ V2I{ 0, 0 }, Flags8(World::MACHINE_INPUT_UP | World::MACHINE_OUTPUT_DOWN) };
+		break;
+	case ROTATION2_90:	
+		result.ioDefs[0] = IODef{ V2I{ 0, 0 }, Flags8(World::MACHINE_INPUT_LEFT | World::MACHINE_OUTPUT_RIGHT) };
+		break;
+	case ROTATION2_180:
+		result.ioDefs[0] = IODef{ V2I{ 0, 0 }, Flags8(World::MACHINE_INPUT_DOWN | World::MACHINE_OUTPUT_UP) };
+		break;
+	case ROTATION2_270:
+		result.ioDefs[0] = IODef{ V2I{ 0, 0 }, Flags8(World::MACHINE_INPUT_RIGHT | World::MACHINE_OUTPUT_LEFT) };
+		break;
+	}
+
+	return result;
+}
+
 MachineDef get_assembler(Rotation2 orientation) {
 	MachineDef result{};
 	result.type = MACHINE_ASSEMBLER;
 	result.size = V2U{ 2, 2 };
-	result.inventoryStackSize = 2;
+	result.inventoryStackSize = 1;
+	result.processAtOnce = 1;
 	result.maxProcessTime = 2.0F;
 
 	switch (orientation) {
@@ -273,6 +343,7 @@ FINLINE B32 machine_is_static_structure(const Machine* machine) {
 FINLINE V2U machine_footprint(MachineType type, Rotation2 orientation) {
 	switch (type) {
 	case MACHINE_ASSEMBLER: return V2U{ 2, 2 };
+	case MACHINE_SMELTER:
 	case MACHINE_SPLITTER:
 	case MACHINE_MERGER:
 	case MACHINE_BELT:
@@ -329,6 +400,9 @@ MachineDef get_static_machine(MachineType type, Rotation2 orientation) {
 	MachineDef result{};
 	result.type = type;
 	switch (type) {
+	case MACHINE_SMELTER:
+		result = get_smelter(orientation);
+		break;
 	case MACHINE_ASSEMBLER:
 		result = get_assembler(orientation);
 		break;
@@ -550,7 +624,32 @@ void update(F32 dt) {
 	animRawTime = U32(fractf64(time) * 100.0);
 	for (Machine* machine : machineTiles) {
 		machine->animFrame = U32(time * 10.0F) % machine->sprite->animFrames;
-		machine->processTime -= dt;
+
+		if (machine_is_processing_structure(machine)) {
+			if (machine->inventory.count == 0) {
+				machine->processTime = 0.0F;
+			}
+			else {
+				Inventory::ItemType outputItem{};
+				if (machine_processing_result(machine->type, machine->inventory.item, &outputItem)) {
+					if (machine->processTime <= 0.0F || machine->processTime > machine->maxProcessTime) {
+						machine->processTime = machine->maxProcessTime;
+					}
+					machine->processTime -= dt;
+					if (machine->processTime <= 0.0F) {
+						machine->inventory.item = outputItem;
+						machine->processTime = 0.0F;
+					}
+				}
+				else {
+					machine->processTime = 0.0F;
+				}
+			}
+		}
+		else {
+			machine->processTime -= dt;
+		}
+
 		if (machine->inventory.count != 0 && machine->processTime <= 0.0F) {
 			if (Machine* output = machine->output.get()) {
 				if (output->inventory.count == 0) {
@@ -585,7 +684,7 @@ void render(I32 tileScale) {
 				Graphics::blit_sprite_cutout(Resources::tile.belt.upToDown, screenPos.x + 16 * tileScale, screenPos.y + 16 * tileScale, tileScale, beltAnimTime);
 			}
 		}
-		Graphics::blit_sprite_cutout(machine->spriteProcessingAlt && machine->inventory.count ? *machine->spriteProcessingAlt : *machine->sprite, screenPos.x, screenPos.y, tileScale, machine->animFrame);
+		Graphics::blit_sprite_cutout(machine->spriteProcessingAlt && machine_inventory_is_recipe_input(machine) ? *machine->spriteProcessingAlt : *machine->sprite, screenPos.x, screenPos.y, tileScale, machine->animFrame);
 	}
 	for (Machine* machine : machineTiles) {
 		if (machine && machine->type == MACHINE_BELT && machine->inventory.count > 0) {
@@ -595,6 +694,17 @@ void render(I32 tileScale) {
 			V2F renderOffset = (renderEndPos + (renderStartPos - renderEndPos) * t) * 16 * tileScale - 8 * tileScale;
 			V2I screenPos = Cyber5eagull::tile_to_screen_px(machine->pos);
 			Graphics::blit_sprite_cutout(*Inventory::itemSprite[machine->inventory.item], screenPos.x + I32(renderOffset.x), screenPos.y + I32(renderOffset.y), tileScale, 0);
+		}
+		else if (machine && machine_is_processing_structure(machine) && machine->inventory.count > 0) {
+			I32 itemScale = max(tileScale, 1);
+			I32 machineWidthPx = I32(machine->size.x) * 16 * tileScale;
+			I32 machineHeightPx = I32(machine->size.y) * 16 * tileScale;
+			I32 itemWidthPx = 16 * itemScale;
+			I32 itemHeightPx = 16 * itemScale;
+			V2I screenPos = Cyber5eagull::tile_to_screen_px(machine->pos);
+			I32 itemX = screenPos.x + (machineWidthPx - itemWidthPx) / 2;
+			I32 itemY = screenPos.y + (machineHeightPx - itemHeightPx) / 2;
+			Graphics::blit_sprite_cutout(*Inventory::itemSprite[machine->inventory.item], itemX, itemY, itemScale, 0);
 		}
 	}
 }

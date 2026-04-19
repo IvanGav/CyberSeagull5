@@ -158,6 +158,9 @@ FINLINE Resources::Sprite* preview_sprite(CreativeBrush brush, Rotation2 orienta
 		default: return &Resources::tile.belt.leftToRight;
 		}
 	case CreativeBrush::ASSEMBLER_SMALL:
+		switch (orientation) {
+		default: return &Resources::tile.assemblerSmall;
+		}
 	case CreativeBrush::ASSEMBLER_LARGE:
 		switch (orientation) {
 		case ROTATION2_90: return &Resources::tile.assembler.leftOff;
@@ -177,6 +180,7 @@ FINLINE Resources::Sprite* preview_sprite(CreativeBrush brush, Rotation2 orienta
 FINLINE V2U preview_footprint_tiles(CreativeBrush brush) {
 	switch (brush) {
 	case CreativeBrush::ASSEMBLER_SMALL:
+		return V2U{ 1, 1 };
 	case CreativeBrush::ASSEMBLER_LARGE:
 	case CreativeBrush::HIVE_BIG:
 		return V2U{ 2, 2 };
