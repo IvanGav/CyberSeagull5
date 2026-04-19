@@ -1705,3 +1705,7 @@ B32 drill_lib_init() {
 	}
 	return true;
 }
+
+V2F rand01v2f(Xoshiro256 rng) {
+	return V2F{ (F32)(rng.next() % 1000) / 1000.0f, (F32)(rng.next() % 1000) / 1000.0f };
+}

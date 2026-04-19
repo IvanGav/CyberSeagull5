@@ -69,6 +69,7 @@ struct {
 	Sprite merger;
 	Sprite beeFly;
 	Sprite beeMine;
+	Sprite beeCarry;
 	struct {
 		Sprite right;
 		Sprite left;
@@ -84,6 +85,13 @@ struct {
 		Sprite upToRight;
 	} belt;
 	Sprite num[10];
+	struct {
+		Sprite ironOre;
+		Sprite copperOre;
+		Sprite gull;
+		Sprite copperCable;
+		Sprite ironPlate;
+	} item;
 } tile;
 
 void load() {
@@ -106,6 +114,7 @@ void load() {
 	tile.merger = Sprite{ &tileset, 32, 64, 16, 16, 1 };
 	tile.beeFly = Sprite{ &tileset, 0, 160, 16, 16, 4 };
 	tile.beeMine = Sprite{ &tileset, 0, 144, 16, 16, 4 };
+	tile.beeCarry = Sprite{ &tileset, 0, 176, 16, 16, 4 };
 	tile.belt.right = Sprite{ &tileset, 64, 0, 16, 16, 3 };
 	tile.belt.left = Sprite{ &tileset, 64, 160, 16, 16, 3 };
 	tile.belt.up = Sprite{ &tileset, 64, 32, 16, 16, 3 };
@@ -121,6 +130,11 @@ void load() {
 	for (U32 i = 0; i < 10; i++) {
 		tile.num[i] = Sprite{&tileset, 16*i, 12*16, 16, 16, 1};
 	}
+	tile.item.ironOre = Sprite{ &tileset, 0, 13 * 16, 16, 16, 1 };
+	tile.item.copperOre = Sprite{ &tileset, 16, 13 * 16, 16, 16, 1 };
+	tile.item.gull = Sprite{ &tileset, 2*16, 13 * 16, 16, 16, 1 };
+	tile.item.copperCable = Sprite{ &tileset, 3*16, 13 * 16, 16, 16, 1 };
+	tile.item.ironPlate = Sprite{ &tileset, 4*16, 13 * 16, 16, 16, 1 };
 }
 
 }

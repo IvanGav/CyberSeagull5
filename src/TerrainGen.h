@@ -163,6 +163,7 @@ void seed_base_terrain(WorldGenerationState* state) {
 			}
 			else if (x < beachEndX) {
 				set_world_tile(tile, World::TILE_BEACH);
+				World::push_beach_tile(tile);
 			}
 			else if (x < sandEndX) {
 				set_world_tile(tile, World::TILE_SAND);

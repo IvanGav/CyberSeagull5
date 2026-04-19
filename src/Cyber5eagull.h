@@ -138,16 +138,17 @@ U32 run_cyber5eagull() {
 	lastFrameTime = current_time_seconds();
 
 	Resources::load();
+	Inventory::init();
 	World::init(V2U{ WORLD_WIDTH, WORLD_HEIGHT });
 	worldTileScale = DEFAULT_WORLD_TILE_SCALE;
 	hiveTile = V2U32{ min(START_HIVE_SHORE_OFFSET_X, World::size.x > 2u ? World::size.x - 2u : 0u), World::size.y / 2u };
 	BeeDemo::init(hiveTile);
 	center_camera_on_tile(hiveTile);
 	Win32::show_window();
-	Inventory::init_inv(4);
 	update_debug_inventory();
 
 	while (!Win32::windowShouldClose) {
+		World::beach_update(dt);
 		swap(&frameArena, &lastFrameArena);
 		frameArena.reset();
 		Win32::poll_events();
