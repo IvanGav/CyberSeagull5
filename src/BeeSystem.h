@@ -191,7 +191,6 @@ public:
 			BeeTasks::UpdateResult result = bees[beeIndex].update(dtSeconds);
 
 			if (result.finishedWork && taskIndex >= 0) {
-				Sounds::play_sound(Sounds::bees);
 				push_event(EventType::EVENT_WORK_CYCLE_FINISHED, beeIndex, eventTask);
 			}
 			if (result.reachedHome) {

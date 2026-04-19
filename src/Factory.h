@@ -314,7 +314,7 @@ MachineDef get_assembler(Rotation2 orientation) {
 	case ROTATION2_180: result.sprite = &Resources::tile.assembler.upOff; result.spriteProcessingAlt = &Resources::tile.assembler.upOn; break;
 	case ROTATION2_270: result.sprite = &Resources::tile.assembler.rightOff; result.spriteProcessingAlt = &Resources::tile.assembler.rightOn; break;
 	}
-	result.inventoryStackSize = 4;
+	result.inventoryStackSize = 5;
 	result.ioDefs[0] = rotate_iodef(IODef{ V2I{ 0, 1 }, World::MACHINE_INPUT_DOWN }, result.size, orientation);
 	result.ioDefs[1] = rotate_iodef(IODef{ V2I{ 1, 1 }, World::MACHINE_OUTPUT_DOWN }, result.size, orientation);
 	result.recipes = &Recipe::recipeGroups.assembler;
