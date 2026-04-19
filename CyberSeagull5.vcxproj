@@ -158,8 +158,10 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Bee.h" />
+    <ClInclude Include="src\BeeDemo.h" />
     <ClInclude Include="src\BeeSystem.h" />
     <ClInclude Include="src\BeeTasks.h" />
+    <ClInclude Include="src\CreativeToolkit.h" />
     <ClInclude Include="src\Cyber5eagull.h" />
     <ClInclude Include="src\drillengine\DrillLib.h" />
     <ClInclude Include="src\drillengine\DrillLibDefs.h" />
@@ -170,6 +172,7 @@
     <ClInclude Include="src\Factory.h" />
     <ClInclude Include="src\Graphics.h" />
     <ClInclude Include="src\Resources.h" />
+    <ClInclude Include="src\TerrainGen.h" />
     <ClInclude Include="src\TileSpace.h" />
     <ClInclude Include="src\Win32.h" />
     <ClInclude Include="src\World.h" />
@@ -181,6 +184,7 @@
     <Image Include="resources\textures\scrung.png" />
     <Image Include="resources\textures\tileset_v1.png" />
     <Image Include="resources\textures\tileset_v2.png" />
+    <Image Include="resources\textures\tileset_v3.png" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

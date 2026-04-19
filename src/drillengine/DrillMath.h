@@ -1062,6 +1062,10 @@ FINLINE V3F32 truncf(V3F32 v) {
 	return truncv3f(v);
 }
 
+FINLINE V2F32 floorv2f(V2F32 v) {
+	return V2F32{ floorf32(v.x), floorf32(v.y) };
+}
+
 #pragma pack(push, 1)
 struct V2U32 {
 	U32 x, y;

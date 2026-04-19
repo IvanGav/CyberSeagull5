@@ -4,6 +4,8 @@
 #include "Resources.h"
 #include "Graphics.h"
 #include "Win32.h"
+#include "Inventory.h"
+#include "TileSpace.h"
 
 namespace World {
 
@@ -36,6 +38,43 @@ TileType get_tile(U32* machineId, I32 x, I32 y) {
 	return tiles[y * size.x + x];
 }
 
+Xoshiro256 rng;
+constexpr U32 MAX_JUNK_PER_BEACH_TILE = 5;
+constexpr U32 MAX_JUNK_DELAY = 40;
+constexpr U32 MIN_JUNK_DELAY = 8;
+
+// list of floating items to render
+struct JunkInfo {
+	V2F coord;
+	Inventory::Item item;
+};
+
+// list of beach tiles currently in the world + their delay before depositing a new junk
+struct BeachTileInfo {
+	V2U coord;
+	F32 delay;
+	U32 junkNum;
+	JunkInfo junkList[MAX_JUNK_PER_BEACH_TILE];
+	void empty() {
+		add_junk();
+		junkNum = 0;
+	}
+	void add_junk() {
+		DEBUG_ASSERT(Inventory::inv.size != 0, "Inventory must be initialized before the world lol");
+		delay = F32((rng.next() % (MAX_JUNK_DELAY + MIN_JUNK_DELAY)) - MIN_JUNK_DELAY);
+		if (junkNum == MAX_JUNK_PER_BEACH_TILE) { return; }
+		junkList[junkNum] = JunkInfo{ 
+			TileSpace::tile_to_world(coord) + rand01v2f(rng) - V2F{0.5,0.5},
+			(U32)rng.next() % (Inventory::inv.size)
+		};
+
+		junkNum++;
+	}
+};
+
+U32 num_beach_tiles;
+BeachTileInfo* beach_tiles; //JunkInfo* junk_list;
+
 void set_machine(Rng2I32 range, U32 machineId) {
 	range = range.intersected(Rng2I32{ 0, 0, I32(size.x - 1), I32(size.y - 1) });
 	for (I32 y = range.minY; y <= range.maxY; y++) {
@@ -48,6 +87,9 @@ void set_machine(Rng2I32 range, U32 machineId) {
 void init(V2U extent) {
 	size = extent;
 	tiles = globalArena.alloc<TileType>(extent.x * extent.y);
+	num_beach_tiles = 0;
+	beach_tiles = globalArena.alloc<BeachTileInfo>(extent.y); // the entire left side of the map is a beach
+	rng.seed_rand();
 	tileMachineIds = globalArena.alloc<U32>(extent.x * extent.y);
 	for (U32 i = 0; i < extent.x * extent.y; i++) {
 		tiles[i] = TILE_GRASS;
@@ -62,6 +104,20 @@ void init(V2U extent) {
 	tileSprite[TILE_SAND] = &Resources::tile.sand;
 	tileSprite[TILE_BEACH] = &Resources::tile.beach;
 	tileSprite[TILE_WATER] = &Resources::tile.water;
+}
+
+void render_beach(V2F camera, I32 tileScale) {
+	I32 tileSize = (F32)tileScale * 16;
+	I32 camStartX = I32(floorf32(camera.x));
+	I32 camStartY = I32(floorf32(camera.y));
+	for (U32 i = 0; i < num_beach_tiles; i++) {
+		for (U32 j = 0; j < beach_tiles[i].junkNum; j++) {
+			JunkInfo junk = beach_tiles[i].junkList[j];
+			I32 screenX = I32(junk.coord.x * tileSize) - camStartX;
+			I32 screenY = I32(junk.coord.y * tileSize) - camStartY;
+			Graphics::blit_sprite_cutout(*Inventory::itemSprite[junk.item], screenX, screenY, tileScale, 0);
+		}
+	}
 }
 
 void render(V2F camera, I32 tileScale) {
@@ -85,6 +141,23 @@ void render(V2F camera, I32 tileScale) {
 		
 		}
 	}
+	render_beach(camera, tileScale);
+}
+
+// Call every frame to update the shore tiles
+void beach_update(F32 dt) {
+	for (U32 i = 0; i < num_beach_tiles; i++) {
+		beach_tiles[i].delay -= dt;
+		if (beach_tiles[i].delay <= 0.0) {
+			beach_tiles[i].add_junk();
+		}
+	}
+}
+
+void push_beach_tile(V2U pos) {
+	beach_tiles[num_beach_tiles] = BeachTileInfo{ pos };
+	beach_tiles[num_beach_tiles].empty();
+	num_beach_tiles++;
 }
 
 
