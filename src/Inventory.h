@@ -36,7 +36,7 @@ struct ItemStack {
 
 Resources::Sprite* itemSprite[ITEM_Count];
 
-U32 item_font_size = 32;
+U32 item_font_size = 48;
 U32 x_off = 10;
 U32 y_off = 20;
 
@@ -68,7 +68,7 @@ FINLINE I32 row_height() {
 }
 
 FINLINE I32 panel_width() {
-    return I32(item_font_size) + 52;
+    return I32(item_font_size) + 72;
 }
 
 FINLINE I32 panel_height() {
