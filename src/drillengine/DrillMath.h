@@ -1069,6 +1069,17 @@ struct V2U32 {
 typedef V2U32 V2U;
 #pragma pack(pop)
 
+FINLINE bool operator==(V2U a, V2U b) {
+	return a.x == b.x && a.y == b.y;
+}
+
+#pragma pack(push, 1)
+struct V2I32 {
+	I32 x, y;
+};
+typedef V2I32 V2I;
+#pragma pack(pop)
+
 DEBUG_OPTIMIZE_OFF
 
 #pragma pack(push, 1)
@@ -2438,6 +2449,9 @@ enum Direction2 : I32 {
 	DIRECTION2_BACK = 3,
 	DIRECTION2_Count = 4
 };
+Direction2 DIRECTION2_OPPOSITE[]{ DIRECTION2_RIGHT, DIRECTION2_LEFT, DIRECTION2_BACK, DIRECTION2_FRONT };
+V2I DIRECTION2_V2I[]{ V2I{ -1, 0 }, V2I{ 1, 0 }, V2I{ 0, -1 }, V2I{ 0, 1 } };
+V2I DIRECTION2_OPPOSITE_V2I[]{ V2I{ 1, 0 }, V2I{ -1, 0 }, V2I{ 0, 1 }, V2I{ 0, -1 } };
 enum Direction3 : I32 {
 	DIRECTION3_INVALID = -1,
 	DIRECTION3_LEFT = 0,
@@ -2447,6 +2461,13 @@ enum Direction3 : I32 {
 	DIRECTION3_UP = 4,
 	DIRECTION3_DOWN = 5,
 	DIRECTION3_Count = 6
+};
+
+enum Rotation2 : I32 {
+	ROTATION2_0,
+	ROTATION2_90,
+	ROTATION2_180,
+	ROTATION2_270,
 };
 
 enum Axis2 : I32 {

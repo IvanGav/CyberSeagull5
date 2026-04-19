@@ -7,6 +7,7 @@
 #include "BeeTasks.h"
 #include "TileSpace.h"
 #include "Inventory.h"
+#include "Factory.h"
 
 namespace Cyber5eagull {
 
@@ -25,6 +26,10 @@ I32 worldTileScale = DEFAULT_WORLD_TILE_SCALE;
 V2U32 hiveTile{};
 V2U32 selectedTile{};
 B32 hasSelectedTile = B32_FALSE;
+B32 placingConveyor = B32_FALSE;
+Direction2 lastConveyorInputSide;
+Direction2 lastConveyorOutputSide;
+Factory::MachineHandle lastConveyor;
 Bee::Bee demoBee{};
 
 I32 world_tile_pixels() {
@@ -48,6 +53,15 @@ V2F32 screen_to_world(V2F32 screenPosition) {
 
 V2F32 world_to_screen(V2F32 worldPosition) {
 	return worldPosition * world_tile_pixels_f32() - camera;
+}
+
+V2I world_to_screen_px(V2F32 worldPosition) {
+	V2F screen = world_to_screen(worldPosition);
+	return V2I{ I32(floorf32(screen.x)), I32(floorf32(screen.y)) };
+}
+
+V2I tile_to_screen_px(V2U tile) {
+	return V2I{ I32(tile.x) * world_tile_pixels() - I32(floorf32(camera.x)), I32(tile.y) * world_tile_pixels() - I32(floorf32(camera.y)) };
 }
 
 void center_camera_on_tile(V2U32 tile) {
@@ -101,10 +115,21 @@ void mouse_callback(Win32::MouseButton button, Win32::MouseValue state) {
 	if (button == Win32::MOUSE_BUTTON_LEFT && state.state == Win32::BUTTON_STATE_DOWN) {
 		V2U32 clickedTile{};
 		if (mouse_to_tile(&clickedTile)) {
-			send_bee_to_tile(clickedTile);
+			if (Win32::keyboardState[Win32::KEY_CTRL]) {
+				lastConveyorInputSide = DIRECTION2_LEFT;
+				lastConveyorOutputSide = DIRECTION2_RIGHT;
+				Factory::MachineDef belt = Factory::get_belt(lastConveyorInputSide, lastConveyorOutputSide);
+				lastConveyor = Factory::try_place_machine(clickedTile, belt);
+				placingConveyor = true;
+			} else {
+				send_bee_to_tile(clickedTile);
+			}
 		}
+	} else if (button == Win32::MOUSE_BUTTON_LEFT && state.state == Win32::BUTTON_STATE_UP) {
+		placingConveyor = false;
 	}
-	else if (button == Win32::MOUSE_BUTTON_RIGHT && state.state == Win32::BUTTON_STATE_DOWN) {
+	
+	if (button == Win32::MOUSE_BUTTON_RIGHT && state.state == Win32::BUTTON_STATE_DOWN) {
 		hasSelectedTile = B32_FALSE;
 		demoBee.cancel_task();
 	}
@@ -129,6 +154,48 @@ void render_bee(F64 frameTimeSeconds) {
 	Graphics::blit_sprite_cutout(beeSprite, I32(roundf32(beeScreenTopLeft.x)), I32(roundf32(beeScreenTopLeft.y)), worldTileScale, animFrame);
 }
 
+void update() {
+	if (Win32::keyboardState[Win32::KEY_CTRL] && Win32::mouseButtonState[Win32::MOUSE_BUTTON_RIGHT]) {
+		V2U clickedTile{};
+		if (mouse_to_tile(&clickedTile)) {
+			Factory::remove_machine(clickedTile);
+		}
+	}
+	if (placingConveyor) {
+		if (Win32::keyboardState[Win32::KEY_CTRL] && lastConveyor.get()) {
+			V2U clickedTile{};
+			if (mouse_to_tile(&clickedTile)) {
+				U32 prevId;
+				if (World::get_tile(&prevId, clickedTile.x, clickedTile.y) == World::TILE_GRASS && prevId == World::MACHINE_NULL_ID) {
+					Factory::Machine* mach = lastConveyor.machine;
+					V2U machPos = mach->pos;
+					Direction2 newDirection = DIRECTION2_INVALID;
+					if (clickedTile == V2U{ machPos.x + 1, machPos.y }) {
+						newDirection = DIRECTION2_RIGHT;
+					} else if (clickedTile == V2U{ machPos.x - 1, machPos.y }) {
+						newDirection = DIRECTION2_LEFT;
+					} else if (clickedTile == V2U{ machPos.x, machPos.y + 1 }) {
+						newDirection = DIRECTION2_BACK;
+					} else if (clickedTile == V2U{ machPos.x, machPos.y - 1 }) {
+						newDirection = DIRECTION2_FRONT;
+					}
+					if (newDirection != DIRECTION2_INVALID && newDirection != lastConveyorInputSide) {
+						Factory::remove_machine(mach);
+						Factory::MachineDef belt = Factory::get_belt(lastConveyorInputSide, newDirection);
+						Factory::try_place_machine(machPos, belt);
+						belt = Factory::get_belt(DIRECTION2_OPPOSITE[newDirection], newDirection);
+						lastConveyorInputSide = DIRECTION2_OPPOSITE[newDirection];
+						lastConveyorOutputSide = newDirection;
+						lastConveyor = Factory::try_place_machine(clickedTile, belt);
+					}
+				}
+			}
+		} else {
+			placingConveyor = false;
+		}
+	}
+}
+
 void render() {
 	F64 currentFrameTime = current_time_seconds();
 	dt = min(F32(currentFrameTime - lastFrameTime), 0.1F);
@@ -150,12 +217,13 @@ void render() {
 
 	memset(Win32::framebuffer, 0, Win32::framebufferWidth * Win32::framebufferHeight * sizeof(RGBA8));
 	World::render(camera, worldTileScale);
+	Factory::render(worldTileScale);
 	render_hive();
 	if (hasSelectedTile) {
 		render_tile_marker(selectedTile);
 	}
 	render_bee(currentFrameTime);
-  Inventory::draw_inv();
+	Inventory::draw_inv();
 	lastFrameTime = currentFrameTime;
 }
 
@@ -168,6 +236,7 @@ U32 run_cyber5eagull() {
 	
 	Resources::load();
 	World::init(V2U{ 40, 40 });
+	Factory::init();
 	worldTileScale = DEFAULT_WORLD_TILE_SCALE;
 	hiveTile = V2U32{ World::size.x / 2, World::size.y / 2 };
 	demoBee = Bee::Bee{ hiveTile, DEMO_BEE_SPEED };
@@ -183,6 +252,7 @@ U32 run_cyber5eagull() {
 		swap(&frameArena, &lastFrameArena);
 		frameArena.reset();
 		Win32::poll_events();
+		update();
 		render();
 		InvalidateRect(Win32::window, NULL, FALSE);
 		UpdateWindow(Win32::window);

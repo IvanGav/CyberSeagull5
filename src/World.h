@@ -23,12 +23,35 @@ Resources::Sprite* tileSprite[TILE_Count];
 
 V2U size;
 TileType* tiles;
+const U32 MACHINE_NULL_ID = 0;
+U32* tileMachineIds;
+
+TileType get_tile(U32* machineId, I32 x, I32 y) {
+	if (x < 0 || y < 0 || x >= size.x || y >= size.y) {
+		return TILE_UNDEF;
+	}
+	if (machineId) {
+		*machineId = tileMachineIds[y * size.x + x];
+	}
+	return tiles[y * size.x + x];
+}
+
+void set_machine(Rng2I32 range, U32 machineId) {
+	range = range.intersected(Rng2I32{ 0, 0, I32(size.x - 1), I32(size.y - 1) });
+	for (I32 y = range.minY; y <= range.maxY; y++) {
+		for (I32 x = range.minX; x <= range.maxX; x++) {
+			tileMachineIds[y * size.x + x] = machineId;
+		}
+	}
+}
 
 void init(V2U extent) {
 	size = extent;
 	tiles = globalArena.alloc<TileType>(extent.x * extent.y);
+	tileMachineIds = globalArena.alloc<U32>(extent.x * extent.y);
 	for (U32 i = 0; i < extent.x * extent.y; i++) {
 		tiles[i] = TILE_GRASS;
+		tileMachineIds[i] = MACHINE_NULL_ID;
 	}
 
 	tileSprite[TILE_UNDEF] = &Resources::tile.undef;
