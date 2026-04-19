@@ -99,13 +99,16 @@ struct {
 		Sprite nuclearHeart;
 		Sprite uranium;
 		Sprite kittyCat;
+		Sprite pollen;
+		Sprite honey;
+		Sprite lemonJuice;
 	} item;
 } tile;
 
 void load() {
 	scrung = load_texture("scrung.png"a);
 	scrungPart = Sprite{ &scrung, 128, 128, 128, 128, 1 };
-	tileset = load_texture("tileset_v5.png"a);
+	tileset = load_texture("tileset_v6.png"a);
 	tile.undef = Sprite{ &tileset, 0, 0, 16, 16, 1 };
 	tile.grass = Sprite{ &tileset, 16, 0, 16, 16, 1 };
 	tile.grassIron = Sprite{ &tileset, 32, 0, 16, 16, 1 };
@@ -151,6 +154,9 @@ void load() {
 	tile.item.nuclearHeart = Sprite{ &tileset, 9 * 16, 13 * 16, 16, 16, 1 };
 	tile.item.uranium = Sprite{ &tileset, 10 * 16, 13 * 16, 16, 16, 1 };
 	tile.item.kittyCat = Sprite{ &tileset, 11 * 16, 13 * 16, 16, 16, 1 };
+	tile.item.pollen = Sprite{ &tileset, 12 * 16, 13 * 16, 16, 16, 1 };
+	tile.item.honey = Sprite{ &tileset, 13 * 16, 13 * 16, 16, 16, 1 };
+	tile.item.lemonJuice = Sprite{ &tileset, 14 * 16, 13 * 16, 16, 16, 1 };
 }
 
 }
