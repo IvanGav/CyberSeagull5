@@ -186,10 +186,18 @@ void keyboard_callback(Win32::Key key, Win32::ButtonState state) {
 	}
 
 	if (key == Win32::KEY_I) {
-		SelectUI::open = SelectUI::open ? B32_FALSE : B32_TRUE;
+		V2U32 tilePos{};
+		if (mouse_to_tile(&tilePos)) {
+			Factory::open_recipe_menu_for_machine(V2U{ tilePos.x, tilePos.y });
+		}
+		else {
+			SelectUI::open = B32_FALSE;
+		}
+
 		if (SelectUI::open) {
 			CreativeToolkit::close_ui();
 		}
+
 		hasLastDraggedTile = B32_FALSE;
 		uiLeftCapture = B32_FALSE;
 		conveyorDragActive = B32_FALSE;
@@ -267,11 +275,6 @@ void mouse_callback(Win32::MouseButton button, Win32::MouseValue state) {
 			if (uiLeftCapture) {
 				return;
 			}
-		}
-		V2U tilePos;
-		if (mouse_to_tile(&tilePos) && Factory::machine_is_belt(Factory::get_machine_from_tile(tilePos))) {
-			Factory::get_machine_from_tile(tilePos)->inventory[0].count = 1;
-			Factory::get_machine_from_tile(tilePos)->inventory[0].item = Inventory::ITEM_IRON_PLATE;
 		}
 	}
 
