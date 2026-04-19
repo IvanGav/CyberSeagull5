@@ -14,6 +14,13 @@ namespace Inventory {
 		ITEM_GULL,
 		ITEM_COPPER_CABLE,
 		ITEM_IRON_PLATE,
+		ITEM_GREEN_CIRCUIT,
+		ITEM_CAMERA,
+		ITEM_FEATHER,
+		ITEM_GEAR,
+		ITEM_NUCLEAR_HEART,
+		ITEM_URANIUM,
+		//ITEM_KITTY_CAT,
 		ITEM_Count
 	};
 
@@ -35,6 +42,12 @@ namespace Inventory {
 		itemSprite[ITEM_GULL] = &Resources::tile.item.gull;
 		itemSprite[ITEM_COPPER_CABLE] = &Resources::tile.item.copperCable;
 		itemSprite[ITEM_IRON_PLATE] = &Resources::tile.item.ironPlate;
+		itemSprite[ITEM_GREEN_CIRCUIT] = &Resources::tile.item.greenCircuit;
+		itemSprite[ITEM_CAMERA] = &Resources::tile.item.camera;
+		itemSprite[ITEM_FEATHER] = &Resources::tile.item.feather;
+		itemSprite[ITEM_GEAR] = &Resources::tile.item.gear;
+		itemSprite[ITEM_NUCLEAR_HEART] = &Resources::tile.item.nuclearHeart;
+		itemSprite[ITEM_URANIUM] = &Resources::tile.item.uranium;
 	}
 
 	void draw_inv() {

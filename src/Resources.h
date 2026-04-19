@@ -61,6 +61,7 @@ struct {
 	Sprite sand;
 	Sprite beach;
 	Sprite water;
+	Sprite oil;
 	Sprite assemblerSmall;
 	Sprite assemblerLarge;
 	Sprite hive;
@@ -91,13 +92,20 @@ struct {
 		Sprite gull;
 		Sprite copperCable;
 		Sprite ironPlate;
+		Sprite greenCircuit;
+		Sprite camera;
+		Sprite feather;
+		Sprite gear;
+		Sprite nuclearHeart;
+		Sprite uranium;
+		Sprite kittyCat;
 	} item;
 } tile;
 
 void load() {
 	scrung = load_texture("scrung.png"a);
 	scrungPart = Sprite{ &scrung, 128, 128, 128, 128, 1 };
-	tileset = load_texture("tileset_v4.png"a);
+	tileset = load_texture("tileset_v5.png"a);
 	tile.undef = Sprite{ &tileset, 0, 0, 16, 16, 1 };
 	tile.grass = Sprite{ &tileset, 16, 0, 16, 16, 1 };
 	tile.grassIron = Sprite{ &tileset, 32, 0, 16, 16, 1 };
@@ -105,7 +113,8 @@ void load() {
 	tile.grassFlowers = Sprite{ &tileset, 32, 32, 16, 16, 1 };
 	tile.sand = Sprite{ &tileset, 0, 16, 16, 16, 1 };
 	tile.beach = Sprite{ &tileset, 16, 16, 16, 16, 1 };
-	tile.water = Sprite{ &tileset, 0, 32, 16, 16, 1 };
+	tile.water = Sprite{ &tileset, 0, 8 * 16, 16, 16, 2 };
+	tile.oil = Sprite{ &tileset,3 * 16, 5 * 16, 16, 16, 2 };
 	tile.assemblerSmall = Sprite{ &tileset, 16, 48, 16, 16, 1 };
 	tile.assemblerLarge = Sprite{ &tileset, 0, 96, 32, 32, 1 };
 	tile.hive = Sprite{ &tileset, 16, 32, 16, 16, 1 };
@@ -133,8 +142,15 @@ void load() {
 	tile.item.ironOre = Sprite{ &tileset, 0, 13 * 16, 16, 16, 1 };
 	tile.item.copperOre = Sprite{ &tileset, 16, 13 * 16, 16, 16, 1 };
 	tile.item.gull = Sprite{ &tileset, 2*16, 13 * 16, 16, 16, 1 };
-	tile.item.copperCable = Sprite{ &tileset, 3*16, 13 * 16, 16, 16, 1 };
-	tile.item.ironPlate = Sprite{ &tileset, 4*16, 13 * 16, 16, 16, 1 };
+	tile.item.copperCable = Sprite{ &tileset, 3 * 16, 13 * 16, 16, 16, 1 };
+	tile.item.ironPlate = Sprite{ &tileset, 4 * 16, 13 * 16, 16, 16, 1 };
+	tile.item.greenCircuit = Sprite{ &tileset, 5 * 16, 13 * 16, 16, 16, 1 };
+	tile.item.camera = Sprite{ &tileset, 6 * 16, 13 * 16, 16, 16, 1 };
+	tile.item.feather = Sprite{ &tileset, 7 * 16, 13 * 16, 16, 16, 1 };
+	tile.item.gear = Sprite{ &tileset, 8 * 16, 13 * 16, 16, 16, 1 };
+	tile.item.nuclearHeart = Sprite{ &tileset, 9 * 16, 13 * 16, 16, 16, 1 };
+	tile.item.uranium = Sprite{ &tileset, 10 * 16, 13 * 16, 16, 16, 1 };
+	tile.item.kittyCat = Sprite{ &tileset, 11 * 16, 13 * 16, 16, 16, 1 };
 }
 
 }
