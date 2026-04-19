@@ -10,6 +10,7 @@
 #include "CreativeToolkit.h"
 #include "SelectUI.h"
 #include "EditorInteraction.h"
+#include "Recipe.h"
 
 namespace Cyber5eagull {
 
@@ -88,19 +89,15 @@ B32 mouse_to_tile(V2U32* tileOut) {
 	return B32_TRUE;
 }
 
-
-
-
 void update() {
-	Factory::update();
-	World::beach_update(dt);
-}
-
-
-void render() {
 	F64 currentFrameTime = current_time_seconds();
 	dt = min(F32(currentFrameTime - lastFrameTime), 0.1F);
+
+	Factory::update();
+	World::beach_update(dt);
+	BeeDemo::update(dt);
 	EditorInteraction::update_drag_interactions();
+
 	V2F mouse = Win32::get_mouse();
 	if (!EditorInteraction::cameraDragActive) {
 		if (mouse.x < CAMERA_EDGE_SCROLL_PIXELS) {
@@ -117,8 +114,10 @@ void render() {
 		}
 	}
 	clamp_camera();
-	BeeDemo::update(dt);
+}
 
+void render() {
+	F64 currentFrameTime = current_time_seconds();
 	memset(Win32::framebuffer, 0, Win32::framebufferWidth * Win32::framebufferHeight * sizeof(RGBA8));
 	World::render(camera, worldTileScale);
 	Factory::render(worldTileScale);
@@ -144,6 +143,7 @@ U32 run_cyber5eagull() {
 	lastFrameTime = current_time_seconds();
 
 	Resources::load();
+	Recipe::init();
 	SelectUI::debug_selections(); // TODO debug selections for now; don't need this later
 	Inventory::init();
 	World::init(V2U{ WORLD_WIDTH, WORLD_HEIGHT });

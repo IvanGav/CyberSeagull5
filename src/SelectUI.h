@@ -8,6 +8,7 @@ namespace SelectUI {
 	// you can pick out of these sprites; the picked sprite will be returned as an index into the array
 	// all textures have to be 16x16
 	ArenaArrayList<Resources::Sprite*> selections;
+	void(*callback)(U32) = nullptr;
 	I32 itemSize = 16; // assume all items are 16x16
 	I32 scale = 4; // UI scale
 	I32 selectedItem = -1; // -1 means no selection
@@ -19,10 +20,11 @@ namespace SelectUI {
 
 	RGBA8 selectedColor = RGBA8{ 50, 250, 50, 255 };
 
-	void change_select_options(ArenaArrayList<Resources::Sprite*> options) {
+	void change_select_options(ArenaArrayList<Resources::Sprite*> options, void(*set_callback)(U32)) {
 		selections = options;
 		open = B32_FALSE;
 		selectedItem = -1;
+		callback = set_callback;
 	}
 
 	void debug_selections() {
@@ -106,7 +108,9 @@ namespace SelectUI {
 			selectedItem = -1; // unselect
 		} else if(index < selections.size) {
 			selectedItem = index; // select
+			if(callback != nullptr) callback(index);
 		}
+		open = false;
 		return true;
 	}
 

@@ -4,6 +4,7 @@
 #include "Resources.h"
 #include "Graphics.h"
 #include "World.h"
+#include "Recipe.h"
 
 namespace Cyber5eagull {
 V2I tile_to_screen_px(V2U tile);
@@ -45,6 +46,8 @@ struct Machine {
 	Machine* output = nullptr;
 	Direction2 inputSide = DIRECTION2_LEFT;
 	Direction2 outputSide = DIRECTION2_RIGHT;
+	Recipe::RecipeGroup* recipes = nullptr;
+	Recipe::RecipeRef curRecipe{};
 };
 
 struct MachineHandle {
