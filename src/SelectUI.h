@@ -27,11 +27,21 @@ namespace SelectUI {
 
 	void debug_selections() {
 		selections.clear();
+		selections.push_back(&Resources::tile.icon.belt);
+		selections.push_back(&Resources::tile.icon.assembler);
+		selections.push_back(&Resources::tile.icon.hive);
+
 		selections.push_back(&Resources::tile.item.honey);
 		selections.push_back(&Resources::tile.item.kittyCat);
 		selections.push_back(&Resources::tile.item.camera);
 		selections.push_back(&Resources::tile.item.ironOre);
-		selections.push_back(&Resources::tile.item.honey); selections.push_back(&Resources::tile.item.kittyCat); selections.push_back(&Resources::tile.item.camera); selections.push_back(&Resources::tile.item.ironOre); selections.push_back(&Resources::tile.item.honey); selections.push_back(&Resources::tile.item.kittyCat); selections.push_back(&Resources::tile.item.camera); selections.push_back(&Resources::tile.item.ironOre); selections.push_back(&Resources::tile.item.honey); selections.push_back(&Resources::tile.item.kittyCat); selections.push_back(&Resources::tile.item.camera); selections.push_back(&Resources::tile.item.ironOre); selections.push_back(&Resources::tile.item.honey); selections.push_back(&Resources::tile.item.kittyCat); selections.push_back(&Resources::tile.item.camera); selections.push_back(&Resources::tile.item.ironOre); selections.push_back(&Resources::tile.item.honey); selections.push_back(&Resources::tile.item.kittyCat); selections.push_back(&Resources::tile.item.camera); selections.push_back(&Resources::tile.item.ironOre);
+
+		selections.push_back(&Resources::tile.rock.topLeft);
+		selections.push_back(&Resources::tile.rock.top);
+		selections.push_back(&Resources::tile.rock.topRight);
+		selections.push_back(&Resources::tile.rock.left);
+		selections.push_back(&Resources::tile.rock.full);
+		selections.push_back(&Resources::tile.rock.right);
 	}
 
 	void draw() {
@@ -94,7 +104,7 @@ namespace SelectUI {
 
 		if (selectedItem == index) {
 			selectedItem = -1; // unselect
-		} else {
+		} else if(index < selections.size) {
 			selectedItem = index; // select
 		}
 		return true;

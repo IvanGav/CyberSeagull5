@@ -103,12 +103,25 @@ struct {
 		Sprite honey;
 		Sprite lemonJuice;
 	} item;
+	struct {
+		Sprite belt;
+		Sprite assembler;
+		Sprite hive;
+	} icon;
+	struct {
+		Sprite full;
+		Sprite top;
+		Sprite left;
+		Sprite right;
+		Sprite topLeft;
+		Sprite topRight;
+	} rock;
 } tile;
 
 void load() {
 	scrung = load_texture("scrung.png"a);
 	scrungPart = Sprite{ &scrung, 128, 128, 128, 128, 1 };
-	tileset = load_texture("tileset_v6.png"a);
+	tileset = load_texture("tileset_v7.png"a);
 	tile.undef = Sprite{ &tileset, 0, 0, 16, 16, 1 };
 	tile.grass = Sprite{ &tileset, 16, 0, 16, 16, 1 };
 	tile.grassIron = Sprite{ &tileset, 32, 0, 16, 16, 1 };
@@ -157,6 +170,17 @@ void load() {
 	tile.item.pollen = Sprite{ &tileset, 12 * 16, 13 * 16, 16, 16, 1 };
 	tile.item.honey = Sprite{ &tileset, 13 * 16, 13 * 16, 16, 16, 1 };
 	tile.item.lemonJuice = Sprite{ &tileset, 14 * 16, 13 * 16, 16, 16, 1 };
+
+	tile.icon.belt = Sprite{ &tileset, 0 * 16, 14 * 16, 16, 16, 1 };
+	tile.icon.assembler = Sprite{ &tileset, 1 * 16, 14 * 16, 16, 16, 1 };
+	tile.icon.hive = Sprite{ &tileset, 2 * 16, 14 * 16, 16, 16, 1 };
+
+	tile.rock.topLeft = Sprite{ &tileset, 16 * 10, 11 * 16, 16, 16, 1 };
+	tile.rock.top = Sprite{ &tileset, 16 * 11, 11 * 16, 16, 16, 1 };
+	tile.rock.topRight = Sprite{ &tileset, 16 * 12, 11 * 16, 16, 16, 1 };
+	tile.rock.left = Sprite{ &tileset, 16 * 10, 12 * 16, 16, 16, 1 };
+	tile.rock.full = Sprite{ &tileset, 16 * 11, 12 * 16, 16, 16, 1 };
+	tile.rock.right = Sprite{ &tileset, 16 * 12, 12 * 16, 16, 16, 1 };
 }
 
 }
