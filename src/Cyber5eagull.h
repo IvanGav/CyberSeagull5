@@ -51,7 +51,6 @@ U32 run_cyber5eagull() {
 	}
 	lastFrameTime = current_time_seconds();
 	
-	// init
 	Resources::load();
 	World::init(V2U{ 40, 40 });
 	Win32::show_window();

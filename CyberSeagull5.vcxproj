@@ -157,6 +157,9 @@
     <ClCompile Include="src\Entrypoint.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\Bee.h" />
+    <ClInclude Include="src\BeeSystem.h" />
+    <ClInclude Include="src\BeeTasks.h" />
     <ClInclude Include="src\Cyber5eagull.h" />
     <ClInclude Include="src\drillengine\DrillLib.h" />
     <ClInclude Include="src\drillengine\DrillLibDefs.h" />
@@ -167,6 +170,7 @@
     <ClInclude Include="src\Graphics.h" />
     <ClInclude Include="src\Inventory.h" />
     <ClInclude Include="src\Resources.h" />
+    <ClInclude Include="src\TileSpace.h" />
     <ClInclude Include="src\Win32.h" />
     <ClInclude Include="src\World.h" />
   </ItemGroup>
