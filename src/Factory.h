@@ -176,7 +176,7 @@ void update() {
 	//TODO reverse post order
 	F64 time = current_time_seconds();
 	for (Machine* machine : machineTiles) {
-		machine->animFrame = U32((fractf64(time * 10.0))) % machine->sprite->animFrames;
+		machine->animFrame = U32(time * 10.0F) % machine->sprite->animFrames;
 		if (machine->inventory.count != 0) {
 			Machine* output = machine->output;
 			if (output->inventory.count == 0 || output->inventory.item == machine->inventory.item) {
@@ -194,6 +194,9 @@ void render(I32 tileScale) {
 	for (Machine* machine : machineTiles) {
 		V2I screenPos = Cyber5eagull::tile_to_screen_px(machine->pos);
 		Graphics::blit_sprite_cutout(*machine->sprite, screenPos.x, screenPos.y, tileScale, machine->animFrame);
+		if (machine->type == MACHINE_BELT) {
+			Graphics::blit_sprite_cutout(Resources::tile.beeFly, screenPos.x, screenPos.y, tileScale, 0);
+		}
 	}
 }
 

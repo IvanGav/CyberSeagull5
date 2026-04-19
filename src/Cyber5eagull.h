@@ -133,6 +133,7 @@ void update() {
 			placingConveyor = false;
 		}
 	}
+	Factory::update();
 }
 
 void update_debug_inventory() {
