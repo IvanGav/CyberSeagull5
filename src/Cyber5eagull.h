@@ -130,6 +130,7 @@ void render() {
 	BeeDemo::render_hives(camera, worldTileScale);
 	BeeDemo::render_bees(camera, worldTileScale, currentFrameTime);
 	Inventory::draw_inv();
+	EditorInteraction::render_item_build_menu();
 	CreativeToolkit::render_ui();
 	SelectUI::draw();
 	lastFrameTime = currentFrameTime;

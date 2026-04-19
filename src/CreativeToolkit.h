@@ -63,6 +63,7 @@ RGBA8 borderColor = RGBA8{ 0, 0, 0, 255 };
 RGBA8 fillColor = RGBA8{ 100, 130, 170, 255 };
 
 CreativeBrush selectedBrush = CreativeBrush::TASK_SELECT;
+B32 selectedBrushFreePlacement = B32_FALSE;
 Rotation2 selectedRotation = ROTATION2_0;
 
 FINLINE Resources::Sprite* brush_icon(CreativeBrush brush) {
@@ -84,8 +85,9 @@ FINLINE B32 brush_uses_rotation(CreativeBrush brush) {
 	}
 }
 
-FINLINE void set_selected_brush(CreativeBrush brush) {
+FINLINE void set_selected_brush(CreativeBrush brush, B32 freePlacement = B32_FALSE) {
 	selectedBrush = brush;
+	selectedBrushFreePlacement = freePlacement;
 	selectedRotation = ROTATION2_0;
 	for (U32 i = 0; i < BRUSH_COUNT; i++) {
 		if (brushOrder[i] == brush) {
@@ -196,6 +198,7 @@ FINLINE void init_ui() {
 	}
 	selectedItem = 0;
 	selectedBrush = brushOrder[0];
+	selectedBrushFreePlacement = B32_FALSE;
 	selectedRotation = ROTATION2_0;
 	tilesheetVisible = B32_FALSE;
 }
@@ -277,9 +280,7 @@ B32 handle_ui_click(V2F32 mousePos) {
 		return B32_TRUE;
 	}
 
-	selectedItem = index;
-	selectedBrush = brushOrder[U32(index)];
-	selectedRotation = ROTATION2_0;
+	set_selected_brush(brushOrder[U32(index)], B32_TRUE);
 	close_ui();
 	return B32_TRUE;
 }
