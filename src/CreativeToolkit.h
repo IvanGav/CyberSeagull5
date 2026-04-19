@@ -1,18 +1,18 @@
 #pragma once
 
+#include "Win32.h"
+#include "Resources.h"
+#include "Graphics.h"
+#include "TileSpace.h"
+#include "BeeDemo.h"
 #include "SelectUI.h"
 
 namespace Cyber5eagull {
 extern F64 lastFrameTime;
 extern F32 dt;
-
 extern V2F camera;
 extern I32 worldTileScale;
 extern V2U32 hiveTile;
-extern B32 placingConveyor;
-extern Direction2 lastConveyorInputSide;
-extern Direction2 lastConveyorOutputSide;
-extern Factory::MachineHandle lastConveyor;
 I32 world_tile_pixels();
 F32 world_tile_pixels_f32();
 void clamp_camera();
@@ -38,10 +38,6 @@ struct RectI {
 
 CreativeBrush selectedBrush = CreativeBrush::TASK_SELECT;
 B32 tilesheetVisible = B32_FALSE;
-B32 cameraDragActive = B32_FALSE;
-B32 uiLeftCapture = B32_FALSE;
-B32 hasLastDraggedTile = B32_FALSE;
-V2U32 lastDraggedTile{};
 
 B32 point_in_rect(V2F32 point, const RectI& rect) {
 	return point.x >= F32(rect.x) && point.y >= F32(rect.y) && point.x < F32(rect.x + rect.w) && point.y < F32(rect.y + rect.h) ? B32_TRUE : B32_FALSE;
@@ -73,12 +69,6 @@ RectI tileset_panel_rect() {
 	panel.w = min(tex.w + TILESET_PANEL_PADDING * 2, Win32::framebufferWidth - panel.x);
 	panel.h = min(tex.h + TILESET_PANEL_PADDING * 2, Win32::framebufferHeight - panel.y);
 	return panel;
-}
-
-void reset_drag_state() {
-	cameraDragActive = B32_FALSE;
-	uiLeftCapture = B32_FALSE;
-	hasLastDraggedTile = B32_FALSE;
 }
 
 void draw_frame_rect(const RectI& rect, RGBA8 color, I32 thickness = 1) {
@@ -150,139 +140,9 @@ B32 handle_tilesheet_click(V2F32 mouse) {
 	I32 texY = (I32(mouse.y) - tex.y) / scale;
 	I32 cellX = texX / 16;
 	I32 cellY = texY / 16;
-	CreativeBrush clickedBrush = BeeDemo::creative_brush_from_tileset_cell(cellX, cellY, selectedBrush);
-	selectedBrush = clickedBrush;
+	selectedBrush = BeeDemo::creative_brush_from_tileset_cell(cellX, cellY, selectedBrush);
 	tilesheetVisible = B32_FALSE;
 	return B32_TRUE;
-}
-
-void apply_drag_action(CreativeBrush brush) {
-	V2U32 hoveredTile{};
-	if (!mouse_to_tile(&hoveredTile)) {
-		return;
-	}
-	if (hasLastDraggedTile && TileSpace::same_tile(hoveredTile, lastDraggedTile)) {
-		return;
-	}
-	lastDraggedTile = hoveredTile;
-	hasLastDraggedTile = B32_TRUE;
-	BeeDemo::apply_creative_brush(brush, hoveredTile);
-}
-
-void update_drag_interactions() {
-	V2F32 rawMouseDelta = Win32::get_raw_delta_mouse();
-	B32 shiftHeld = Win32::keyboardState[Win32::KEY_SHIFT] ? B32_TRUE : B32_FALSE;
-	B32 leftHeld = Win32::mouseButtonState[Win32::MOUSE_BUTTON_LEFT] ? B32_TRUE : B32_FALSE;
-	B32 rightHeld = Win32::mouseButtonState[Win32::MOUSE_BUTTON_RIGHT] ? B32_TRUE : B32_FALSE;
-
-	if (!leftHeld) {
-		uiLeftCapture = B32_FALSE;
-	}
-
-	if (shiftHeld && leftHeld && !uiLeftCapture && !tilesheetVisible) {
-		cameraDragActive = B32_TRUE;
-		hasLastDraggedTile = B32_FALSE;
-		camera -= rawMouseDelta;
-		clamp_camera();
-		return;
-	}
-
-	cameraDragActive = B32_FALSE;
-	if (shiftHeld || tilesheetVisible || uiLeftCapture) {
-		if (!leftHeld && !rightHeld) {
-			hasLastDraggedTile = B32_FALSE;
-		}
-		return;
-	}
-
-	if (leftHeld) {
-		apply_drag_action(selectedBrush);
-	}
-	else if (rightHeld) {
-		apply_drag_action(CreativeBrush::ERASE);
-	}
-	else {
-		hasLastDraggedTile = B32_FALSE;
-	}
-}
-
-void keyboard_callback(Win32::Key key, Win32::ButtonState state) {
-	if (state != Win32::BUTTON_STATE_DOWN) {
-		return;
-	}
-
-	if (key == Win32::KEY_R) {
-		BeeDemo::init(hiveTile);
-		center_camera_on_tile(hiveTile);
-		reset_drag_state();
-		selectedBrush = CreativeBrush::TASK_SELECT;
-		return;
-	}
-
-	if (key == Win32::KEY_I) {
-		SelectUI::open = !SelectUI::open;
-		return;
-	}
-
-	if (key == Win32::KEY_BACKTICK) {
-		tilesheetVisible = !tilesheetVisible;
-		hasLastDraggedTile = B32_FALSE;
-		uiLeftCapture = B32_FALSE;
-		return;
-	}
-
-	if (key == Win32::KEY_ESC) {
-		tilesheetVisible = B32_FALSE;
-		uiLeftCapture = B32_FALSE;
-		selectedBrush = CreativeBrush::TASK_SELECT;
-	}
-}
-
-void mouse_callback(Win32::MouseButton button, Win32::MouseValue state) {
-	if (button == Win32::MOUSE_BUTTON_WHEEL) {
-		I32 wheelDirection = state.scroll > 0.0F ? -1 : (state.scroll < 0.0F ? 1 : 0);
-		if (wheelDirection != 0) {
-			if (Win32::keyboardState[Win32::KEY_SHIFT]) {
-				pan_camera_horizontally(wheelDirection);
-			}
-			else {
-				zoom_camera_at_screen(-wheelDirection, Win32::get_mouse());
-			}
-		}
-		return;
-	}
-
-	if (button == Win32::MOUSE_BUTTON_LEFT && state.state == Win32::BUTTON_STATE_DOWN) {
-		// if clicking over the SelectUI, ignore everything else
-		if (SelectUI::click_callback(Win32::get_mouse())) {
-			return;
-		}
-		if (Win32::keyboardState[Win32::KEY_CTRL]) {
-			V2U32 clickedTile{};
-			if (mouse_to_tile(&clickedTile)) {
-				lastConveyorInputSide = DIRECTION2_LEFT;
-				lastConveyorOutputSide = DIRECTION2_RIGHT;
-				Factory::MachineDef belt = Factory::get_belt(lastConveyorInputSide, lastConveyorOutputSide);
-				lastConveyor = Factory::try_place_machine(clickedTile, belt);
-				placingConveyor = true;
-			}
-		} else {
-			V2F32 mouse = Win32::get_mouse();
-			if (tilesheetVisible) {
-				uiLeftCapture = handle_tilesheet_click(mouse);
-				return;
-			}
-		}
-	}
-
-	if ((button == Win32::MOUSE_BUTTON_LEFT || button == Win32::MOUSE_BUTTON_RIGHT) && state.state == Win32::BUTTON_STATE_UP) {
-		placingConveyor = false;
-		hasLastDraggedTile = B32_FALSE;
-		if (button == Win32::MOUSE_BUTTON_LEFT) {
-			cameraDragActive = B32_FALSE;
-			uiLeftCapture = B32_FALSE;
-		}
-	}
 }
 
 }

@@ -169,6 +169,7 @@
     <ClInclude Include="src\drillengine\PNG.h" />
     <ClInclude Include="src\drillengine\SerializeTools.h" />
     <ClInclude Include="src\drillengine\SerializeToolsPowerOf5Table.txt" />
+    <ClInclude Include="src\EditorInteraction.h" />
     <ClInclude Include="src\Factory.h" />
     <ClInclude Include="src\Graphics.h" />
     <ClInclude Include="src\Resources.h" />
@@ -186,6 +187,7 @@
     <Image Include="resources\textures\tileset_v1.png" />
     <Image Include="resources\textures\tileset_v2.png" />
     <Image Include="resources\textures\tileset_v3.png" />
+    <Image Include="resources\textures\tileset_v4.png" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

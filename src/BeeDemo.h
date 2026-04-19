@@ -9,6 +9,7 @@
 #include "BeeTasks.h"
 #include "TileSpace.h"
 #include "TerrainGen.h"
+#include "Factory.h"
 
 namespace Cyber5eagull::BeeDemo {
 
@@ -40,7 +41,6 @@ enum class CreativeBrush : U8 {
 };
 
 BeeSystem::Colony colony{};
-ArenaArrayList<V2U32> conveyorTiles{};
 ArenaArrayList<HiveDesc> hives{};
 WorldGenerationState worldGeneration{};
 
@@ -73,34 +73,18 @@ B32 tile_in_any_hive_radius(V2U32 tile) {
 	return B32_FALSE;
 }
 
-void add_conveyor_tile(V2U32 tile) {
-	if (!tile_in_bounds(tile)) {
-		return;
-	}
-	for (U32 i = 0; i < conveyorTiles.size; i++) {
-		if (TileSpace::same_tile(conveyorTiles[i], tile)) {
-			return;
-		}
-	}
-	conveyorTiles.push_back(tile);
+B32 has_conveyor(V2U32 tile) {
+	return Factory::has_belt(V2U{ tile.x, tile.y });
 }
 
 void remove_conveyor_tile(V2U32 tile) {
-	for (U32 i = 0; i < conveyorTiles.size; i++) {
-		if (TileSpace::same_tile(conveyorTiles[i], tile)) {
-			conveyorTiles.remove_ordered(i);
-			return;
-		}
+	if (Factory::has_belt(V2U{ tile.x, tile.y })) {
+		Factory::remove_machine(V2U{ tile.x, tile.y });
 	}
 }
 
-B32 has_conveyor(V2U32 tile) {
-	for (U32 i = 0; i < conveyorTiles.size; i++) {
-		if (TileSpace::same_tile(conveyorTiles[i], tile)) {
-			return B32_TRUE;
-		}
-	}
-	return B32_FALSE;
+void add_conveyor_tile(V2U32 tile) {
+	Factory::place_belt(V2U{ tile.x, tile.y });
 }
 
 B32 has_adjacent_conveyor(V2U32 tile) {
@@ -140,7 +124,8 @@ void clear_tasks_in_footprint(V2U32 topLeft, V2U32 footprint) {
 void clear_conveyors_in_footprint(V2U32 topLeft, V2U32 footprint) {
 	for (U32 y = 0; y < footprint.y; y++) {
 		for (U32 x = 0; x < footprint.x; x++) {
-			remove_conveyor_tile(V2U32{ topLeft.x + x, topLeft.y + y });
+			V2U32 tile{ topLeft.x + x, topLeft.y + y };
+			remove_conveyor_tile(tile);
 		}
 	}
 }
@@ -187,8 +172,7 @@ B32 tile_is_selectable_task(V2U32 tile) {
 }
 
 void seed_conveyors(V2U32) {
-	conveyorTiles.allocator = &globalArena;
-	conveyorTiles.clear();
+	Factory::reset();
 }
 
 BeeTasks::Task make_task_for_tile(V2U32 tile) {
@@ -210,8 +194,9 @@ BeeTasks::Task make_task_for_tile(V2U32 tile) {
 }
 
 void init(V2U32 hiveTile) {
-	TerrainGen::generate(&worldGeneration, &hives, hiveTile);
+	World::reset_runtime_state();
 	seed_conveyors(hiveTile);
+	TerrainGen::generate(&worldGeneration, &hives, hiveTile);
 	colony.init(BEE_COUNT, hiveTile, SPEED);
 }
 
@@ -474,13 +459,7 @@ void render_hives(V2F32 camera, I32 worldTileScale) {
 	}
 }
 
-void render_conveyors(V2F32 camera, I32 worldTileScale, F64 frameTimeSeconds) {
-	Resources::Sprite& conveyorSprite = Resources::tile.belt.leftToRight;
-	U32 animFrame = U32(fractf64(frameTimeSeconds * 2.5) * F32(conveyorSprite.animFrames)) % conveyorSprite.animFrames;
-	for (U32 i = 0; i < conveyorTiles.size; i++) {
-		V2F32 screenTopLeft = world_to_screen(TileSpace::tile_to_world(conveyorTiles[i]), camera, worldTileScale);
-		Graphics::blit_sprite_cutout(conveyorSprite, I32(roundf32(screenTopLeft.x)), I32(roundf32(screenTopLeft.y)), worldTileScale, animFrame);
-	}
+void render_conveyors(V2F32, I32, F64) {
 }
 
 void render_bee_progress_bar(const Bee::Bee& bee, V2F32 camera, I32 worldTileScale) {

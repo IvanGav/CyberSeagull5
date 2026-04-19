@@ -79,11 +79,11 @@ namespace SelectUI {
 		mouse.x -= beginX;
 		mouse.y -= beginY;
 
-		I32 boxW = itemsPerRow * itemScreenSize + borderSize * 2;
+		I32 interactableBoxW = itemsPerRow * itemScreenSize;
 		// it's horrible so: number of rows + if we have an incomplete row, +1; that's all multiplied by item size and we add a top offset
-		I32 boxH = ((selections.size / itemsPerRow) + ((selections.size % itemsPerRow) > 0)) * itemScreenSize + borderSize * 2;
+		I32 interactableBoxH = ((selections.size / itemsPerRow) + ((selections.size % itemsPerRow) > 0)) * itemScreenSize;
 
-		if (!(mouse.x > 0 && mouse.x < boxW && mouse.y > 0 && mouse.y < boxH)) {
+		if (!(mouse.x > 0 && mouse.x < interactableBoxW && mouse.y > 0 && mouse.y < interactableBoxH)) {
 			return false; // clicked outside of the ui
 		}
 
