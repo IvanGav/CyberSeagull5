@@ -59,5 +59,8 @@
     <ClInclude Include="src\TileSpace.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\BeeSystem.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

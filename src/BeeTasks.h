@@ -3,7 +3,7 @@
 #include "drillengine/DrillLib.h"
 
 
-namespace Bee {
+namespace BeeTasks {
 
 enum class TaskType : U8 {
 	TASK_NONE = 0,

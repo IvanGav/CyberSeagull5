@@ -2,7 +2,10 @@
 
 #include "Bee.h"
 
-namespace Bee {
+
+namespace BeeSystem {
+
+using namespace Bee;
 
 struct QueuedTask {
 	Task task{};

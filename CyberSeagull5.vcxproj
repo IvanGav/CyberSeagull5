@@ -157,6 +157,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Bee.h" />
+    <ClInclude Include="src\BeeSystem.h" />
     <ClInclude Include="src\BeeTasks.h" />
     <ClInclude Include="src\Cyber5eagull.h" />
     <ClInclude Include="src\drillengine\DrillLib.h" />

@@ -7,6 +7,9 @@
 
 namespace Bee {
 
+using namespace BeeTasks;
+using namespace TileSpace;
+
 static constexpr F32 DEFAULT_SPEED = 10.0F;
 
 class Bee {
