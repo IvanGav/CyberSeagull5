@@ -6,18 +6,50 @@
 
 namespace SelectUI {
 	// you can pick out of these sprites; the picked sprite will be returned as an index into the array
-	// all textures have to be 16x16
 	ArenaArrayList<Resources::Sprite*> selections;
-	I32 itemSize = 16; // assume all items are 16x16
-	I32 scale = 4; // UI scale
-	I32 selectedItem = -1; // -1 means no selection
+	I32 itemSize = 16;
+	I32 scale = 4;
+	I32 selectedItem = -1;
 	B32 open = B32_FALSE;
 
-	I32 borderPadding = 50; // ideal padding on all sides of the screen from the UI
-	I32 borderSize = 3; // size of the UI's border
+	I32 borderPadding = 50;
+	I32 borderSize = 3;
 	I32 selectBorderSize = 2;
 
 	RGBA8 selectedColor = RGBA8{ 50, 250, 50, 255 };
+	RGBA8 borderColor = RGBA8{ 0, 0, 0, 255 };
+	RGBA8 fillColor = RGBA8{ 100, 160, 100, 255 };
+
+	FINLINE I32 item_screen_size() {
+		return max(itemSize * scale, 1);
+	}
+
+	FINLINE I32 items_per_row() {
+		I32 usableWidth = Win32::framebufferWidth - borderPadding * 2 - borderSize * 2;
+		return max(usableWidth / item_screen_size(), 1);
+	}
+
+	FINLINE I32 row_count() {
+		I32 perRow = items_per_row();
+		return I32(selections.size / U32(perRow)) + ((selections.size % U32(perRow)) > 0 ? 1 : 0);
+	}
+
+	FINLINE I32 sprite_scale_to_fit_cell(Resources::Sprite& sprite, I32 cellSizePx) {
+		I32 width = max(I32(sprite.width), 1);
+		I32 height = max(I32(sprite.height), 1);
+		I32 scaleX = max(cellSizePx / width, 1);
+		I32 scaleY = max(cellSizePx / height, 1);
+		return max(min(scaleX, scaleY), 1);
+	}
+
+	FINLINE void draw_sprite_in_cell(Resources::Sprite& sprite, I32 cellX, I32 cellY, I32 cellSizePx) {
+		I32 drawScale = sprite_scale_to_fit_cell(sprite, cellSizePx);
+		I32 drawWidth = I32(sprite.width) * drawScale;
+		I32 drawHeight = I32(sprite.height) * drawScale;
+		I32 drawX = cellX + (cellSizePx - drawWidth) / 2;
+		I32 drawY = cellY + (cellSizePx - drawHeight) / 2;
+		Graphics::blit_sprite_cutout(sprite, drawX, drawY, drawScale, 0);
+	}
 
 	void change_select_options(ArenaArrayList<Resources::Sprite*> options) {
 		selections = options;
@@ -42,72 +74,75 @@ namespace SelectUI {
 		selections.push_back(&Resources::tile.rock.left);
 		selections.push_back(&Resources::tile.rock.full);
 		selections.push_back(&Resources::tile.rock.right);
+
+		selectedItem = -1;
+		open = B32_FALSE;
 	}
 
 	void draw() {
 		if (!open) return;
-		I32 screenH = Win32::framebufferHeight;
-		I32 screenW = Win32::framebufferWidth;
-		// determine the UI width and height
-		I32 itemScreenSize = itemSize * scale;
-		I32 itemsPerRow = (screenW - borderPadding * 2 - borderSize * 2) / itemScreenSize; // items that can fit per row, on the screen
+		I32 itemScreenSize = item_screen_size();
+		I32 perRow = items_per_row();
+		I32 rows = max(row_count(), 1);
 		I32 beginX = borderPadding + borderSize;
 		I32 beginY = borderPadding + borderSize;
+
 		Graphics::box(
-			borderPadding, borderPadding, 
-			itemsPerRow * itemScreenSize + borderSize * 2, 
-			// it's horrible so: number of rows + if we have an incomplete row, +1; that's all multiplied by item size and we add a top offset
-			((selections.size / itemsPerRow) + ((selections.size % itemsPerRow) > 0)) * itemScreenSize + borderSize * 2,
+			borderPadding,
+			borderPadding,
+			perRow * itemScreenSize + borderSize * 2,
+			rows * itemScreenSize + borderSize * 2,
 			borderSize,
-			RGBA8 { 0,0,0,255 }, RGBA8 { 100, 160, 100, 255 }
+			borderColor,
+			fillColor
 		);
+
 		for (U32 i = 0; i < selections.size; i++) {
-			Graphics::blit_sprite_cutout(*selections[i], beginX + (i % itemsPerRow) * itemScreenSize, beginY + (i / itemsPerRow) * itemScreenSize, scale, 0);
+			Resources::Sprite* sprite = selections[i];
+			if (!sprite) continue;
+			draw_sprite_in_cell(*sprite,
+				beginX + I32(i % U32(perRow)) * itemScreenSize,
+				beginY + I32(i / U32(perRow)) * itemScreenSize,
+				itemScreenSize);
 		}
-		// highlight the selected item
+
 		if (selectedItem == -1) return;
 		Graphics::border(
-			borderPadding + borderSize + (selectedItem % itemsPerRow) * itemScreenSize,
-			borderPadding + borderSize + (selectedItem / itemsPerRow) * itemScreenSize,
+			borderPadding + borderSize + (selectedItem % perRow) * itemScreenSize,
+			borderPadding + borderSize + (selectedItem / perRow) * itemScreenSize,
 			itemScreenSize, itemScreenSize, selectBorderSize, selectedColor
 		);
 	}
 
 	// return true iff clicking on the SelectUI
 	B32 click_callback(V2F32 mousePos) {
-		if (!open) return false;
-		V2I32 mouse = { (I32) mousePos.x, (I32) mousePos.y };
-		I32 screenH = Win32::framebufferHeight;
-		I32 screenW = Win32::framebufferWidth;
-		// determine the UI width and height
-		I32 itemScreenSize = itemSize * scale;
-		I32 itemsPerRow = (screenW - borderPadding * 2 - borderSize * 2) / itemScreenSize; // items per row
+		if (!open) return B32_FALSE;
+		V2I32 mouse = { (I32)mousePos.x, (I32)mousePos.y };
+		I32 itemScreenSize = item_screen_size();
+		I32 perRow = items_per_row();
 		I32 beginX = borderPadding + borderSize;
 		I32 beginY = borderPadding + borderSize;
-		
-		// they now start from the top left corner of the first item
+
 		mouse.x -= beginX;
 		mouse.y -= beginY;
 
-		I32 interactableBoxW = itemsPerRow * itemScreenSize;
-		// it's horrible so: number of rows + if we have an incomplete row, +1; that's all multiplied by item size and we add a top offset
-		I32 interactableBoxH = ((selections.size / itemsPerRow) + ((selections.size % itemsPerRow) > 0)) * itemScreenSize;
-
-		if (!(mouse.x > 0 && mouse.x < interactableBoxW && mouse.y > 0 && mouse.y < interactableBoxH)) {
-			return false; // clicked outside of the ui
+		I32 interactableBoxW = perRow * itemScreenSize;
+		I32 interactableBoxH = max(row_count(), 1) * itemScreenSize;
+		if (!(mouse.x >= 0 && mouse.x < interactableBoxW && mouse.y >= 0 && mouse.y < interactableBoxH)) {
+			return B32_FALSE;
 		}
 
 		mouse.x /= itemScreenSize;
 		mouse.y /= itemScreenSize;
-
-		I32 index = mouse.x + mouse.y * itemsPerRow;
+		I32 index = mouse.x + mouse.y * perRow;
 
 		if (selectedItem == index) {
-			selectedItem = -1; // unselect
-		} else if(index < selections.size) {
-			selectedItem = index; // select
+			selectedItem = -1;
 		}
-		return true;
+		else if (index >= 0 && U32(index) < selections.size) {
+			selectedItem = index;
+		}
+		return B32_TRUE;
 	}
 
 };

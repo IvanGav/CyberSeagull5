@@ -198,16 +198,37 @@ MachineDef get_assembler(Rotation2 orientation) {
 	MachineDef result{};
 	result.type = MACHINE_ASSEMBLER;
 	result.size = V2U{ 2, 2 };
-	switch (orientation) {
-	case ROTATION2_0: result.sprite = &Resources::tile.assembler.downOff; result.spriteProcessingAlt = &Resources::tile.assembler.downOn; break;
-	case ROTATION2_90: result.sprite = &Resources::tile.assembler.leftOff; result.spriteProcessingAlt = &Resources::tile.assembler.leftOn; break;
-	case ROTATION2_180: result.sprite = &Resources::tile.assembler.upOff; result.spriteProcessingAlt = &Resources::tile.assembler.upOn; break;
-	case ROTATION2_270: result.sprite = &Resources::tile.assembler.rightOff; result.spriteProcessingAlt = &Resources::tile.assembler.rightOn; break;
-	}
 	result.inventoryStackSize = 2;
 	result.maxProcessTime = 2.0F;
-	result.ioDefs[0] = rotate_iodef(IODef{ V2I{ 0, 1 }, World::MACHINE_INPUT_DOWN }, result.size, orientation);
-	result.ioDefs[1] = rotate_iodef(IODef{ V2I{ 1, 1 }, World::MACHINE_OUTPUT_DOWN }, result.size, orientation);
+
+	switch (orientation) {
+	case ROTATION2_0:
+	default:
+		result.sprite = &Resources::tile.assembler.downOff;
+		result.spriteProcessingAlt = &Resources::tile.assembler.downOn;
+		result.ioDefs[0] = IODef{ V2I{ 0, 1 }, World::MACHINE_INPUT_DOWN };
+		result.ioDefs[1] = IODef{ V2I{ 1, 1 }, World::MACHINE_OUTPUT_DOWN };
+		break;
+	case ROTATION2_90:
+		result.sprite = &Resources::tile.assembler.leftOff;
+		result.spriteProcessingAlt = &Resources::tile.assembler.leftOn;
+		result.ioDefs[0] = IODef{ V2I{ 0, 0 }, World::MACHINE_INPUT_LEFT };
+		result.ioDefs[1] = IODef{ V2I{ 0, 1 }, World::MACHINE_OUTPUT_LEFT };
+		break;
+	case ROTATION2_180:
+		result.sprite = &Resources::tile.assembler.upOff;
+		result.spriteProcessingAlt = &Resources::tile.assembler.upOn;
+		result.ioDefs[0] = IODef{ V2I{ 1, 0 }, World::MACHINE_INPUT_UP };
+		result.ioDefs[1] = IODef{ V2I{ 0, 0 }, World::MACHINE_OUTPUT_UP };
+		break;
+	case ROTATION2_270:
+		result.sprite = &Resources::tile.assembler.rightOff;
+		result.spriteProcessingAlt = &Resources::tile.assembler.rightOn;
+		result.ioDefs[0] = IODef{ V2I{ 1, 1 }, World::MACHINE_INPUT_RIGHT };
+		result.ioDefs[1] = IODef{ V2I{ 1, 0 }, World::MACHINE_OUTPUT_RIGHT };
+		break;
+	}
+
 	return result;
 }
 
@@ -325,7 +346,27 @@ MachineDef get_static_machine(MachineType type, Rotation2 orientation) {
 	return result;
 }
 
+void update_connections_around_io(Machine* machine, const IODef& io) {
+	if (!machine || io.ioDirections == 0) {
+		return;
+	}
+	update_machine_connections(machine);
+	update_machine_connections(get_machine_from_tile(V2U{ machine->pos.x + io.pos.x + 1, machine->pos.y + io.pos.y }));
+	update_machine_connections(get_machine_from_tile(V2U{ machine->pos.x + io.pos.x - 1, machine->pos.y + io.pos.y }));
+	update_machine_connections(get_machine_from_tile(V2U{ machine->pos.x + io.pos.x, machine->pos.y + io.pos.y + 1 }));
+	update_machine_connections(get_machine_from_tile(V2U{ machine->pos.x + io.pos.x, machine->pos.y + io.pos.y - 1 }));
+}
+
 void apply_machine_def(Machine* machine, const MachineDef& def) {
+	IODef oldIoDefs[MAX_IO_DEFS]{};
+	memcpy(oldIoDefs, machine->ioDefs, sizeof(oldIoDefs));
+
+	for (U32 y = 0; y < machine->size.y; y++) {
+		for (U32 x = 0; x < machine->size.x; x++) {
+			World::set_connectivity(V2U{ machine->pos.x + x, machine->pos.y + y }, 0);
+		}
+	}
+
 	machine->type = def.type;
 	machine->size = def.size;
 	machine->sprite = def.sprite;
@@ -340,15 +381,11 @@ void apply_machine_def(Machine* machine, const MachineDef& def) {
 			World::set_connectivity(V2U{ machine->pos.x + machine->ioDefs[i].pos.x, machine->pos.y + machine->ioDefs[i].pos.y }, machine->ioDefs[i].ioDirections);
 		}
 	}
+
+	update_machine_connections(machine);
 	for (U32 i = 0; i < MAX_IO_DEFS; i++) {
-		if (machine->ioDefs[i].ioDirections == 0) {
-			continue;
-		}
-		update_machine_connections(machine);
-		update_machine_connections(get_machine_from_tile(V2U{ machine->pos.x + machine->ioDefs[i].pos.x + 1, machine->pos.y + machine->ioDefs[i].pos.y }));
-		update_machine_connections(get_machine_from_tile(V2U{ machine->pos.x + machine->ioDefs[i].pos.x - 1, machine->pos.y + machine->ioDefs[i].pos.y }));
-		update_machine_connections(get_machine_from_tile(V2U{ machine->pos.x + machine->ioDefs[i].pos.x, machine->pos.y + machine->ioDefs[i].pos.y + 1 }));
-		update_machine_connections(get_machine_from_tile(V2U{ machine->pos.x + machine->ioDefs[i].pos.x, machine->pos.y + machine->ioDefs[i].pos.y - 1 }));
+		update_connections_around_io(machine, oldIoDefs[i]);
+		update_connections_around_io(machine, machine->ioDefs[i]);
 	}
 }
 
@@ -448,7 +485,8 @@ B32 place_machine_type(V2U pos, MachineType type, Rotation2 orientation) {
 	}
 	Machine* existing = get_machine_from_tile(pos);
 	if (existing) {
-		if (existing->type == type) {
+		if (existing->type == type && existing->pos.x == pos.x && existing->pos.y == pos.y) {
+			apply_machine_def(existing, def);
 			return B32_TRUE;
 		}
 		return B32_FALSE;

@@ -88,31 +88,28 @@ B32 mouse_to_tile(V2U32* tileOut) {
 	return B32_TRUE;
 }
 
-
-
-
-void update(F32 dt) {
-	Factory::update(dt);
-	World::beach_update(dt);
+void update(F32 frameDt) {
+	Factory::update(frameDt);
+	World::beach_update(frameDt);
 }
-
 
 void render() {
 	F64 currentFrameTime = current_time_seconds();
-	dt = min(F32(currentFrameTime - lastFrameTime), 0.1F);
+	F32 frameDt = F32(currentFrameTime - lastFrameTime);
+	dt = min(frameDt, 0.1F);
 	EditorInteraction::update_drag_interactions();
-	V2F mouse = Win32::get_mouse();
+	V2F32 mouse = Win32::get_mouse();
 	if (!EditorInteraction::cameraDragActive) {
 		if (mouse.x < CAMERA_EDGE_SCROLL_PIXELS) {
 			camera.x -= dt * CAMERA_SCROLL_SPEED;
 		}
-		if (mouse.x > Win32::framebufferWidth - CAMERA_EDGE_SCROLL_PIXELS) {
+		if (mouse.x > F32(Win32::framebufferWidth) - CAMERA_EDGE_SCROLL_PIXELS) {
 			camera.x += dt * CAMERA_SCROLL_SPEED;
 		}
 		if (mouse.y < CAMERA_EDGE_SCROLL_PIXELS) {
 			camera.y -= dt * CAMERA_SCROLL_SPEED;
 		}
-		if (mouse.y > Win32::framebufferHeight - CAMERA_EDGE_SCROLL_PIXELS) {
+		if (mouse.y > F32(Win32::framebufferHeight) - CAMERA_EDGE_SCROLL_PIXELS) {
 			camera.y += dt * CAMERA_SCROLL_SPEED;
 		}
 	}
@@ -122,6 +119,7 @@ void render() {
 	memset(Win32::framebuffer, 0, Win32::framebufferWidth * Win32::framebufferHeight * sizeof(RGBA8));
 	World::render(camera, worldTileScale);
 	Factory::render(worldTileScale);
+	CreativeToolkit::render_world_preview(camera, worldTileScale, currentFrameTime);
 	if (Win32::keyboardState[Win32::KEY_H]) {
 		BeeDemo::render_hive_ranges(camera, worldTileScale);
 	}
@@ -131,7 +129,6 @@ void render() {
 	BeeDemo::render_bees(camera, worldTileScale, currentFrameTime);
 	Inventory::draw_inv();
 	CreativeToolkit::render_ui();
-	//Graphics::box(100, 50, 350, 200, 4, RGBA8{ 250,250,250,255 }, RGBA8{ 50,250,50,255 });
 	SelectUI::draw();
 	lastFrameTime = currentFrameTime;
 }
@@ -144,12 +141,14 @@ U32 run_cyber5eagull() {
 	lastFrameTime = current_time_seconds();
 
 	Resources::load();
-	SelectUI::debug_selections(); // TODO debug selections for now; don't need this later
 	Inventory::init();
 	World::init(V2U{ WORLD_WIDTH, WORLD_HEIGHT });
 	Factory::init();
+	CreativeToolkit::init_ui();
+	SelectUI::debug_selections();
 	worldTileScale = DEFAULT_WORLD_TILE_SCALE;
-	hiveTile = V2U32{ min(START_HIVE_SHORE_OFFSET_X, World::size.x > 2u ? World::size.x - 2u : 0u), World::size.y / 2u };
+	U32 startHiveX = World::size.x > 2u ? min(START_HIVE_SHORE_OFFSET_X, World::size.x - 2u) : 0u;
+	hiveTile = V2U32{ startHiveX, World::size.y / 2u };
 	BeeDemo::init(hiveTile);
 	center_camera_on_tile(hiveTile);
 	Win32::show_window();
