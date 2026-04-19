@@ -933,7 +933,7 @@ void apply_creative_brush(CreativeBrush brush, V2U32 tile, Rotation2 orientation
     } break;
 
     case CreativeBrush::ASSEMBLER_SMALL: {
-        place_structure(tile, Factory::MACHINE_ASSEMBLER, orientation);
+        place_structure(tile, Factory::MACHINE_SMELTER, orientation);
     } break;
 
     case CreativeBrush::ASSEMBLER_LARGE: {
