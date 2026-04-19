@@ -5,11 +5,34 @@
 
 namespace Cyber5eagull::EditorInteraction {
 
-using BeeDemo::CreativeBrush;
+namespace BeeDemoNS = Cyber5eagull::BeeDemo;
+using CreativeBrush = BeeDemoNS::CreativeBrush;
+
+inline void fill_rect_blended(I32 x, I32 y, I32 width, I32 height, RGBA8 color) {
+	I32 startX = max(x, 0);
+	I32 startY = max(y, 0);
+	I32 endX = min(x + width, Win32::framebufferWidth);
+	I32 endY = min(y + height, Win32::framebufferHeight);
+	if (startX >= endX || startY >= endY || color.a == 0) {
+		return;
+	}
+	U32 srcA = color.a;
+	U32 invA = 255u - srcA;
+	for (I32 py = startY; py < endY; py++) {
+		RGBA8* row = Win32::framebuffer + py * Win32::framebufferWidth;
+		for (I32 px = startX; px < endX; px++) {
+			RGBA8 dst = row[px];
+			row[px].r = U8((U32(dst.r) * invA + U32(color.r) * srcA) / 255u);
+			row[px].g = U8((U32(dst.g) * invA + U32(color.g) * srcA) / 255u);
+			row[px].b = U8((U32(dst.b) * invA + U32(color.b) * srcA) / 255u);
+			row[px].a = 255;
+		}
+	}
+}
 
 namespace Detail {
 inline void apply_creative_brush_dispatch(CreativeBrush brush, V2U32 tile, Rotation2 orientation) {
-	BeeDemo::apply_creative_brush(brush, tile, orientation, CreativeToolkit::selectedBrushFreePlacement);
+	BeeDemoNS::apply_creative_brush(brush, tile, orientation, CreativeToolkit::selectedBrushFreePlacement);
 }
 }
 
@@ -34,16 +57,17 @@ struct BuildMenuEntry {
 	CreativeBrush brush = CreativeBrush::TASK_SELECT;
 };
 
-static constexpr U32 BUILD_MENU_ITEM_COUNT = 8u;
-BuildMenuEntry buildMenuEntries[BUILD_MENU_ITEM_COUNT] = {
+BuildMenuEntry buildMenuEntries[] = {
 	{ BuildMenuEntryType::ENTRY_BRUSH, CreativeBrush::CONVEYOR },
 	{ BuildMenuEntryType::ENTRY_BUY_BEE, CreativeBrush::TASK_SELECT },
 	{ BuildMenuEntryType::ENTRY_BRUSH, CreativeBrush::ASSEMBLER_SMALL },
 	{ BuildMenuEntryType::ENTRY_BRUSH, CreativeBrush::ASSEMBLER_LARGE },
+	{ BuildMenuEntryType::ENTRY_BRUSH, CreativeBrush::ASSEMBLER_VERY_LARGE },
 	{ BuildMenuEntryType::ENTRY_BRUSH, CreativeBrush::SPLITTER },
 	{ BuildMenuEntryType::ENTRY_BRUSH, CreativeBrush::HIVE_SMALL },
 	{ BuildMenuEntryType::ENTRY_BRUSH, CreativeBrush::HIVE_BIG },
 };
+static constexpr U32 BUILD_MENU_ITEM_COUNT = ARRAY_COUNT(buildMenuEntries);
 
 struct BuildMenuLayout {
 	I32 x = 0;
@@ -163,23 +187,50 @@ FINLINE B32 build_menu_selected(const BuildMenuEntry& entry) {
 
 FINLINE U32 build_menu_affordable_count(const BuildMenuEntry& entry) {
 	if (entry.type == BuildMenuEntryType::ENTRY_BUY_BEE) {
-		return BeeDemo::bee_purchase_available_count();
+		return BeeDemoNS::bee_purchase_available_count();
 	}
-	return BeeDemo::build_available_count(entry.brush);
+	return BeeDemoNS::build_available_count(entry.brush);
 }
 
 FINLINE U32 build_menu_badge_count(const BuildMenuEntry& entry) {
 	if (entry.type == BuildMenuEntryType::ENTRY_BUY_BEE) {
-		return BeeDemo::total_bee_count();
+		return BeeDemoNS::total_bee_count();
 	}
 	if (entry.brush == CreativeBrush::CONVEYOR) {
 		return Inventory::count(Inventory::ITEM_CONVEYOR);
 	}
-	return BeeDemo::build_available_count(entry.brush);
+	return BeeDemoNS::build_available_count(entry.brush);
 }
 
-FINLINE BeeDemo::BuildCostDef build_menu_cost_def(const BuildMenuEntry& entry) {
-	return entry.type == BuildMenuEntryType::ENTRY_BUY_BEE ? BeeDemo::bee_purchase_cost_def() : BeeDemo::build_cost_def(entry.brush);
+FINLINE BeeDemoNS::BuildCostDef build_menu_cost_def(const BuildMenuEntry& entry) {
+	return entry.type == BuildMenuEntryType::ENTRY_BUY_BEE ? BeeDemoNS::bee_purchase_cost_def() : BeeDemoNS::build_cost_def(entry.brush);
+}
+
+FINLINE U32 build_menu_hotkey_number(U32 index) {
+	return index + 1u;
+}
+
+FINLINE I32 decimal_digit_count(U32 value) {
+	I32 digits = 1;
+	while (value >= 10u) {
+		value /= 10u;
+		digits++;
+	}
+	return digits;
+}
+
+FINLINE B32 build_menu_key_to_index(Win32::Key key, U32* indexOut) {
+	if (key < Win32::KEY_1 || key > Win32::KEY_9) {
+		return B32_FALSE;
+	}
+	U32 index = U32(key - Win32::KEY_1);
+	if (index >= BUILD_MENU_ITEM_COUNT) {
+		return B32_FALSE;
+	}
+	if (indexOut) {
+		*indexOut = index;
+	}
+	return B32_TRUE;
 }
 
 void select_build_menu_index(I32 index) {
@@ -188,7 +239,7 @@ void select_build_menu_index(I32 index) {
 	}
 	const BuildMenuEntry& entry = buildMenuEntries[index];
 	if (entry.type == BuildMenuEntryType::ENTRY_BUY_BEE) {
-		BeeDemo::buy_bee_with_honey();
+		BeeDemoNS::buy_bee_with_honey();
 		return;
 	}
 	CreativeToolkit::set_selected_brush(entry.brush, B32_FALSE);
@@ -216,7 +267,7 @@ void render_item_build_menu() {
 		if (I32(i) == hoveredIndex) {
 			cellColor = affordable ? RGBA8{ 160, 190, 220, 90 } : RGBA8{ 170, 100, 100, 110 };
 		}
-		BeeDemo::fill_rect_blended(cellX + 1, cellY + 1, layout.cellSize - 2, layout.cellSize - 2, cellColor);
+		fill_rect_blended(cellX + 1, cellY + 1, layout.cellSize - 2, layout.cellSize - 2, cellColor);
 		Resources::Sprite* sprite = build_menu_sprite(entry);
 		if (sprite) {
 			SelectUI::draw_sprite_in_cell(*sprite, cellX + 4, cellY + 4, layout.cellSize - 8);
@@ -225,8 +276,14 @@ void render_item_build_menu() {
 		I32 badgeH = max(layout.cellSize / 4, 18);
 		I32 badgeX = cellX + layout.cellSize - badgeW - 4;
 		I32 badgeY = cellY + 4;
-		BeeDemo::fill_rect_blended(badgeX, badgeY, badgeW, badgeH, RGBA8{ 24, 24, 24, 180 });
+		fill_rect_blended(badgeX, badgeY, badgeW, badgeH, RGBA8{ 24, 24, 24, 180 });
 		Graphics::display_num(badgeCount, badgeX + 4, badgeY + 1, 16);
+		I32 hotkeyW = 18;
+		I32 hotkeyH = 18;
+		I32 hotkeyX = cellX + 4;
+		I32 hotkeyY = cellY + layout.cellSize - hotkeyH - 4;
+		fill_rect_blended(hotkeyX, hotkeyY, hotkeyW, hotkeyH, RGBA8{ 24, 24, 24, 180 });
+		Graphics::display_num(build_menu_hotkey_number(i), hotkeyX + 1, hotkeyY + 1, 16);
 		if (build_menu_selected(entry)) {
 			Graphics::border(cellX, cellY, layout.cellSize, layout.cellSize, CreativeToolkit::selectBorderSize, CreativeToolkit::selectedColor);
 		}
@@ -237,21 +294,36 @@ void render_item_build_menu() {
 
 	if (hoveredIndex >= 0 && U32(hoveredIndex) < BUILD_MENU_ITEM_COUNT) {
 		const BuildMenuEntry& hoveredEntry = buildMenuEntries[hoveredIndex];
-		BeeDemo::BuildCostDef costDef = build_menu_cost_def(hoveredEntry);
+		BeeDemoNS::BuildCostDef costDef = build_menu_cost_def(hoveredEntry);
 		if (costDef.numEntries > 0u) {
+			BuildMenuLayout tipLayout = build_menu_layout();
+			I32 col = hoveredIndex % tipLayout.cols;
+			I32 row = hoveredIndex / tipLayout.cols;
+			I32 cellX = tipLayout.beginX + col * tipLayout.cellSize;
+			I32 cellY = tipLayout.beginY + row * tipLayout.cellSize;
 			I32 iconScale = 2;
 			I32 iconSize = 16 * iconScale;
 			I32 numberSize = 32;
 			I32 entryHeight = max(iconSize + 8, numberSize + 4);
 			I32 tipPadding = 8;
-			I32 tipW = tipPadding * 2 + 64;
+			I32 maxEntryWidth = 0;
+			for (U32 i = 0; i < costDef.numEntries; i++) {
+				const BeeDemoNS::BuildCostEntry& costEntry = costDef.entries[i];
+				I32 entryWidth = iconSize + 8 + decimal_digit_count(costEntry.count) * numberSize;
+				maxEntryWidth = max(maxEntryWidth, entryWidth);
+			}
+			I32 tipW = tipPadding * 2 + max(maxEntryWidth, 64);
 			I32 tipH = tipPadding * 2 + I32(costDef.numEntries) * entryHeight;
-			V2F32 mouse = Win32::get_mouse();
-			I32 tipX = clamp(I32(mouse.x) + 16, 0, max(Win32::framebufferWidth - tipW, 0));
-			I32 tipY = clamp(I32(mouse.y) + 16, 0, max(Win32::framebufferHeight - tipH, 0));
+			I32 tipX = cellX + (tipLayout.cellSize - tipW) / 2;
+			I32 tipY = cellY + tipLayout.cellSize + 8;
+			if (tipY + tipH > Win32::framebufferHeight) {
+				tipY = cellY - tipH - 8;
+			}
+			tipX = clamp(tipX, 0, max(Win32::framebufferWidth - tipW, 0));
+			tipY = clamp(tipY, 0, max(Win32::framebufferHeight - tipH, 0));
 			Graphics::box(tipX, tipY, tipW, tipH, 2, CreativeToolkit::borderColor, RGBA8{ 58, 76, 108, 235 });
 			for (U32 i = 0; i < costDef.numEntries; i++) {
-				const BeeDemo::BuildCostEntry& costEntry = costDef.entries[i];
+				const BeeDemoNS::BuildCostEntry& costEntry = costDef.entries[i];
 				I32 rowY = tipY + tipPadding + I32(i) * entryHeight;
 				I32 iconX = tipX + tipPadding;
 				I32 iconY = rowY + (entryHeight - iconSize) / 2;
@@ -294,7 +366,7 @@ void begin_conveyor_drag(V2U32 hoveredTile) {
 		return;
 	}
 	if (!Factory::has_machine(tile)) {
-		if (!BeeDemo::ensure_conveyor_tile(hoveredTile, CreativeToolkit::selectedBrushFreePlacement ? B32_FALSE : B32_TRUE)) {
+		if (!BeeDemoNS::ensure_conveyor_tile(hoveredTile, CreativeToolkit::selectedBrushFreePlacement ? B32_FALSE : B32_TRUE)) {
 			conveyorDragActive = B32_FALSE;
 			conveyorDragHasIncoming = B32_FALSE;
 			conveyorLastInputSide = DIRECTION2_INVALID;
@@ -325,7 +397,7 @@ void continue_conveyor_drag(V2U32 hoveredTile) {
 	Direction2 nextInput = Factory::opposite_direction(newDirection);
 	Direction2 nextOutput = newDirection;
 
-	if (!BeeDemo::ensure_conveyor_tile(hoveredTile, CreativeToolkit::selectedBrushFreePlacement ? B32_FALSE : B32_TRUE)) {
+	if (!BeeDemoNS::ensure_conveyor_tile(hoveredTile, CreativeToolkit::selectedBrushFreePlacement ? B32_FALSE : B32_TRUE)) {
 		return;
 	}
 	if (!Factory::set_belt_shape(nextTile, nextInput, nextOutput)) {
@@ -384,7 +456,7 @@ void apply_task_unassign() {
 	}
 	lastDraggedTile = hoveredTile;
 	hasLastDraggedTile = B32_TRUE;
-	BeeDemo::unqueue_tile_task(hoveredTile);
+	BeeDemoNS::unqueue_tile_task(hoveredTile);
 }
 
 void update_drag_interactions() {
@@ -439,7 +511,13 @@ void keyboard_callback(Win32::Key key, Win32::ButtonState state) {
 	}
 
 
-	if (key == Win32::KEY_I) {
+	U32 hotkeyIndex = 0;
+	if (itemBuildMenuVisible && build_menu_key_to_index(key, &hotkeyIndex)) {
+		select_build_menu_index(I32(hotkeyIndex));
+		return;
+	}
+
+	if (key == Win32::KEY_I || key == Win32::KEY_B) {
 		toggle_item_build_menu();
 		if (itemBuildMenuVisible) {
 			CreativeToolkit::close_ui();
@@ -453,7 +531,7 @@ void keyboard_callback(Win32::Key key, Win32::ButtonState state) {
 	}
 
 	if (key == Win32::KEY_R && Win32::keyboardState[Win32::KEY_CTRL]) {
-		BeeDemo::init(hiveTile);
+		BeeDemoNS::init(hiveTile);
 		center_camera_on_tile(hiveTile);
 		reset_drag_state();
 		CreativeToolkit::set_selected_brush(CreativeBrush::TASK_SELECT, B32_FALSE);
@@ -520,7 +598,10 @@ void mouse_callback(Win32::MouseButton button, Win32::MouseValue state) {
 	V2F32 mouse = Win32::get_mouse();
 
 	if (button == Win32::MOUSE_BUTTON_RIGHT && state.state == Win32::BUTTON_STATE_DOWN) {
-		if (!CreativeToolkit::tilesheetVisible) {
+		if (itemBuildMenuVisible && !build_menu_contains(mouse)) {
+			close_item_build_menu();
+		}
+		if (!CreativeToolkit::tilesheetVisible && Win32::keyboardState[Win32::KEY_SHIFT]) {
 			V2U32 tile{};
 			if (mouse_to_tile(&tile)) {
 				Factory::Machine* machine = Factory::get_machine_from_tile(V2U{ tile.x, tile.y });
@@ -561,8 +642,10 @@ void mouse_callback(Win32::MouseButton button, Win32::MouseValue state) {
 		}
 		if (Inventory::has_selected_item()) {
 			V2U32 tile{};
-			if (mouse_to_tile(&tile) && BeeDemo::queue_inventory_delivery(tile, Inventory::selected_item(), 1u)) {
-				Inventory::clear_selected_item();
+			if (mouse_to_tile(&tile) && BeeDemoNS::queue_inventory_delivery(tile, Inventory::selected_item(), 1u)) {
+				if (!Win32::keyboardState[Win32::KEY_SHIFT]) {
+					Inventory::clear_selected_item();
+				}
 			}
 			uiLeftCapture = B32_TRUE;
 			return;

@@ -210,7 +210,7 @@ void init_build_definitions() {
 		BuildDefinition* def = &buildDefinitions[4];
 		def->brush = CreativeBrush::ASSEMBLER_VERY_LARGE;
 		add_build_cost(def, Inventory::ITEM_IRON_ORE, 20u);
-		add_build_cost(def, Inventory::ITEM_COPPER_ORE, 10u);
+		add_build_cost(def, Inventory::ITEM_COPPER_ORE, 11u);
 		add_build_cost(def, Inventory::ITEM_URANIUM, 1u);
 	}
 	{
@@ -1302,12 +1302,12 @@ Resources::Sprite* creative_brush_sprite(CreativeBrush brush) {
 	case CreativeBrush::BEACH: return &Resources::tile.beach;
 	case CreativeBrush::WATER: return &Resources::tile.water;
 	case CreativeBrush::MOUNTAIN: return &Resources::tile.mountain;
-	case CreativeBrush::CONVEYOR: return &Resources::tile.belt.leftToRight;
-	case CreativeBrush::ASSEMBLER_SMALL: return &Resources::tile.assemblerSmall;
-	case CreativeBrush::ASSEMBLER_LARGE: return &Resources::tile.assemblerLarge;
+	case CreativeBrush::CONVEYOR: return &Resources::tile.icon.belt;
+	case CreativeBrush::ASSEMBLER_SMALL: return &Resources::tile.icon.furnace;
+	case CreativeBrush::ASSEMBLER_LARGE: return &Resources::tile.icon.assembler;
 	case CreativeBrush::ASSEMBLER_VERY_LARGE: return &Resources::tile.bigAssembler;
 	case CreativeBrush::SPLITTER: return &Resources::tile.splitter;
-	case CreativeBrush::HIVE_SMALL: return &Resources::tile.hive;
+	case CreativeBrush::HIVE_SMALL: return &Resources::tile.icon.hive;
 	case CreativeBrush::HIVE_BIG: return &Resources::tile.hiveLarge;
 	default: return nullptr;
 	}
