@@ -101,7 +101,7 @@ void load() {
 	tile.assemblerSmall = Sprite{ &tileset, 16, 48, 16, 16, 1 };
 	tile.assemblerLarge = Sprite{ &tileset, 0, 96, 32, 32, 1 };
 	tile.hive = Sprite{ &tileset, 16, 32, 16, 16, 1 };
-	tile.hiveLarge = Sprite{ &tileset, 0, 64, 16, 16, 1 };
+	tile.hiveLarge = Sprite{ &tileset, 0, 64, 32, 32, 1 };
 	tile.splitter = Sprite{ &tileset, 32, 48, 16, 16, 1 };
 	tile.merger = Sprite{ &tileset, 32, 64, 16, 16, 1 };
 	tile.beeFly = Sprite{ &tileset, 0, 160, 16, 16, 4 };

@@ -11,7 +11,6 @@ using namespace TileSpace;
 
 static constexpr F32 DEFAULT_SPEED = 10.0F;
 
-
 class Bee {
 public:
 	static constexpr F32 arrivalEpsilon = 0.01F;
@@ -21,6 +20,7 @@ public:
 	V2F32 position{};
 	V2F32 velocity{};
 	V2U32 homeTile{};
+	V2F32 homeOffsetWorld{ 0.5F, 0.5F };
 	F32 moveSpeed = DEFAULT_SPEED;
 	F32 workTimerSeconds = 0.0F;
 	F32 travelTimerSeconds = 0.0F;
@@ -36,8 +36,19 @@ public:
 		flightPhaseTurns = initial_flight_phase(spawnHomeTile);
 	}
 
+	Bee(V2U32 spawnHomeTile, V2F32 spawnHomeOffsetWorld, F32 speed)
+		: homeTile(spawnHomeTile), homeOffsetWorld(spawnHomeOffsetWorld), moveSpeed(speed) {
+		position = home_world_position();
+		flightPhaseTurns = initial_flight_phase(spawnHomeTile);
+	}
+
 	void set_home(V2U32 newHomeTile) {
 		homeTile = newHomeTile;
+	}
+
+	void set_home_anchor(V2U32 newHomeTile, V2F32 newHomeOffsetWorld) {
+		homeTile = newHomeTile;
+		homeOffsetWorld = newHomeOffsetWorld;
 	}
 
 	void teleport(V2F32 newPosition) {
@@ -56,6 +67,17 @@ public:
 
 	B32 idle() const {
 		return !busy();
+	}
+
+	B32 inside_hive() const {
+		return state == State::STATE_IDLE && hasTask == B32_FALSE && is_at(home_world_position()) ? B32_TRUE : B32_FALSE;
+	}
+
+	F32 work_progress01() const {
+		if (state != State::STATE_WORKING || !hasTask || activeTask.workDurationSeconds <= 0.0F) {
+			return 0.0F;
+		}
+		return clamp01(workTimerSeconds / activeTask.workDurationSeconds);
 	}
 
 	void assign_task(const Task& task) {
@@ -146,7 +168,7 @@ public:
 	}
 
 	V2F32 home_world_position() const {
-		return TileSpace::tile_to_world_center(homeTile);
+		return TileSpace::tile_to_world(homeTile) + homeOffsetWorld;
 	}
 
 	V2F32 task_world_position(const Task& task) const {
