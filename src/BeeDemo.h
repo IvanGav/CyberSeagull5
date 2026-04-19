@@ -245,7 +245,7 @@ Resources::Sprite* creative_brush_sprite(CreativeBrush brush) {
 	case CreativeBrush::SAND: return &Resources::tile.sand;
 	case CreativeBrush::BEACH: return &Resources::tile.beach;
 	case CreativeBrush::WATER: return &Resources::tile.water;
-	case CreativeBrush::CONVEYOR: return &Resources::tile.belt.right;
+	case CreativeBrush::CONVEYOR: return &Resources::tile.belt.leftToRight;
 	case CreativeBrush::HIVE_SMALL: return &Resources::tile.hive;
 	case CreativeBrush::HIVE_BIG: return &Resources::tile.hiveLarge;
 	default: return nullptr;
@@ -475,7 +475,7 @@ void render_hives(V2F32 camera, I32 worldTileScale) {
 }
 
 void render_conveyors(V2F32 camera, I32 worldTileScale, F64 frameTimeSeconds) {
-	Resources::Sprite& conveyorSprite = Resources::tile.belt.right;
+	Resources::Sprite& conveyorSprite = Resources::tile.belt.leftToRight;
 	U32 animFrame = U32(fractf64(frameTimeSeconds * 2.5) * F32(conveyorSprite.animFrames)) % conveyorSprite.animFrames;
 	for (U32 i = 0; i < conveyorTiles.size; i++) {
 		V2F32 screenTopLeft = world_to_screen(TileSpace::tile_to_world(conveyorTiles[i]), camera, worldTileScale);
