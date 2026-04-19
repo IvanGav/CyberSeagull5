@@ -103,6 +103,7 @@ struct {
 		Sprite pollen;
 		Sprite honey;
 		Sprite lemonJuice;
+		Sprite cyberGull;
 	} item;
 	struct {
 		Sprite downOff;
@@ -118,6 +119,7 @@ struct {
 		Sprite belt;
 		Sprite assembler;
 		Sprite hive;
+		Sprite furnace;
 	} icon;
 	struct {
 		Sprite full;
@@ -186,10 +188,12 @@ void load() {
 	tile.item.pollen = Sprite{ &tileset, 12 * 16, 13 * 16, 16, 16, 1 };
 	tile.item.honey = Sprite{ &tileset, 13 * 16, 13 * 16, 16, 16, 1 };
 	tile.item.lemonJuice = Sprite{ &tileset, 14 * 16, 13 * 16, 16, 16, 1 };
+	tile.item.cyberGull = Sprite{ &tileset, 15 * 16, 13 * 16, 16, 16, 1 };
 
 	tile.icon.belt = Sprite{ &tileset, 0 * 16, 14 * 16, 16, 16, 1 };
 	tile.icon.assembler = Sprite{ &tileset, 1 * 16, 14 * 16, 16, 16, 1 };
 	tile.icon.hive = Sprite{ &tileset, 2 * 16, 14 * 16, 16, 16, 1 };
+	tile.icon.furnace = Sprite{ &tileset, 3 * 16, 14 * 16, 16, 16, 1 };
 
 	tile.rock.topLeft = Sprite{ &tileset, 16 * 10, 11 * 16, 16, 16, 1 };
 	tile.rock.top = Sprite{ &tileset, 16 * 11, 11 * 16, 16, 16, 1 };
@@ -207,7 +211,8 @@ void load() {
 	tile.assembler.rightOff = Sprite{ &tileset, 192, 144, 32, 32, 1 };
 	tile.assembler.rightOn = Sprite{ &tileset, 224, 144, 32, 32, 1 };
 
-	tile.bigAssembler = Sprite{ &tileset, 13 * 16, 7 * 16, 48, 32, 1 };
+	tile.bigAssembler = Sprite{ &tileset, 192, 80, 48, 32, 1 };
+	tile.bigAssemblerOn = Sprite{ &tileset, 240, 80, 48, 32, 1 };
 	tile.furnace = Sprite{ &tileset, 14 * 16, 11 * 16, 16, 32, 1 };
 	for (U32 i = 0; i < ARRAY_COUNT(tutorial); i++) {
 		tutorial[i] = load_texture(strafmt(globalArena, "tutorial_%.png"a, i));

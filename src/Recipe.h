@@ -89,8 +89,8 @@ namespace Recipe {
 		};
 		recipeList.cyberSeagull = RecipeDef{
 			3, {{ITEM_NUCLEAR_HEART, 1}, {ITEM_CAMERA, 2}, {ITEM_GULL, 1}},
-			{ITEM_LEMON_JUICE, 1 },
-			15.0,&Resources::tile.item.gull
+			{ITEM_CYBER_GULL, 1 },
+			15.0,&Resources::tile.item.cyberGull
 		};
 
 		recipeGroups.belt = RecipeGroup::make(make_arena_array_list(globalArena, &recipeList.unit));

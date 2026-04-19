@@ -390,7 +390,7 @@ MachineDef get_smelter(Rotation2 orientation) {
 
 MachineDef get_big_assembler(Rotation2 orientation) {
 	MachineDef result{};
-	result.type = MACHINE_ASSEMBLER;
+	result.type = MACHINE_BIG_ASSEMBLER;
 	result.size = V2U{ 3, 2 };
 	switch (orientation) {
 	case ROTATION2_0: result.sprite = &Resources::tile.bigAssembler; result.spriteProcessingAlt = &Resources::tile.bigAssemblerOn; break;
@@ -1099,6 +1099,13 @@ void render(I32 tileScale) {
 				Graphics::blit_sprite_cutout(Resources::tile.belt.downToUp, screenPos.x, screenPos.y, tileScale, beltAnimTime);
 			}
 		}
+		if (machine->type == MACHINE_BIG_ASSEMBLER) {
+			U32 beltAnimTime = animRawTime / 8 % Resources::tile.belt.downToUp.animFrames;
+			Graphics::blit_sprite_cutout(Resources::tile.belt.downToUp, screenPos.x, screenPos.y + 16 * tileScale, tileScale, beltAnimTime);
+			Graphics::blit_sprite_cutout(Resources::tile.belt.downToUp, screenPos.x + 16 * tileScale, screenPos.y + 16 * tileScale, tileScale, beltAnimTime);
+			Graphics::blit_sprite_cutout(Resources::tile.belt.downToUp, screenPos.x + 32 * tileScale, screenPos.y + 16 * tileScale, tileScale, beltAnimTime);
+		}
+		//Graphics::blit_sprite_cutout(machine->spriteProcessingAlt && machine->enough_inputs() ? *machine->spriteProcessingAlt : *machine->sprite, screenPos.x, screenPos.y, tileScale, machine->animFrame);
 		Resources::Sprite* renderSprite = machine->spriteProcessingAlt && machine->enough_inputs() ? machine->spriteProcessingAlt : machine->sprite;
 		V2I drawPos = machine_sprite_draw_pos(machine, renderSprite, tileScale);
 		Graphics::blit_sprite_cutout(*renderSprite, drawPos.x, drawPos.y, tileScale, machine->animFrame);
