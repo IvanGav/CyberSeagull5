@@ -27,6 +27,17 @@ V2U size;
 TileType* tiles;
 const U32 MACHINE_NULL_ID = 0;
 U32* tileMachineIds;
+enum MachineConnectFlags {
+	MACHINE_INPUT_UP = 1 << 0,
+	MACHINE_INPUT_DOWN = 1 << 1,
+	MACHINE_INPUT_LEFT = 1 << 2,
+	MACHINE_INPUT_RIGHT = 1 << 3,
+	MACHINE_OUTPUT_UP = 1 << 4,
+	MACHINE_OUTPUT_DOWN = 1 << 5,
+	MACHINE_OUTPUT_LEFT = 1 << 6,
+	MACHINE_OUTPUT_RIGHT = 1 << 7,
+};
+Flags8* canMachineConnect;
 
 TileType get_tile(U32* machineId, I32 x, I32 y) {
 	if (x < 0 || y < 0 || x >= size.x || y >= size.y) {
@@ -80,7 +91,27 @@ void set_machine(Rng2I32 range, U32 machineId) {
 	for (I32 y = range.minY; y <= range.maxY; y++) {
 		for (I32 x = range.minX; x <= range.maxX; x++) {
 			tileMachineIds[y * size.x + x] = machineId;
+			canMachineConnect[y * size.x + x] = 0;
 		}
+	}
+}
+
+void set_connectivity(V2U pos, Flags8 machineConnectFlags) {
+	if (pos.x < size.x && pos.y < size.y && tileMachineIds[pos.y * size.x + pos.x] != MACHINE_NULL_ID) {
+		canMachineConnect[pos.y * size.x + pos.x] = machineConnectFlags;
+	}
+}
+
+B32 can_connect_input(V2U pos, Direction2 fromDir) {
+	if (pos.x >= size.x || pos.y >= size.y) {
+		return B32_FALSE;
+	}
+	Flags8 connectFlags = canMachineConnect[pos.y * size.x + pos.x];
+	switch (fromDir) {
+	DIRECTION2_LEFT = 0,
+	DIRECTION2_RIGHT = 1,
+	DIRECTION2_FRONT = 2,
+	DIRECTION2_BACK = 3,
 	}
 }
 
@@ -91,9 +122,11 @@ void init(V2U extent) {
 	beach_tiles = globalArena.alloc<BeachTileInfo>(extent.y); // the entire left side of the map is a beach
 	rng.seed_rand();
 	tileMachineIds = globalArena.alloc<U32>(extent.x * extent.y);
+	canMachineConnect = globalArena.alloc<Flags8>(extent.x * extent.y);
 	for (U32 i = 0; i < extent.x * extent.y; i++) {
 		tiles[i] = TILE_GRASS;
 		tileMachineIds[i] = MACHINE_NULL_ID;
+		canMachineConnect[i] = 0;
 	}
 
 	tileSprite[TILE_UNDEF] = &Resources::tile.undef;

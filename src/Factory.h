@@ -3,6 +3,7 @@
 #include "drillengine/DrillLib.h"
 #include "Resources.h"
 #include "World.h"
+#include "Inventory.h"
 
 namespace Cyber5eagull {
 V2I tile_to_screen_px(V2U tile);
@@ -10,14 +11,8 @@ V2I tile_to_screen_px(V2U tile);
 
 namespace Factory {
 
-enum Item : U32 {
-	ITEM_NONE,
-	ITEM_IRON,
-	ITEM_Count
-};
-
 struct ItemStack {
-	Item item;
+	Inventory::ItemType item;
 	U32 count;
 };
 
@@ -39,6 +34,10 @@ struct Machine {
 	ItemStack inventory;
 	U32 inventoryStackSizeLimit;
 	Machine* output;
+	V2I inputPos[4];
+	V2I outputPos[4];
+	U32 inputPosCount;
+	U32 outputPosCount;
 };
 
 struct MachineHandle {
