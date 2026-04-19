@@ -164,6 +164,7 @@
     <ClInclude Include="src\drillengine\PNG.h" />
     <ClInclude Include="src\drillengine\SerializeTools.h" />
     <ClInclude Include="src\drillengine\SerializeToolsPowerOf5Table.txt" />
+    <ClInclude Include="src\Factory.h" />
     <ClInclude Include="src\Graphics.h" />
     <ClInclude Include="src\Resources.h" />
     <ClInclude Include="src\Win32.h" />
