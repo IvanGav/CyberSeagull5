@@ -25,6 +25,11 @@ enum ItemType : U8 {
 	ITEM_Count
 };
 
+struct ItemStack {
+    Inventory::ItemType item;
+    U32 count;
+};
+
 Resources::Sprite* itemSprite[ITEM_Count];
 
 U32 item_font_size = 32;

@@ -74,6 +74,7 @@ void continue_conveyor_drag(V2U32 hoveredTile) {
 
 	Direction2 nextInput = Factory::opposite_direction(newDirection);
 	Direction2 nextOutput = newDirection;
+
 	if (!Factory::set_belt_shape(nextTile, nextInput, nextOutput)) {
 		return;
 	}
@@ -266,6 +267,11 @@ void mouse_callback(Win32::MouseButton button, Win32::MouseValue state) {
 			if (uiLeftCapture) {
 				return;
 			}
+		}
+		V2U tilePos;
+		if (mouse_to_tile(&tilePos) && Factory::machine_is_belt(Factory::get_machine_from_tile(tilePos))) {
+			Factory::get_machine_from_tile(tilePos)->inventory[0].count = 1;
+			Factory::get_machine_from_tile(tilePos)->inventory[0].item = Inventory::ITEM_IRON_PLATE;
 		}
 	}
 

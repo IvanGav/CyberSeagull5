@@ -420,17 +420,18 @@ B32 try_insert_adjacent_belt_item(V2U32 tile, Inventory::ItemType item, U32 coun
         if (!Factory::machine_is_belt(belt) || count == 0) {
             continue;
         }
-        if (belt->inventory.count != 0 && U32(belt->inventory.item) != item) {
+        Inventory::ItemStack& stack = belt->get_item_stack();
+        if (stack.count != 0 && U32(stack.item) != item) {
             continue;
         }
-        U32 freeSpace = belt->inventoryStackSizeLimit > belt->inventory.count ? (belt->inventoryStackSizeLimit - belt->inventory.count) : 0;
+        U32 freeSpace = belt->inventoryStackSizeLimit > stack.count ? (belt->inventoryStackSizeLimit - stack.count) : 0;
         if (freeSpace < count) {
             continue;
         }
-        if (belt->inventory.count == 0) {
-            belt->inventory.item = Inventory::ItemType(item);
+        if (stack.count == 0) {
+            stack.item = Inventory::ItemType(item);
         }
-        belt->inventory.count += count;
+        stack.count += count;
         return B32_TRUE;
     }
     return B32_FALSE;

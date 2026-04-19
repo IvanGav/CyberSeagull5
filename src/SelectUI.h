@@ -7,9 +7,10 @@
 namespace SelectUI {
 	// you can pick out of these sprites; the picked sprite will be returned as an index into the array
 	ArenaArrayList<Resources::Sprite*> selections;
-	I32 itemSize = 16;
-	I32 scale = 4;
-	I32 selectedItem = -1;
+	void(*callback)(U32) = nullptr;
+	I32 itemSize = 16; // assume all items are 16x16
+	I32 scale = 4; // UI scale
+	I32 selectedItem = -1; // -1 means no selection
 	B32 open = B32_FALSE;
 
 	I32 borderPadding = 50;
@@ -51,10 +52,11 @@ namespace SelectUI {
 		Graphics::blit_sprite_cutout(sprite, drawX, drawY, drawScale, 0);
 	}
 
-	void change_select_options(ArenaArrayList<Resources::Sprite*> options) {
+	void change_select_options(ArenaArrayList<Resources::Sprite*> options, void(*set_callback)(U32) = nullptr) {
 		selections = options;
 		open = B32_FALSE;
 		selectedItem = -1;
+		callback = set_callback;
 	}
 
 	void debug_selections() {
@@ -137,12 +139,13 @@ namespace SelectUI {
 		I32 index = mouse.x + mouse.y * perRow;
 
 		if (selectedItem == index) {
-			selectedItem = -1;
+			selectedItem = -1; // unselect
+		} else if(index < selections.size) {
+			selectedItem = index; // select
+			if(callback != nullptr) callback(index);
 		}
-		else if (index >= 0 && U32(index) < selections.size) {
-			selectedItem = index;
-		}
-		return B32_TRUE;
+		open = false;
+		return true;
 	}
 
 };
