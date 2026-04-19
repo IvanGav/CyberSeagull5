@@ -90,8 +90,8 @@ B32 mouse_to_tile(V2U32* tileOut) {
 
 
 
-void update() {
-	Factory::update();
+void update(F32 dt) {
+	Factory::update(dt);
 }
 
 void update_debug_inventory() {
@@ -162,7 +162,7 @@ U32 run_cyber5eagull() {
 		swap(&frameArena, &lastFrameArena);
 		frameArena.reset();
 		Win32::poll_events();
-		update();
+		update(dt);
 		render();
 		InvalidateRect(Win32::window, NULL, FALSE);
 		UpdateWindow(Win32::window);

@@ -102,6 +102,14 @@ void set_connectivity(V2U pos, Flags8 machineConnectFlags) {
 	}
 }
 
+Flags8 get_connectivity_flags(V2U pos) {
+	if (pos.x >= size.x || pos.y >= size.y) {
+		return 0;
+	}
+	Flags8 connectFlags = canMachineConnect[pos.y * size.x + pos.x];
+	return connectFlags;
+}
+
 B32 can_connect_input(V2U pos, Direction2 fromDir) {
 	if (pos.x >= size.x || pos.y >= size.y) {
 		return B32_FALSE;

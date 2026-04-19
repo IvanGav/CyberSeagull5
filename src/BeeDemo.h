@@ -37,6 +37,7 @@ enum class CreativeBrush : U8 {
 	CONVEYOR,
 	HIVE_SMALL,
 	HIVE_BIG,
+	ASSEMBLER,
 	COUNT
 };
 
@@ -78,8 +79,8 @@ B32 has_conveyor(V2U32 tile) {
 }
 
 void remove_conveyor_tile(V2U32 tile) {
-	if (Factory::has_belt(V2U{ tile.x, tile.y })) {
-		Factory::remove_machine(V2U{ tile.x, tile.y });
+	if (Factory::has_belt(tile)) {
+		Factory::remove_machine(tile);
 	}
 }
 
@@ -233,6 +234,7 @@ Resources::Sprite* creative_brush_sprite(CreativeBrush brush) {
 	case CreativeBrush::CONVEYOR: return &Resources::tile.belt.leftToRight;
 	case CreativeBrush::HIVE_SMALL: return &Resources::tile.hive;
 	case CreativeBrush::HIVE_BIG: return &Resources::tile.hiveLarge;
+	case CreativeBrush::ASSEMBLER: return &Resources::tile.assemblerLarge;
 	default: return nullptr;
 	}
 }
@@ -248,6 +250,7 @@ CreativeBrush creative_brush_from_tileset_cell(I32 cellX, I32 cellY, CreativeBru
 	if (cellX == 4 && cellY == 0) return CreativeBrush::CONVEYOR;
 	if (cellX == 1 && cellY == 2) return CreativeBrush::HIVE_SMALL;
 	if (cellX == 0 && cellY == 4) return CreativeBrush::HIVE_BIG;
+	if (cellX == 8 && cellY == 7) return CreativeBrush::ASSEMBLER;
 	return fallback;
 }
 
@@ -277,7 +280,7 @@ void apply_creative_brush(CreativeBrush brush, V2U32 tile) {
 
 	case CreativeBrush::ERASE: {
 		unqueue_tile_task(tile);
-		remove_conveyor_tile(tile);
+		Factory::remove_machine(tile);
 		remove_hive_covering_tile(tile);
 		TerrainGen::set_world_tile(tile, World::TILE_GRASS);
 	} break;
@@ -290,7 +293,7 @@ void apply_creative_brush(CreativeBrush brush, V2U32 tile) {
 	case CreativeBrush::BEACH:
 	case CreativeBrush::WATER: {
 		unqueue_tile_task(tile);
-		remove_conveyor_tile(tile);
+		Factory::remove_machine(tile);
 		remove_hive_covering_tile(tile);
 		World::TileType worldType = World::TILE_GRASS;
 		switch (brush) {
@@ -321,7 +324,9 @@ void apply_creative_brush(CreativeBrush brush, V2U32 tile) {
 	case CreativeBrush::HIVE_BIG: {
 		place_hive(tile, B32_TRUE);
 	} break;
-
+	case CreativeBrush::ASSEMBLER: {
+		Factory::try_place_machine(tile, Factory::get_assembler(ROTATION2_0));
+	} break;
 	default: break;
 	}
 }

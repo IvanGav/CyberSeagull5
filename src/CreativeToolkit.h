@@ -107,6 +107,7 @@ void render_tilesheet_picker() {
 	highlight_tileset_cell(4, 0, RGBA8{ 120, 220, 120, 255 });
 	highlight_tileset_cell(1, 2, RGBA8{ 120, 220, 120, 255 });
 	highlight_tileset_cell(0, 4, RGBA8{ 120, 220, 120, 255 });
+	highlight_tileset_cell(8, 7, RGBA8{ 120, 220, 120, 255 });
 
 	Resources::Sprite* selectedSprite = BeeDemo::creative_brush_sprite(selectedBrush);
 	if (selectedBrush == CreativeBrush::TASK_SELECT) highlight_tileset_cell(0, 10, RGBA8{ 255, 255, 80, 255 });
@@ -120,6 +121,7 @@ void render_tilesheet_picker() {
 	if (selectedSprite == &Resources::tile.belt.leftToRight) highlight_tileset_cell(4, 0, RGBA8{ 255, 255, 80, 255 });
 	if (selectedBrush == CreativeBrush::HIVE_SMALL) highlight_tileset_cell(1, 2, RGBA8{ 255, 255, 80, 255 });
 	if (selectedBrush == CreativeBrush::HIVE_BIG) highlight_tileset_cell(0, 4, RGBA8{ 255, 255, 80, 255 });
+	if (selectedBrush == CreativeBrush::ASSEMBLER) highlight_tileset_cell(8, 7, RGBA8{ 255, 255, 80, 255 });
 }
 
 void render_ui() {
