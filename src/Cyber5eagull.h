@@ -8,6 +8,7 @@
 #include "Factory.h"
 #include "BeeDemo.h"
 #include "CreativeToolkit.h"
+#include "SelectUI.h"
 #include "EditorInteraction.h"
 
 namespace Cyber5eagull {
@@ -133,6 +134,8 @@ void render() {
 	BeeDemo::render_bees(camera, worldTileScale, currentFrameTime);
 	Inventory::draw_inv();
 	CreativeToolkit::render_ui();
+	//Graphics::box(100, 50, 350, 200, 4, RGBA8{ 250,250,250,255 }, RGBA8{ 50,250,50,255 });
+	SelectUI::draw();
 	lastFrameTime = currentFrameTime;
 }
 
@@ -144,6 +147,7 @@ U32 run_cyber5eagull() {
 	lastFrameTime = current_time_seconds();
 
 	Resources::load();
+	SelectUI::debug_selections(); // TODO debug selections for now; don't need this later
 	Inventory::init();
 	World::init(V2U{ WORLD_WIDTH, WORLD_HEIGHT });
 	Factory::init();

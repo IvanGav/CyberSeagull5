@@ -12,8 +12,6 @@ typedef U32 Item;
 enum ItemType : U8 {
     ITEM_IRON_ORE,
     ITEM_COPPER_ORE,
-    ITEM_POLLEN,
-    ITEM_HONEY,
     ITEM_GULL,
     ITEM_COPPER_CABLE,
     ITEM_IRON_PLATE,
@@ -23,7 +21,10 @@ enum ItemType : U8 {
     ITEM_GEAR,
     ITEM_NUCLEAR_HEART,
     ITEM_URANIUM,
-    ITEM_Count
+   	ITEM_POLLEN,
+		ITEM_HONEY,
+		ITEM_LEMON_JUICE,
+		ITEM_Count
 };
 
 Resources::Sprite* itemSprite[ITEM_Count];
@@ -70,8 +71,6 @@ void init() {
 
     itemSprite[ITEM_IRON_ORE] = &Resources::tile.item.ironOre;
     itemSprite[ITEM_COPPER_ORE] = &Resources::tile.item.copperOre;
-    itemSprite[ITEM_POLLEN] = &Resources::tile.item.kittyCat; // TEMP placeholder until pollen art exists
-    itemSprite[ITEM_HONEY] = &Resources::tile.item.kittyCat; // TEMP placeholder until honey art exists
     itemSprite[ITEM_GULL] = &Resources::tile.item.gull;
     itemSprite[ITEM_COPPER_CABLE] = &Resources::tile.item.copperCable;
     itemSprite[ITEM_IRON_PLATE] = &Resources::tile.item.ironPlate;
@@ -81,6 +80,10 @@ void init() {
     itemSprite[ITEM_GEAR] = &Resources::tile.item.gear;
     itemSprite[ITEM_NUCLEAR_HEART] = &Resources::tile.item.nuclearHeart;
     itemSprite[ITEM_URANIUM] = &Resources::tile.item.uranium;
+  	itemSprite[ITEM_POLLEN] = &Resources::tile.item.pollen;
+		itemSprite[ITEM_HONEY] = &Resources::tile.item.honey;
+  	itemSprite[ITEM_LEMON_JUICE] = &Resources::tile.item.lemonJuice;
+
 }
 
 void draw_inv() {

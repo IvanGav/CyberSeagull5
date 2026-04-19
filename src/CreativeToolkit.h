@@ -5,6 +5,7 @@
 #include "Graphics.h"
 #include "TileSpace.h"
 #include "BeeDemo.h"
+#include "SelectUI.h"
 
 namespace Cyber5eagull {
 extern F64 lastFrameTime;
