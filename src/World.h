@@ -183,6 +183,43 @@ void render_beach(V2F camera, I32 tileScale) {
 	}
 }
 
+FINLINE B32 tile_is_mountain(I32 x, I32 y) {
+	if (x < 0 || y < 0 || x >= I32(size.x) || y >= I32(size.y)) {
+		return B32_FALSE;
+	}
+	return tiles[y * size.x + x] == TILE_MOUNTAIN ? B32_TRUE : B32_FALSE;
+}
+
+Resources::Sprite* mountain_sprite_for_tile(I32 x, I32 y) {
+	B32 mountainAbove = tile_is_mountain(x, y - 1);
+	B32 mountainLeft = tile_is_mountain(x - 1, y);
+	B32 mountainRight = tile_is_mountain(x + 1, y);
+
+	if (!mountainAbove) {
+		if (!mountainLeft && !mountainRight) {
+			return &Resources::tile.rock.top;
+		}
+		if (!mountainLeft) {
+			return &Resources::tile.rock.topLeft;
+		}
+		if (!mountainRight) {
+			return &Resources::tile.rock.topRight;
+		}
+		return &Resources::tile.rock.top;
+	}
+
+	if (!mountainLeft && !mountainRight) {
+		return &Resources::tile.rock.full;
+	}
+	if (!mountainLeft) {
+		return &Resources::tile.rock.left;
+	}
+	if (!mountainRight) {
+		return &Resources::tile.rock.right;
+	}
+	return &Resources::tile.rock.full;
+}
+
 void render(V2F camera, I32 tileScale) {
 	I32 tileSize = tileScale * 16;
 	I32 camStartX = I32(floorf32(camera.x));
@@ -199,9 +236,9 @@ void render(V2F camera, I32 tileScale) {
 		for (I32 x = max(tileStartX, 0); x < min(tileEndX, I32(size.x)); x++) {
 			I32 drawX = x * tileSize - camStartX;
 			I32 drawY = y * tileSize - camStartY;
-
-		Graphics::blit_sprite(*tileSprite[tiles[y * size.x + x]], drawX, drawY, tileScale, 0);
-		
+			TileType tile = tiles[y * size.x + x];
+			Resources::Sprite* sprite = tile == TILE_MOUNTAIN ? mountain_sprite_for_tile(x, y) : tileSprite[tile];
+			Graphics::blit_sprite(*sprite, drawX, drawY, tileScale, 0);
 		}
 	}
 	render_beach(camera, tileScale);

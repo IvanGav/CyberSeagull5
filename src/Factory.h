@@ -18,6 +18,7 @@ using namespace Inventory;
 enum MachineType : U32 {
 	MACHINE_NONE,
 	MACHINE_BELT,
+	MACHINE_SMELTER,
 	MACHINE_ASSEMBLER,
 	MACHINE_SPLITTER,
 	MACHINE_MERGER,
@@ -297,6 +298,34 @@ MachineDef get_assembler(Rotation2 orientation) {
 	return result;
 }
 
+MachineDef get_smelter(Rotation2 orientation) {
+	MachineDef result{};
+	result.type = MACHINE_SMELTER;
+	result.size = V2U{ 1, 1 };
+	result.sprite = &Resources::tile.assemblerSmall;
+	result.inventoryStackSize = 1;
+	result.processAtOnce = 1;
+	result.recipes = &Recipe::recipeGroups.assembler; // TODO change
+
+	switch (orientation) {
+	case ROTATION2_0:
+	default:
+		result.ioDefs[0] = IODef{ V2I{ 0, 0 }, Flags8(World::MACHINE_INPUT_UP | World::MACHINE_OUTPUT_DOWN) };
+		break;
+	case ROTATION2_90:
+		result.ioDefs[0] = IODef{ V2I{ 0, 0 }, Flags8(World::MACHINE_INPUT_LEFT | World::MACHINE_OUTPUT_RIGHT) };
+		break;
+	case ROTATION2_180:
+		result.ioDefs[0] = IODef{ V2I{ 0, 0 }, Flags8(World::MACHINE_INPUT_DOWN | World::MACHINE_OUTPUT_UP) };
+		break;
+	case ROTATION2_270:
+		result.ioDefs[0] = IODef{ V2I{ 0, 0 }, Flags8(World::MACHINE_INPUT_RIGHT | World::MACHINE_OUTPUT_LEFT) };
+		break;
+	}
+
+	return result;
+}
+
 Flags8 direction_to_input_flag(Direction2 dir) {
 	switch (dir) {
 	case DIRECTION2_LEFT: return World::MACHINE_INPUT_LEFT;
@@ -338,6 +367,7 @@ FINLINE B32 machine_is_static_structure(const Machine* machine) {
 FINLINE V2U machine_footprint(MachineType type, Rotation2 orientation) {
 	switch (type) {
 	case MACHINE_ASSEMBLER: return V2U{ 2, 2 };
+	case MACHINE_SMELTER:
 	case MACHINE_SPLITTER:
 	case MACHINE_MERGER:
 	case MACHINE_BELT:
@@ -395,6 +425,9 @@ MachineDef get_static_machine(MachineType type, Rotation2 orientation) {
 	MachineDef result{};
 	result.type = type;
 	switch (type) {
+	case MACHINE_SMELTER:
+		result = get_smelter(orientation);
+		break;
 	case MACHINE_ASSEMBLER:
 		result = get_assembler(orientation);
 		break;
@@ -412,7 +445,27 @@ MachineDef get_static_machine(MachineType type, Rotation2 orientation) {
 	return result;
 }
 
+void update_connections_around_io(Machine* machine, const IODef& io) {
+	if (!machine || io.ioDirections == 0) {
+		return;
+	}
+	update_machine_connections(machine);
+	update_machine_connections(get_machine_from_tile(V2U{ machine->pos.x + io.pos.x + 1, machine->pos.y + io.pos.y }));
+	update_machine_connections(get_machine_from_tile(V2U{ machine->pos.x + io.pos.x - 1, machine->pos.y + io.pos.y }));
+	update_machine_connections(get_machine_from_tile(V2U{ machine->pos.x + io.pos.x, machine->pos.y + io.pos.y + 1 }));
+	update_machine_connections(get_machine_from_tile(V2U{ machine->pos.x + io.pos.x, machine->pos.y + io.pos.y - 1 }));
+}
+
 void apply_machine_def(Machine* machine, const MachineDef& def) {
+	IODef oldIoDefs[MAX_IO_DEFS]{};
+	memcpy(oldIoDefs, machine->ioDefs, sizeof(oldIoDefs));
+
+	for (U32 y = 0; y < machine->size.y; y++) {
+		for (U32 x = 0; x < machine->size.x; x++) {
+			World::set_connectivity(V2U{ machine->pos.x + x, machine->pos.y + y }, 0);
+		}
+	}
+
 	machine->type = def.type;
 	machine->size = def.size;
 	machine->sprite = def.sprite;
@@ -541,7 +594,8 @@ B32 place_machine_type(V2U pos, MachineType type, Rotation2 orientation) {
 	}
 	Machine* existing = get_machine_from_tile(pos);
 	if (existing) {
-		if (existing->type == type) {
+		if (existing->type == type && existing->pos.x == pos.x && existing->pos.y == pos.y) {
+			apply_machine_def(existing, def);
 			return B32_TRUE;
 		}
 		return B32_FALSE;
