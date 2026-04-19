@@ -9,6 +9,7 @@ static constexpr U32 MAX_WORLD_MAP_TILES = 256u * 256u;
 static constexpr U32 MAX_PATCH_FRONTIER = 128u;
 static constexpr U32 MAX_PATCH_TILES = 128u;
 static constexpr U32 HIVE_RESOURCE_SAFE_RADIUS = 4u;
+static constexpr U32 BASE_RANGE_COUNT = 7;
 
 struct HiveDesc {
 	V2U32 tile{};
@@ -301,8 +302,13 @@ V2F32 normalize_v2_safe(V2F32 v, F32 epsilon) {
 	if (lenSq <= epsilon * epsilon) {
 		return V2F32{};
 	}
-	F32 invLen = 1.0F / sqrtf32(lenSq);
-	return v * invLen;
+	return v * (1.0F / sqrtf32(lenSq));
+}
+
+V2F32 direction_from_turns(F32 turns) {
+	F32 sinAngle = 0.0F;
+	F32 cosAngle = sincosf32(&sinAngle, turns);
+	return normalize_v2_safe(V2F32{ cosAngle * 0.75F, sinAngle }, 0.0001F);
 }
 
 void stamp_mountain_blob(WorldGenerationState* state, const ArenaArrayList<HiveDesc>& hives, V2F32 centerWorld, F32 radiusX, F32 radiusY, U32 seed) {
@@ -316,38 +322,76 @@ void stamp_mountain_blob(WorldGenerationState* state, const ArenaArrayList<HiveD
 			V2F32 tileCenter = TileSpace::tile_to_world_center(tile);
 			F32 dx = (tileCenter.x - centerWorld.x) / max(radiusX, 0.5F);
 			F32 dy = (tileCenter.y - centerWorld.y) / max(radiusY, 0.5F);
-			F32 dist = dx * dx + dy * dy;
+			F32 distSq = dx * dx + dy * dy;
 			U32 noiseHash = hash32(seed ^ (x * 0x9E3779B9u) ^ (y * 0x85EBCA6Bu));
-			F32 threshold = 1.0F + F32((noiseHash >> 24) & 7u) * 0.04F;
-			if (dist <= threshold) {
+			F32 threshold = 0.96F + F32((noiseHash >> 24) & 3u) * 0.08F;
+			if (distSq <= threshold) {
 				claim_mountain_tile(state, hives, tile);
 			}
 		}
 	}
 }
 
+void smooth_mountain_ranges(WorldGenerationState* state, const ArenaArrayList<HiveDesc>& hives) {
+	V2U32 fillTiles[MAX_WORLD_MAP_TILES]{};
+	U32 fillCount = 0u;
+
+	for (U32 y = 1; y + 1 < World::size.y; y++) {
+		for (U32 x = 1; x + 1 < World::size.x; x++) {
+			V2U32 tile{ x, y };
+			if (!can_place_mountain_tile(hives, tile)) {
+				continue;
+			}
+
+			U32 neighbors = 0u;
+			for (I32 dy = -1; dy <= 1; dy++) {
+				for (I32 dx = -1; dx <= 1; dx++) {
+					if (dx == 0 && dy == 0) {
+						continue;
+					}
+					V2U32 neighbor{ U32(I32(x) + dx), U32(I32(y) + dy) };
+					neighbors += get_world_tile(neighbor) == World::TILE_MOUNTAIN ? 1u : 0u;
+				}
+			}
+
+			B32 bridgeHorizontal = get_world_tile(V2U32{ x - 1u, y }) == World::TILE_MOUNTAIN && get_world_tile(V2U32{ x + 1u, y }) == World::TILE_MOUNTAIN;
+			B32 bridgeVertical = get_world_tile(V2U32{ x, y - 1u }) == World::TILE_MOUNTAIN && get_world_tile(V2U32{ x, y + 1u }) == World::TILE_MOUNTAIN;
+			if (neighbors >= 5u || ((bridgeHorizontal || bridgeVertical) && neighbors >= 3u)) {
+				fillTiles[fillCount++] = tile;
+			}
+		}
+	}
+
+	for (U32 i = 0; i < fillCount; i++) {
+		claim_mountain_tile(state, hives, fillTiles[i]);
+	}
+}
+
 void generate_mountain_range(WorldGenerationState* state, const ArenaArrayList<HiveDesc>& hives, V2U32 startTile, U32 rangeSteps, F32 baseRadius, U32 seed) {
 	V2F32 position = TileSpace::tile_to_world_center(startTile);
-	F32 angle = 0.14F + F32(seed & 255u) * (1.0F / 2048.0F);
-	F32 sinAngle = 0.0F;
-	F32 cosAngle = sincosf32(&sinAngle, angle);
-	V2F32 direction = normalize_v2_safe(V2F32{ cosAngle * 0.75F, sinAngle }, 0.0001F);
+	F32 angleTurns = 0.14F + F32(seed & 255u) * (1.0F / 2048.0F);
+	V2F32 direction = direction_from_turns(angleTurns);
+
 	for (U32 step = 0; step < rangeSteps; step++) {
-		F32 t = rangeSteps > 1u ? F32(step) / F32(rangeSteps - 1u) : 0.0F;
 		U32 stepHash = hash32(seed ^ (step * 0x9E3779B9u));
-		F32 radiusX = baseRadius + 0.7F * sinf32(t * 0.5F) + F32((stepHash >> 24) & 3u) * 0.15F;
-		F32 radiusY = baseRadius * 0.85F + F32((stepHash >> 20) & 3u) * 0.12F;
+		F32 t = rangeSteps > 1u ? F32(step) / F32(rangeSteps - 1u) : 0.0F;
+		F32 taper = 1.0F - absf32(t * 2.0F - 1.0F) * 0.55F;
+		F32 radiusX = baseRadius * taper + 0.55F;
+		F32 radiusY = radiusX * (0.8F + F32((stepHash >> 20) & 1u) * 0.15F);
+
 		stamp_mountain_blob(state, hives, position, radiusX, radiusY, stepHash);
-		if ((stepHash & 7u) == 0u) {
+
+		if ((stepHash & 3u) == 0u) {
 			V2F32 side = get_orthogonal(direction);
-			F32 branchOffset = ((stepHash >> 8) & 1u) ? 1.1F : -1.1F;
-			stamp_mountain_blob(state, hives, position + side * branchOffset, radiusX * 0.65F, radiusY * 0.65F, stepHash ^ 0xA57E2D1Bu);
+			F32 sideSign = (stepHash & 16u) ? 1.0F : -1.0F;
+			stamp_mountain_blob(state, hives, position + side * sideSign * radiusX * 0.55F, radiusX * 0.55F, radiusY * 0.55F, stepHash ^ 0xA57E2D1Bu);
 		}
-		F32 turnDelta = (F32((stepHash >> 12) & 31u) - 15.0F) * 0.0009F;
-		angle += turnDelta;
-		cosAngle = sincosf32(&sinAngle, angle);
-		direction = normalize_v2_safe(V2F32{ cosAngle * 0.75F, sinAngle }, 0.0001F);
-		position += direction * (1.05F + F32((stepHash >> 17) & 3u) * 0.18F);
+
+		F32 turnDelta = (F32((stepHash >> 8) & 7u) - 3.0F) * 0.0035F;
+		angleTurns += turnDelta;
+		direction = direction_from_turns(angleTurns);
+		position += direction * (0.95F + F32((stepHash >> 15) & 1u) * 0.35F);
+
 		if (position.x < 12.0F || position.x > F32(World::size.x) - 4.0F || position.y < 2.0F || position.y > F32(World::size.y) - 3.0F) {
 			break;
 		}
@@ -358,7 +402,8 @@ void generate_mountain_ranges(WorldGenerationState* state, const ArenaArrayList<
 	if (World::size.x < 24u || World::size.y < 18u) {
 		return;
 	}
-	U32 rangeCount = 2u + (state->seed & 1u);
+
+	U32 rangeCount = BASE_RANGE_COUNT + (state->seed & 1u);
 	for (U32 rangeIndex = 0; rangeIndex < rangeCount; rangeIndex++) {
 		for (U32 attempt = 0; attempt < 24u; attempt++) {
 			U32 hash = hash32(state->seed ^ 0x6D2B79F5u ^ (rangeIndex * 0x9E3779B9u) ^ (attempt * 0x85EBCA6Bu));
@@ -369,12 +414,15 @@ void generate_mountain_ranges(WorldGenerationState* state, const ArenaArrayList<
 			if (!can_place_mountain_tile(hives, startTile)) {
 				continue;
 			}
-			U32 steps = 10u + ((hash >> 22) & 15u);
-			F32 radius = 1.4F + F32((hash >> 18) & 7u) * 0.18F;
+
+			U32 steps = 11u + ((hash >> 22) & 13u);
+			F32 radius = 1.45F + F32((hash >> 18) & 7u) * 0.16F;
 			generate_mountain_range(state, hives, startTile, steps, radius, hash);
 			break;
 		}
 	}
+
+	smooth_mountain_ranges(state, hives);
 }
 
 void seed_starter_patches(WorldGenerationState* state, const ArenaArrayList<HiveDesc>& hives, V2U32 hiveTile) {

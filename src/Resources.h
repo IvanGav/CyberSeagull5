@@ -127,12 +127,14 @@ struct {
 		Sprite topLeft;
 		Sprite topRight;
 	} rock;
+	Sprite bigAssembler;
+	Sprite furnace;
 } tile;
 
 void load() {
 	scrung = load_texture("scrung.png"a);
 	scrungPart = Sprite{ &scrung, 128, 128, 128, 128, 1 };
-	tileset = load_texture("tileset_v7.png"a);
+	tileset = load_texture("tileset_v8.png"a);
 	tile.undef = Sprite{ &tileset, 0, 0, 16, 16, 1 };
 	tile.grass = Sprite{ &tileset, 16, 0, 16, 16, 1 };
 	tile.grassIron = Sprite{ &tileset, 32, 0, 16, 16, 1 };
@@ -202,6 +204,9 @@ void load() {
 	tile.assembler.leftOn = Sprite{ &tileset, 160, 144, 32, 32, 1 };
 	tile.assembler.rightOff = Sprite{ &tileset, 192, 144, 32, 32, 1 };
 	tile.assembler.rightOn = Sprite{ &tileset, 224, 144, 32, 32, 1 };
+
+	tile.bigAssembler = Sprite{ &tileset, 13 * 16, 7 * 16, 48, 32, 1 };
+	tile.furnace = Sprite{ &tileset, 15 * 16, 13 * 16, 16, 32, 1 };
 }
 
 }

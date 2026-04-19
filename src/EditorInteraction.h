@@ -1,10 +1,17 @@
 #pragma once
 
 #include "CreativeToolkit.h"
+#include "SelectUI.h"
 
 namespace Cyber5eagull::EditorInteraction {
 
 using BeeDemo::CreativeBrush;
+
+namespace Detail {
+inline void apply_creative_brush_dispatch(CreativeBrush brush, V2U32 tile, Rotation2 orientation) {
+	BeeDemo::apply_creative_brush(brush, tile, orientation);
+}
+}
 
 B32 cameraDragActive = B32_FALSE;
 B32 uiLeftCapture = B32_FALSE;
@@ -36,7 +43,7 @@ Direction2 direction_from_to(V2U32 from, V2U32 to) {
 void begin_conveyor_drag(V2U32 hoveredTile) {
 	V2U tile{ hoveredTile };
 	if (!Factory::has_machine(tile)) {
-		BeeDemo::apply_creative_brush(CreativeBrush::CONVEYOR, hoveredTile, ROTATION2_0);
+		Detail::apply_creative_brush_dispatch(CreativeBrush::CONVEYOR, hoveredTile, ROTATION2_0);
 		if (!Factory::has_belt(tile)) {
 			conveyorDragActive = B32_FALSE;
 			conveyorDragHasIncoming = B32_FALSE;
@@ -57,7 +64,6 @@ void continue_conveyor_drag(V2U32 hoveredTile) {
 	}
 
 	V2U nextTile{ hoveredTile.x, hoveredTile.y };
-
 	Direction2 previousInput = conveyorDragHasIncoming ? conveyorLastInputSide : Factory::opposite_direction(newDirection);
 	if (previousInput == newDirection) {
 		return;
@@ -112,7 +118,7 @@ void apply_drag_brush(CreativeBrush brush) {
 	}
 	lastDraggedTile = hoveredTile;
 	hasLastDraggedTile = B32_TRUE;
-	BeeDemo::apply_creative_brush(brush, hoveredTile, ROTATION2_0);
+	Detail::apply_creative_brush_dispatch(brush, hoveredTile, CreativeToolkit::selectedRotation);
 }
 
 void apply_task_unassign() {
@@ -138,7 +144,7 @@ void update_drag_interactions() {
 		uiLeftCapture = B32_FALSE;
 	}
 
-	if (shiftHeld && leftHeld && !uiLeftCapture && !CreativeToolkit::tilesheetVisible) {
+	if (shiftHeld && leftHeld && !uiLeftCapture && !CreativeToolkit::tilesheetVisible && !SelectUI::open) {
 		cameraDragActive = B32_TRUE;
 		hasLastDraggedTile = B32_FALSE;
 		conveyorDragActive = B32_FALSE;
@@ -148,7 +154,7 @@ void update_drag_interactions() {
 	}
 
 	cameraDragActive = B32_FALSE;
-	if (shiftHeld || CreativeToolkit::tilesheetVisible || uiLeftCapture) {
+	if (shiftHeld || CreativeToolkit::tilesheetVisible || SelectUI::open || uiLeftCapture) {
 		if (!leftHeld && !rightHeld) {
 			hasLastDraggedTile = B32_FALSE;
 			conveyorDragActive = B32_FALSE;
@@ -180,32 +186,58 @@ void keyboard_callback(Win32::Key key, Win32::ButtonState state) {
 	}
 
 	if (key == Win32::KEY_I) {
-		SelectUI::open = !SelectUI::open;
+		SelectUI::open = SelectUI::open ? B32_FALSE : B32_TRUE;
+		if (SelectUI::open) {
+			CreativeToolkit::close_ui();
+		}
 		hasLastDraggedTile = B32_FALSE;
 		uiLeftCapture = B32_FALSE;
 		conveyorDragActive = B32_FALSE;
+		return;
 	}
 
 	if (key == Win32::KEY_R && Win32::keyboardState[Win32::KEY_CTRL]) {
 		BeeDemo::init(hiveTile);
 		center_camera_on_tile(hiveTile);
 		reset_drag_state();
-		CreativeToolkit::selectedBrush = CreativeBrush::TASK_SELECT;
+		CreativeToolkit::set_selected_brush(CreativeBrush::TASK_SELECT);
+		CreativeToolkit::selectedRotation = ROTATION2_0;
+		CreativeToolkit::close_ui();
+		SelectUI::open = B32_FALSE;
 		return;
 	}
 
 	if (key == Win32::KEY_BACKTICK) {
-		CreativeToolkit::tilesheetVisible = !CreativeToolkit::tilesheetVisible;
+		CreativeToolkit::toggle_ui();
+		if (CreativeToolkit::tilesheetVisible) {
+			SelectUI::open = B32_FALSE;
+		}
 		hasLastDraggedTile = B32_FALSE;
 		uiLeftCapture = B32_FALSE;
 		conveyorDragActive = B32_FALSE;
 		return;
 	}
 
+	if (key == Win32::KEY_R && !Win32::keyboardState[Win32::KEY_CTRL]) {
+		if (CreativeToolkit::brush_uses_rotation(CreativeToolkit::selectedBrush)) {
+			CreativeToolkit::rotate_cw();
+		}
+		return;
+	}
+
+	if (key == Win32::KEY_Q) {
+		if (CreativeToolkit::brush_uses_rotation(CreativeToolkit::selectedBrush)) {
+			CreativeToolkit::rotate_ccw();
+		}
+		return;
+	}
+
 	if (key == Win32::KEY_ESC) {
-		CreativeToolkit::tilesheetVisible = B32_FALSE;
+		CreativeToolkit::close_ui();
+		SelectUI::open = B32_FALSE;
 		uiLeftCapture = B32_FALSE;
-		CreativeToolkit::selectedBrush = CreativeBrush::TASK_SELECT;
+		CreativeToolkit::set_selected_brush(CreativeBrush::TASK_SELECT);
+		CreativeToolkit::selectedRotation = ROTATION2_0;
 		conveyorDragActive = B32_FALSE;
 	}
 }
@@ -226,17 +258,20 @@ void mouse_callback(Win32::MouseButton button, Win32::MouseValue state) {
 
 	if (button == Win32::MOUSE_BUTTON_LEFT && state.state == Win32::BUTTON_STATE_DOWN) {
 		V2F32 mouse = Win32::get_mouse();
-		if (SelectUI::open) {
-			uiLeftCapture = SelectUI::click_callback(Win32::get_mouse());
-		}
 		if (CreativeToolkit::tilesheetVisible) {
-			uiLeftCapture = CreativeToolkit::handle_tilesheet_click(mouse);
+			uiLeftCapture = CreativeToolkit::handle_ui_click(mouse);
 			return;
+		}
+		if (SelectUI::open) {
+			uiLeftCapture = SelectUI::click_callback(mouse);
+			if (uiLeftCapture) {
+				return;
+			}
 		}
 		V2U tilePos;
 		if (mouse_to_tile(&tilePos) && Factory::machine_is_belt(Factory::get_machine_from_tile(tilePos))) {
-			Factory::get_machine_from_tile(tilePos)->inventory.count = 1;
-			Factory::get_machine_from_tile(tilePos)->inventory.item = Inventory::ITEM_IRON_ORE;
+			Factory::get_machine_from_tile(tilePos)->inventory[0].count = 1;
+			Factory::get_machine_from_tile(tilePos)->inventory[0].item = Inventory::ITEM_IRON_PLATE;
 		}
 	}
 

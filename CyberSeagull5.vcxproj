@@ -172,6 +172,7 @@
     <ClInclude Include="src\EditorInteraction.h" />
     <ClInclude Include="src\Factory.h" />
     <ClInclude Include="src\Graphics.h" />
+    <ClInclude Include="src\Recipe.h" />
     <ClInclude Include="src\Resources.h" />
     <ClInclude Include="src\SelectUI.h" />
     <ClInclude Include="src\TerrainGen.h" />
