@@ -59,6 +59,8 @@ F32 mainHiveHoneyProgress = 0.0F;
 U8 ironRemaining[TerrainGen::MAX_WORLD_MAP_TILES]{};
 U8 copperRemaining[TerrainGen::MAX_WORLD_MAP_TILES]{};
 U8 flowerRemaining[TerrainGen::MAX_WORLD_MAP_TILES]{};
+B32 machineRefundableFlags[TerrainGen::MAX_WORLD_MAP_TILES]{};
+ArenaArrayList<B32> hiveRefundable{};
 
 FINLINE I32 world_tile_pixels(I32 worldTileScale) {
     return 16 * worldTileScale;
@@ -111,6 +113,308 @@ U32 bees_inside_any_hive() {
     return result;
 }
 
+FINLINE B32 try_spend_honey(U32 amount) {
+    return Inventory::try_take_item(Inventory::ITEM_HONEY, amount);
+}
+
+static constexpr U32 MAX_BUILD_COST_ENTRIES = 4u;
+static constexpr U32 BUILD_DEFINITION_COUNT = 7u;
+
+struct BuildCostEntry {
+    Inventory::ItemType item = Inventory::ITEM_HONEY;
+    U32 count = 0u;
+};
+
+struct BuildCostDef {
+    BuildCostEntry entries[MAX_BUILD_COST_ENTRIES]{};
+    U32 numEntries = 0u;
+};
+
+struct BuildDefinition {
+    CreativeBrush brush = CreativeBrush::TASK_SELECT;
+    BuildCostEntry entries[MAX_BUILD_COST_ENTRIES]{};
+    U32 numEntries = 0u;
+    Inventory::ItemType stockItem = Inventory::ITEM_Count;
+    U32 stockItemCount = 0u;
+};
+
+struct BeePurchaseDefinition {
+    BuildCostEntry entries[MAX_BUILD_COST_ENTRIES]{};
+    U32 numEntries = 0u;
+};
+
+BuildDefinition buildDefinitions[BUILD_DEFINITION_COUNT]{};
+BeePurchaseDefinition beePurchaseDefinition{};
+B32 buildDefinitionsInitialized = B32_FALSE;
+
+FINLINE BuildCostEntry make_build_cost_entry(Inventory::ItemType item, U32 count) {
+    BuildCostEntry entry{};
+    entry.item = item;
+    entry.count = count;
+    return entry;
+}
+
+FINLINE void add_build_cost(BuildDefinition* def, Inventory::ItemType item, U32 count) {
+    if (!def || def->numEntries >= MAX_BUILD_COST_ENTRIES || count == 0u) {
+        return;
+    }
+    def->entries[def->numEntries++] = make_build_cost_entry(item, count);
+}
+
+void init_build_definitions() {
+    if (buildDefinitionsInitialized) {
+        return;
+    }
+
+    for (U32 i = 0; i < BUILD_DEFINITION_COUNT; i++) {
+        buildDefinitions[i] = BuildDefinition{};
+    }
+    beePurchaseDefinition = BeePurchaseDefinition{};
+
+    {
+        BuildDefinition* def = &buildDefinitions[0];
+        def->brush = CreativeBrush::CONVEYOR;
+        def->stockItem = Inventory::ITEM_CONVEYOR;
+        def->stockItemCount = 1u;
+        add_build_cost(def, Inventory::ITEM_IRON_ORE, 2u);
+    }
+    {
+        BuildDefinition* def = &buildDefinitions[1];
+        def->brush = CreativeBrush::ASSEMBLER_SMALL;
+        add_build_cost(def, Inventory::ITEM_IRON_ORE, 6u);
+        add_build_cost(def, Inventory::ITEM_COPPER_ORE, 2u);
+    }
+    {
+        BuildDefinition* def = &buildDefinitions[2];
+        def->brush = CreativeBrush::ASSEMBLER_LARGE;
+        add_build_cost(def, Inventory::ITEM_IRON_ORE, 12u);
+        add_build_cost(def, Inventory::ITEM_COPPER_ORE, 6u);
+    }
+    {
+        BuildDefinition* def = &buildDefinitions[3];
+        def->brush = CreativeBrush::SPLITTER;
+        add_build_cost(def, Inventory::ITEM_IRON_ORE, 8u);
+        add_build_cost(def, Inventory::ITEM_COPPER_ORE, 4u);
+    }
+    {
+        BuildDefinition* def = &buildDefinitions[5];
+        def->brush = CreativeBrush::HIVE_SMALL;
+        add_build_cost(def, Inventory::ITEM_HONEY, 12u);
+        add_build_cost(def, Inventory::ITEM_IRON_ORE, 4u);
+    }
+    {
+        BuildDefinition* def = &buildDefinitions[6];
+        def->brush = CreativeBrush::HIVE_BIG;
+        add_build_cost(def, Inventory::ITEM_HONEY, 28u);
+        add_build_cost(def, Inventory::ITEM_IRON_ORE, 12u);
+        add_build_cost(def, Inventory::ITEM_COPPER_ORE, 6u);
+    }
+    beePurchaseDefinition.entries[beePurchaseDefinition.numEntries++] = make_build_cost_entry(Inventory::ITEM_HONEY, 4u);
+
+    buildDefinitionsInitialized = B32_TRUE;
+}
+
+const BuildDefinition* get_build_definition(CreativeBrush brush) {
+    init_build_definitions();
+    for (U32 i = 0; i < BUILD_DEFINITION_COUNT; i++) {
+        if (buildDefinitions[i].brush == brush) {
+            return &buildDefinitions[i];
+        }
+    }
+    return nullptr;
+}
+
+BuildCostDef build_cost_def(CreativeBrush brush) {
+    BuildCostDef def{};
+    const BuildDefinition* buildDef = get_build_definition(brush);
+    if (!buildDef) {
+        return def;
+    }
+    def.numEntries = buildDef->numEntries;
+    for (U32 i = 0; i < buildDef->numEntries; i++) {
+        def.entries[i] = buildDef->entries[i];
+    }
+    return def;
+}
+
+
+BuildCostDef bee_purchase_cost_def() {
+    init_build_definitions();
+    BuildCostDef def{};
+    def.numEntries = beePurchaseDefinition.numEntries;
+    for (U32 i = 0; i < beePurchaseDefinition.numEntries; i++) {
+        def.entries[i] = beePurchaseDefinition.entries[i];
+    }
+    return def;
+}
+
+FINLINE U32 available_count_for_cost_entries(const BuildCostEntry* entries, U32 numEntries) {
+    U32 available = U32_MAX;
+    for (U32 i = 0; i < numEntries; i++) {
+        const BuildCostEntry& entry = entries[i];
+        if (entry.count == 0u) {
+            continue;
+        }
+        available = min(available, Inventory::count(entry.item) / entry.count);
+    }
+    return available == U32_MAX ? 0u : available;
+}
+
+FINLINE B32 can_afford_cost_entries(const BuildCostEntry* entries, U32 numEntries) {
+    for (U32 i = 0; i < numEntries; i++) {
+        const BuildCostEntry& entry = entries[i];
+        if (entry.count != 0u && Inventory::count(entry.item) < entry.count) {
+            return B32_FALSE;
+        }
+    }
+    return B32_TRUE;
+}
+
+FINLINE B32 spend_cost_entries(const BuildCostEntry* entries, U32 numEntries) {
+    if (!can_afford_cost_entries(entries, numEntries)) {
+        return B32_FALSE;
+    }
+    for (U32 i = 0; i < numEntries; i++) {
+        const BuildCostEntry& entry = entries[i];
+        if (entry.count != 0u) {
+            Inventory::try_take_item(entry.item, entry.count);
+        }
+    }
+    return B32_TRUE;
+}
+
+B32 craft_conveyors(U32 craftCount = 1u) {
+    const BuildDefinition* def = get_build_definition(CreativeBrush::CONVEYOR);
+    if (!def || craftCount == 0u || def->stockItem != Inventory::ITEM_CONVEYOR || def->stockItemCount == 0u) {
+        return B32_FALSE;
+    }
+
+    for (U32 i = 0; i < def->numEntries; i++) {
+        const BuildCostEntry& entry = def->entries[i];
+        U32 totalCost = entry.count * craftCount;
+        if (entry.count != 0u && Inventory::count(entry.item) < totalCost) {
+            return B32_FALSE;
+        }
+    }
+    for (U32 i = 0; i < def->numEntries; i++) {
+        const BuildCostEntry& entry = def->entries[i];
+        U32 totalCost = entry.count * craftCount;
+        if (totalCost != 0u) {
+            Inventory::try_take_item(entry.item, totalCost);
+        }
+    }
+    Inventory::add_item(def->stockItem, def->stockItemCount * craftCount);
+    return B32_TRUE;
+}
+
+U32 bee_purchase_available_count() {
+    init_build_definitions();
+    return available_count_for_cost_entries(beePurchaseDefinition.entries, beePurchaseDefinition.numEntries);
+}
+
+U32 total_bee_count() {
+    return colony.total_bee_count();
+}
+
+
+B32 consume_conveyor_item(U32 amount = 1u) {
+    if (amount == 0u) {
+        return B32_TRUE;
+    }
+    const BuildDefinition* def = get_build_definition(CreativeBrush::CONVEYOR);
+    if (!def || def->stockItem != Inventory::ITEM_CONVEYOR || def->stockItemCount == 0u) {
+        return B32_FALSE;
+    }
+    U32 currentStock = Inventory::count(def->stockItem);
+    if (currentStock < amount) {
+        U32 missing = amount - currentStock;
+        if (!craft_conveyors(missing)) {
+            return B32_FALSE;
+        }
+    }
+    return Inventory::try_take_item(def->stockItem, amount);
+}
+
+U32 build_available_count(CreativeBrush brush) {
+    const BuildDefinition* def = get_build_definition(brush);
+    if (!def) {
+        return 0u;
+    }
+
+    U32 available = available_count_for_cost_entries(def->entries, def->numEntries);
+    if (def->stockItem != Inventory::ITEM_Count && def->stockItemCount != 0u) {
+        return Inventory::count(def->stockItem) / def->stockItemCount + available;
+    }
+    return available;
+}
+
+B32 spend_for_build(CreativeBrush brush) {
+    const BuildDefinition* def = get_build_definition(brush);
+    if (!def) {
+        return B32_FALSE;
+    }
+
+    if (def->stockItem != Inventory::ITEM_Count && def->stockItemCount != 0u) {
+        U32 stock = Inventory::count(def->stockItem);
+        if (stock >= def->stockItemCount) {
+            return Inventory::try_take_item(def->stockItem, def->stockItemCount);
+        }
+    }
+
+    if (!spend_cost_entries(def->entries, def->numEntries)) {
+        return B32_FALSE;
+    }
+
+    if (def->stockItem != Inventory::ITEM_Count && def->stockItemCount != 0u) {
+        Inventory::add_item(def->stockItem, def->stockItemCount);
+        return Inventory::try_take_item(def->stockItem, def->stockItemCount);
+    }
+    return B32_TRUE;
+}
+
+FINLINE CreativeBrush brush_for_machine_type(const Factory::Machine* machine) {
+    if (!machine || machine->generation == 0) {
+        return CreativeBrush::TASK_SELECT;
+    }
+    switch (machine->type) {
+    case Factory::MACHINE_BELT: return CreativeBrush::CONVEYOR;
+    case Factory::MACHINE_SMELTER: return CreativeBrush::ASSEMBLER_SMALL;
+    case Factory::MACHINE_ASSEMBLER: return CreativeBrush::ASSEMBLER_LARGE;
+    case Factory::MACHINE_SPLITTER: return CreativeBrush::SPLITTER;
+    default: return CreativeBrush::TASK_SELECT;
+    }
+}
+
+FINLINE void set_machine_refundable(const Factory::Machine* machine, B32 refundable) {
+    if (!machine || machine->generation == 0 || machine->id >= TerrainGen::MAX_WORLD_MAP_TILES) {
+        return;
+    }
+    machineRefundableFlags[machine->id] = refundable;
+}
+
+FINLINE B32 machine_is_refundable(const Factory::Machine* machine) {
+    return machine && machine->generation != 0 && machine->id < TerrainGen::MAX_WORLD_MAP_TILES && machineRefundableFlags[machine->id] ? B32_TRUE : B32_FALSE;
+}
+
+void refund_build_cost(CreativeBrush brush) {
+    const BuildDefinition* def = get_build_definition(brush);
+    if (!def) {
+        return;
+    }
+
+    if (def->stockItem != Inventory::ITEM_Count && def->stockItemCount != 0u) {
+        Inventory::add_item(def->stockItem, def->stockItemCount);
+        return;
+    }
+
+    for (U32 i = 0; i < def->numEntries; i++) {
+        const BuildCostEntry& entry = def->entries[i];
+        if (entry.count != 0u) {
+            Inventory::add_item(entry.item, entry.count);
+        }
+    }
+}
+
 BeeSystem::HomeAnchor home_anchor_for_hive(const HiveDesc& hive) {
     BeeSystem::HomeAnchor anchor{};
     anchor.tile = hive.tile;
@@ -129,6 +433,22 @@ BeeSystem::HomeAnchor home_anchor_for_hive(const HiveDesc& hive) {
 
     anchor.offsetWorld = V2F32{ offsetX, offsetY };
     return anchor;
+}
+
+
+B32 buy_bee_with_honey() {
+    init_build_definitions();
+    if (!spend_cost_entries(beePurchaseDefinition.entries, beePurchaseDefinition.numEntries)) {
+        return B32_FALSE;
+    }
+    const HiveDesc* hive = main_hive();
+    if (hive) {
+        colony.add_bee(home_anchor_for_hive(*hive));
+    }
+    else {
+        colony.add_bee();
+    }
+    return B32_TRUE;
 }
 
 BeeSystem::HomeAnchor nearest_hive_anchor_for_tile(V2U32 tile) {
@@ -178,9 +498,16 @@ void add_conveyor_tile(V2U32 tile) {
     Factory::place_belt(V2U{ tile.x, tile.y });
 }
 void remove_machine_tile(V2U32 tile) {
-    if (Factory::has_machine(V2U{ tile.x, tile.y })) {
-        Factory::remove_machine(V2U{ tile.x, tile.y });
+    Factory::Machine* machine = Factory::get_machine_from_tile(V2U{ tile.x, tile.y });
+    if (!machine) {
+        return;
     }
+
+    if (machine_is_refundable(machine)) {
+        refund_build_cost(brush_for_machine_type(machine));
+    }
+    set_machine_refundable(machine, B32_FALSE);
+    Factory::remove_machine(machine);
 }
 
 void sync_beach_runtime_tile(V2U32 tile) {
@@ -447,8 +774,18 @@ I32 find_hive_covering_tile(V2U32 tile) {
 
 void remove_hive_covering_tile(V2U32 tile) {
     I32 hiveIndex = find_hive_covering_tile(tile);
-    if (hiveIndex >= 0) {
-        hives.remove_ordered(U32(hiveIndex));
+    if (hiveIndex < 0) {
+        return;
+    }
+
+    U32 index = U32(hiveIndex);
+    if (index < hiveRefundable.size && hiveRefundable[index]) {
+        refund_build_cost(hives[index].large ? CreativeBrush::HIVE_BIG : CreativeBrush::HIVE_SMALL);
+    }
+
+    hives.remove_ordered(index);
+    if (index < hiveRefundable.size) {
+        hiveRefundable.remove_ordered(index);
     }
 }
 
@@ -679,6 +1016,14 @@ void init(V2U32 hiveTile) {
     Bee::set_position_collider(bee_position_hits_blocker);
     rebuild_resource_runtime();
     mainHiveHoneyProgress = 0.0F;
+    init_build_definitions();
+    memset(machineRefundableFlags, 0, sizeof(machineRefundableFlags));
+    hiveRefundable.allocator = &globalArena;
+    hiveRefundable.clear();
+    hiveRefundable.resize(hives.size);
+    for (U32 i = 0; i < hiveRefundable.size; i++) {
+        hiveRefundable[i] = B32_FALSE;
+    }
     colony.init(BEE_COUNT, hiveTile, SPEED);
     colony.set_home_selector(select_nearest_hive_anchor);
     if (hives.size != 0) {
@@ -841,41 +1186,81 @@ CreativeBrush creative_brush_from_tileset_cell(I32 cellX, I32 cellY, CreativeBru
     return fallback;
 }
 
-void place_hive(V2U32 topLeft, B32 large) {
+B32 place_hive(V2U32 topLeft, B32 large, B32 refundable = B32_TRUE) {
     HiveDesc newHive{};
     newHive.tile = topLeft;
     newHive.large = large;
     V2U32 footprint = TerrainGen::hive_footprint_size_tiles(newHive);
     if (!can_place_hive_footprint(topLeft, footprint)) {
-        return;
+        return B32_FALSE;
     }
     clear_tasks_in_footprint(topLeft, footprint);
     clear_machines_in_footprint(topLeft, footprint);
     clear_hives_in_footprint(topLeft, footprint);
     hives.push_back(newHive);
+    hiveRefundable.push_back(refundable);
+    return B32_TRUE;
 }
 
-void place_structure(V2U32 topLeft, Factory::MachineType type, Rotation2 orientation) {
+B32 place_structure(V2U32 topLeft, Factory::MachineType type, Rotation2 orientation, B32 refundable = B32_TRUE) {
     V2U32 footprint = Factory::machine_footprint(type, orientation);
     if (topLeft.x + footprint.x > World::size.x || topLeft.y + footprint.y > World::size.y) {
-        return;
+        return B32_FALSE;
     }
     for (U32 y = 0; y < footprint.y; y++) {
         for (U32 x = 0; x < footprint.x; x++) {
             V2U32 tile{ topLeft.x + x, topLeft.y + y };
             World::TileType tileType = TerrainGen::get_world_tile(tile);
             if (tileType == World::TILE_WATER || tileType == World::TILE_MOUNTAIN) {
-                return;
+                return B32_FALSE;
             }
         }
     }
     clear_tasks_in_footprint(topLeft, footprint);
     clear_hives_in_footprint(topLeft, footprint);
     clear_machines_in_footprint(topLeft, footprint);
-    Factory::place_machine_type(V2U{ topLeft.x, topLeft.y }, type, orientation);
+    if (!Factory::place_machine_type(V2U{ topLeft.x, topLeft.y }, type, orientation)) {
+        return B32_FALSE;
+    }
+    set_machine_refundable(Factory::get_machine_from_tile(V2U{ topLeft.x, topLeft.y }), refundable);
+    return B32_TRUE;
 }
 
-void apply_creative_brush(CreativeBrush brush, V2U32 tile, Rotation2 orientation) {
+B32 ensure_conveyor_tile(V2U32 tile, B32 refundable = B32_TRUE) {
+    if (!tile_in_bounds(tile)) {
+        return B32_FALSE;
+    }
+    World::TileType tileType = TerrainGen::get_world_tile(tile);
+    if (tileType == World::TILE_WATER || tileType == World::TILE_MOUNTAIN) {
+        return B32_FALSE;
+    }
+
+    if (Factory::has_belt(V2U{ tile.x, tile.y })) {
+        return B32_TRUE;
+    }
+    if (Factory::has_machine(V2U{ tile.x, tile.y })) {
+        return B32_FALSE;
+    }
+    if (refundable) {
+        if (!consume_conveyor_item()) {
+            return B32_FALSE;
+        }
+    }
+
+    unqueue_tile_task(tile);
+    remove_hive_covering_tile(tile);
+    if (Factory::place_belt(V2U{ tile.x, tile.y })) {
+        set_machine_refundable(Factory::get_machine_from_tile(V2U{ tile.x, tile.y }), refundable);
+        return B32_TRUE;
+    }
+
+    if (refundable) {
+        Inventory::add_item(Inventory::ITEM_CONVEYOR, 1);
+    }
+    return B32_FALSE;
+}
+
+void apply_creative_brush(CreativeBrush brush, V2U32 tile, Rotation2 orientation, B32 freePlacement = B32_FALSE) {
     if (!tile_in_bounds(tile)) {
         return;
     }
@@ -923,31 +1308,62 @@ void apply_creative_brush(CreativeBrush brush, V2U32 tile, Rotation2 orientation
     } break;
 
     case CreativeBrush::CONVEYOR: {
-        unqueue_tile_task(tile);
-        remove_hive_covering_tile(tile);
-        if (TerrainGen::get_world_tile(tile) != World::TILE_WATER && TerrainGen::get_world_tile(tile) != World::TILE_MOUNTAIN) {
-            add_conveyor_tile(tile);
-        }
+        ensure_conveyor_tile(tile, freePlacement ? B32_FALSE : B32_TRUE);
     } break;
 
     case CreativeBrush::ASSEMBLER_SMALL: {
-        place_structure(tile, Factory::MACHINE_SMELTER, orientation);
+        if (!freePlacement && !spend_for_build(brush)) {
+            break;
+        }
+        if (!place_structure(tile, Factory::MACHINE_SMELTER, orientation, freePlacement ? B32_FALSE : B32_TRUE)) {
+            if (!freePlacement) {
+                refund_build_cost(brush);
+            }
+        }
     } break;
 
     case CreativeBrush::ASSEMBLER_LARGE: {
-        place_structure(tile, Factory::MACHINE_ASSEMBLER, orientation);
+        if (!freePlacement && !spend_for_build(brush)) {
+            break;
+        }
+        if (!place_structure(tile, Factory::MACHINE_ASSEMBLER, orientation, freePlacement ? B32_FALSE : B32_TRUE)) {
+            if (!freePlacement) {
+                refund_build_cost(brush);
+            }
+        }
     } break;
 
     case CreativeBrush::SPLITTER: {
-        place_structure(tile, Factory::MACHINE_SPLITTER, orientation);
+        if (!freePlacement && !spend_for_build(brush)) {
+            break;
+        }
+        if (!place_structure(tile, Factory::MACHINE_SPLITTER, orientation, freePlacement ? B32_FALSE : B32_TRUE)) {
+            if (!freePlacement) {
+                refund_build_cost(brush);
+            }
+        }
     } break;
 
     case CreativeBrush::HIVE_SMALL: {
-        place_hive(tile, B32_FALSE);
+        if (!freePlacement && !spend_for_build(brush)) {
+            break;
+        }
+        if (!place_hive(tile, B32_FALSE, freePlacement ? B32_FALSE : B32_TRUE)) {
+            if (!freePlacement) {
+                refund_build_cost(brush);
+            }
+        }
     } break;
 
     case CreativeBrush::HIVE_BIG: {
-        place_hive(tile, B32_TRUE);
+        if (!freePlacement && !spend_for_build(brush)) {
+            break;
+        }
+        if (!place_hive(tile, B32_TRUE, freePlacement ? B32_FALSE : B32_TRUE)) {
+            if (!freePlacement) {
+                refund_build_cost(brush);
+            }
+        }
     } break;
 
     default: break;
@@ -1116,7 +1532,8 @@ void render_main_hive_status(V2F32 camera, I32 worldTileScale) {
     Graphics::display_num(Inventory::count(Inventory::ITEM_HONEY), valueX, honeyY, 16);
 
     Graphics::blit_sprite_cutout(Resources::tile.beeFly, iconX, beeY, iconScale, 0);
-    Graphics::display_num(bees_inside_any_hive(), valueX, beeY, 16);
+    Graphics::display_num(colony.total_bee_count(), valueX, beeY, 16);
+
 
     I32 barOuterX = panelX + 6;
     I32 barOuterY = panelY + panelHeight - 22;

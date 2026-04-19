@@ -79,14 +79,17 @@ ItemStack& Machine::get_item_stack() {
 }
 
 F32 Machine::process_time() {
-	return this->selectedRecipe.progress;
+	return this->selectedRecipe.def ? this->selectedRecipe.progress : 0.0F;
 }
 F32 Machine::max_process_time() {
-	return this->selectedRecipe.def->time;
+	return this->selectedRecipe.def ? this->selectedRecipe.def->time : 0.0F;
 }
 
 // return true if enough inputs to craft the selected recipe
 B32 Machine::enough_inputs() const {
+	if (this->selectedRecipe.def == nullptr) {
+		return B32_FALSE;
+	}
 	// if unit (belt), then say yes if have anything
 	if (this->selectedRecipe.def->numInputs == 0) {
 		return this->inventory[0].count > 0;
@@ -100,6 +103,9 @@ B32 Machine::enough_inputs() const {
 }
 
 void Machine::finish_recipe() {
+	if (this->selectedRecipe.def == nullptr) {
+		return;
+	}
 	// if unit (belt), then say yes if have anything
 	if (this->selectedRecipe.def->numInputs == 0) {
 		this->outputBuf = this->inventory[0];
@@ -126,7 +132,7 @@ void Machine::finish_recipe() {
 
 // transfer from `incoming` to self; modifies `incoming`
 void Machine::transfer(ItemStack& incoming) {
-	if (incoming.count == 0) return;
+	if (incoming.count == 0 || this->selectedRecipe.def == nullptr) return;
 	// if unit, accept as long as has space and same item
 	if (this->selectedRecipe.def->numInputs == 0) {
 		if (this->outputBuf.count != 0 || this->inventory[0].count != 0) { return; } // Only allow for 1 item to be on a belt
@@ -136,17 +142,19 @@ void Machine::transfer(ItemStack& incoming) {
 		return;
 	}
 	// a real recipe; just do a normal lookup
-	U32 index = -1;
+	U32 index = U32(-1);
 	for (U32 i = 0; i < Recipe::MAX_UNIQUE_INPUTS; i++) {
 		if (selectedRecipe.def->inputs[i].item == incoming.item) {
 			index = i;
 			break;
 		}
 	}
+	if (index == U32(-1)) return;
 	I32 canAccept = this->inventoryStackSizeLimit - this->inventory[index].count;
 	if (canAccept == 0) return; // already full
-	if (incoming.count > canAccept) { incoming.count -= canAccept; this->inventory[index].count += canAccept; return; } // transfer up to full
+	if (incoming.count > canAccept) { this->inventory[index].item = incoming.item; incoming.count -= canAccept; this->inventory[index].count += canAccept; return; } // transfer up to full
 	// can transfer all
+	this->inventory[index].item = incoming.item;
 	this->inventory[index].count += incoming.count;
 	incoming.count = 0;
 	return;
@@ -158,6 +166,22 @@ ArenaArrayList<Machine*> machineIdToMachine{};
 ArenaArrayList<Machine*> machineTiles{};
 U64 nextGeneration = 1;
 U32 tickCount = 0;
+
+MachineHandle recipeMenuMachine{};
+
+void recipe_menu_select_callback(U32 optionIndex) {
+	Machine* machine = recipeMenuMachine.get();
+	if (!machine || !machine->recipes || optionIndex >= machine->recipes->options.size) {
+		SelectUI::open = B32_FALSE;
+		return;
+	}
+	machine->selectedRecipe = Recipe::RecipeRef::from(machine->recipes->options[optionIndex]);
+	SelectUI::open = B32_FALSE;
+}
+
+FINLINE B32 machine_supports_recipe_menu(const Machine* machine) {
+	return machine && machine->generation != 0 && machine->recipes && machine->recipes->options.size > 0 ? B32_TRUE : B32_FALSE;
+}
 
 struct MachineDef {
 	MachineType type = MACHINE_NONE;
@@ -302,9 +326,9 @@ MachineDef get_smelter(Rotation2 orientation) {
 	result.type = MACHINE_SMELTER;
 	result.size = V2U{ 1, 1 };
 	result.sprite = &Resources::tile.assemblerSmall;
-	result.inventoryStackSize = 1;
+	result.inventoryStackSize = 4;
 	result.processAtOnce = 1;
-	result.recipes = &Recipe::recipeGroups.assembler; // TODO change
+	result.recipes = &Recipe::recipeGroups.smelter;
 
 	switch (orientation) {
 	case ROTATION2_0:
@@ -487,11 +511,22 @@ void apply_machine_def(Machine* machine, const MachineDef& def) {
 		update_machine_connections(get_machine_from_tile(V2U{ machine->pos.x + machine->ioDefs[i].pos.x, machine->pos.y + machine->ioDefs[i].pos.y + 1 }));
 		update_machine_connections(get_machine_from_tile(V2U{ machine->pos.x + machine->ioDefs[i].pos.x, machine->pos.y + machine->ioDefs[i].pos.y - 1 }));
 	}
-	// TODO remove and add handling later
-	if (machine->type == MACHINE_BELT || machine->type == MACHINE_SPLITTER) {
+	Recipe::RecipeDef* previousRecipe = machine->selectedRecipe.def;
+	if (machine->recipes && machine->recipes->options.size > 0) {
+		U32 nextRecipeIndex = 0;
+		if (previousRecipe != nullptr) {
+			for (U32 i = 0; i < machine->recipes->options.size; i++) {
+				if (machine->recipes->options[i] == previousRecipe) {
+					nextRecipeIndex = i;
+					break;
+				}
+			}
+		}
+		machine->selectedRecipe = Recipe::RecipeRef::from(machine->recipes->options[nextRecipeIndex]);
+	}
+	else {
+		//machine->selectedRecipe = Recipe::RecipeRef{};
 		machine->selectedRecipe = Recipe::RecipeRef::from(machine->recipes->options[0]);
-	} else {
-		machine->selectedRecipe = Recipe::RecipeRef::from(machine->recipes->options[1]);
 	}
 }
 
@@ -510,6 +545,19 @@ MachineHandle alloc_machine() {
 
 B32 has_machine(V2U pos) {
 	return get_machine_from_tile(pos) != nullptr ? B32_TRUE : B32_FALSE;
+}
+
+void open_recipe_menu_for_machine(Machine* machine) {
+	if (!machine_supports_recipe_menu(machine)) {
+		SelectUI::open = B32_FALSE;
+		return;
+	}
+	recipeMenuMachine = MachineHandle{ machine, machine->generation };
+	Recipe::set_select_ui_recipes(*machine->recipes, recipe_menu_select_callback);
+}
+
+void open_recipe_menu_for_machine(V2U pos) {
+	open_recipe_menu_for_machine(get_machine_from_tile(pos));
 }
 
 B32 has_belt(V2U pos) {

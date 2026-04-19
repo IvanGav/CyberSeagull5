@@ -22,6 +22,7 @@ enum ItemType : U8 {
    	ITEM_POLLEN,
 	ITEM_HONEY,
 	ITEM_LEMON_JUICE,
+	ITEM_CONVEYOR,
 	ITEM_Count
 };
 
@@ -86,6 +87,7 @@ void init() {
   	itemSprite[ITEM_POLLEN] = &Resources::tile.item.pollen;
 	itemSprite[ITEM_HONEY] = &Resources::tile.item.honey;
   	itemSprite[ITEM_LEMON_JUICE] = &Resources::tile.item.lemonJuice;
+	itemSprite[ITEM_CONVEYOR] = &Resources::tile.icon.belt;
 
 }
 

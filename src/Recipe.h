@@ -37,11 +37,18 @@ namespace Recipe {
 		RecipeDef unit;
 		RecipeDef ironSmelt;
 		RecipeDef ironGear;
+		RecipeDef copperCable;
+		RecipeDef greenCircuit;
+		RecipeDef nuclearHeart;
+		RecipeDef camera;
+		RecipeDef cyberSeagull;
 	} recipeList;
 
 	struct {
 		RecipeGroup belt;
+		RecipeGroup smelter;
 		RecipeGroup assembler;
+		RecipeGroup bigAssembler;
 	} recipeGroups;
 
 
@@ -50,18 +57,46 @@ namespace Recipe {
 			0, {}, {}, 1.0, nullptr // defines a 1 second crafting time with 0 inputs/outputs; special case for belts and such
 		};
 		recipeList.ironSmelt = RecipeDef{
-			1, {{ITEM_IRON_ORE, 2}},
+			1, {{ITEM_IRON_ORE, 3}},
 			{ITEM_IRON_PLATE, 1 },
-			5.0, &Resources::tile.item.ironPlate
+			7.0, &Resources::tile.item.ironPlate
+		};
+		recipeList.copperCable = RecipeDef{
+			1, {{ITEM_COPPER_ORE, 4}},
+			{ITEM_COPPER_CABLE, 1 },
+			4.0, &Resources::tile.item.copperCable
 		};
 		recipeList.ironGear = RecipeDef{
-			1, {{ITEM_IRON_PLATE, 4}},
+			1, {{ITEM_IRON_PLATE, 5}},
 			{ITEM_GEAR, 3 },
 			2.0,& Resources::tile.item.gear
 		};
+		recipeList.greenCircuit = RecipeDef{
+			//3, {{ITEM_IRON_PLATE, 2}, {ITEM_COPPER_CABLE, 4}, {ITEM_FEATHER, 1}},
+			1, {{ITEM_COPPER_CABLE, 8}},
+			{ITEM_GREEN_CIRCUIT, 2 },
+			8.0,&Resources::tile.item.greenCircuit
+		};
+		recipeList.nuclearHeart = RecipeDef{
+			3, {{ITEM_IRON_PLATE, 5}, {ITEM_URANIUM, 3}, {ITEM_GREEN_CIRCUIT, 1}},
+			{ITEM_NUCLEAR_HEART, 1 },
+			20.0,&Resources::tile.item.greenCircuit
+		};
+		recipeList.camera = RecipeDef{
+			3, {{ITEM_IRON_PLATE, 2}, {ITEM_GEAR, 8}, {ITEM_GREEN_CIRCUIT, 2}},
+			{ITEM_CAMERA, 1 },
+			15.0,&Resources::tile.item.greenCircuit
+		};
+		recipeList.cyberSeagull = RecipeDef{
+			3, {{ITEM_NUCLEAR_HEART, 1}, {ITEM_CAMERA, 2}, {ITEM_GULL, 1}},
+			{ITEM_LEMON_JUICE, 1 },
+			15.0,&Resources::tile.item.greenCircuit
+		};
 
 		recipeGroups.belt = RecipeGroup::make(make_arena_array_list(globalArena, &recipeList.unit));
-		recipeGroups.assembler = RecipeGroup::make(make_arena_array_list(globalArena, &recipeList.ironSmelt,&recipeList.ironGear));
+		recipeGroups.smelter = RecipeGroup::make(make_arena_array_list(globalArena, &recipeList.ironSmelt,&recipeList.copperCable));
+		recipeGroups.assembler = RecipeGroup::make(make_arena_array_list(globalArena, &recipeList.greenCircuit, &recipeList.ironGear));
+		recipeGroups.bigAssembler = RecipeGroup::make(make_arena_array_list(globalArena, &recipeList.nuclearHeart, &recipeList.camera, &recipeList.cyberSeagull));
 	}
 
 	// This is the struct you want to put in the tiles with recipes
@@ -70,18 +105,21 @@ namespace Recipe {
 		F32 progress;
 
 		static RecipeRef from(RecipeDef* def) {
-			return RecipeRef{ def, def->time };
+			return def ? RecipeRef{ def, def->time } : RecipeRef{};
 		}
 		void reset() {
-			if(def != nullptr) progress = def->time;
+			if (def != nullptr) progress = def->time;
 		}
 		// call every frame; return true if recipe has finished
 		bool tick(F32 dt) {
-			progress -= dt;
-			if (progress <= 0.0) {
-				progress = 0.0;
+			if (def == nullptr) {
+				return false;
 			}
-			return progress <= 0.0;
+			progress -= dt;
+			if (progress <= 0.0F) {
+				progress = 0.0F;
+			}
+			return progress <= 0.0F;
 		}
 	};
 
