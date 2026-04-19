@@ -63,6 +63,10 @@ struct MachineDef {
 	MachineType type = MACHINE_NONE;
 	V2U size{ 1, 1 };
 	Resources::Sprite* sprite = nullptr;
+	V2I relativeInputs[4]{};
+	V2I relativeOutputs[4]{};
+	U32 inputCount = 0;
+	U32 outputCount = 0;
 	Direction2 inputSide = DIRECTION2_LEFT;
 	Direction2 outputSide = DIRECTION2_RIGHT;
 };
@@ -91,16 +95,6 @@ FINLINE B32 tile_in_bounds(V2U pos) {
 	return pos.x < World::size.x && pos.y < World::size.y ? B32_TRUE : B32_FALSE;
 }
 
-FINLINE V2U offset_tile(V2U pos, Direction2 direction) {
-	V2I offset = direction_offset(direction);
-	I32 x = I32(pos.x) + offset.x;
-	I32 y = I32(pos.y) + offset.y;
-	if (x < 0 || y < 0 || x >= I32(World::size.x) || y >= I32(World::size.y)) {
-		return V2U{ U32_MAX, U32_MAX };
-	}
-	return V2U{ U32(x), U32(y) };
-}
-
 FINLINE B32 machine_is_belt(const Machine* machine) {
 	return machine && machine->generation != 0 && machine->type == MACHINE_BELT ? B32_TRUE : B32_FALSE;
 }
@@ -111,6 +105,10 @@ MachineDef get_belt(Direction2 src, Direction2 dst) {
 	MachineDef result{};
 	result.type = MACHINE_BELT;
 	result.size = V2U{ 1, 1 };
+	result.inputCount = 1;
+	result.outputCount = 1;
+	result.relativeInputs[0] = direction_offset(src);
+	result.relativeOutputs[0] = direction_offset(dst);
 	result.inputSide = src;
 	result.outputSide = dst;
 	switch (src) {
@@ -151,6 +149,15 @@ MachineDef get_belt(Direction2 src, Direction2 dst) {
 	return result;
 }
 
+void apply_machine_def(Machine* machine, const MachineDef& def) {
+	machine->type = def.type;
+	machine->size = def.size;
+	machine->sprite = def.sprite;
+	machine->inputSide = def.inputCount != 0 ? def.inputSide : DIRECTION2_INVALID;
+	machine->outputSide = def.outputCount != 0 ? def.outputSide : DIRECTION2_INVALID;
+	machine->animFrame = 0;
+}
+
 MachineHandle alloc_machine() {
 	Machine* machine = machineAllocator.alloc();
 	machine->generation = nextGeneration++;
@@ -185,6 +192,16 @@ B32 has_belt(V2U pos) {
 	return machine_is_belt(get_machine_from_tile(pos));
 }
 
+Direction2 belt_input_side(V2U pos) {
+	Machine* belt = get_machine_from_tile(pos);
+	return machine_is_belt(belt) ? belt->inputSide : DIRECTION2_INVALID;
+}
+
+Direction2 belt_output_side(V2U pos) {
+	Machine* belt = get_machine_from_tile(pos);
+	return machine_is_belt(belt) ? belt->outputSide : DIRECTION2_INVALID;
+}
+
 B32 tile_can_host_machine(V2U pos) {
 	if (!tile_in_bounds(pos)) {
 		return B32_FALSE;
@@ -215,130 +232,53 @@ MachineHandle try_place_machine(V2U pos, const MachineDef& def) {
 
 	MachineHandle handle = alloc_machine();
 	Machine* machine = handle.machine;
-	machine->type = def.type;
 	machine->pos = pos;
-	machine->size = def.size;
 	machine->inventoryStackSizeLimit = 1;
-	machine->sprite = def.sprite;
-	machine->inputSide = def.inputSide;
-	machine->outputSide = def.outputSide;
+	apply_machine_def(machine, def);
 	World::set_machine(Rng2I32{ I32(pos.x), I32(pos.y), I32(pos.x + def.size.x - 1), I32(pos.y + def.size.y - 1) }, machine->id);
 	machineTiles.push_back(machine);
 	return handle;
 }
 
-void refresh_belt_at(V2U pos) {
-	Machine* machine = get_machine_from_tile(pos);
-	if (!machine_is_belt(machine)) {
-		return;
+B32 set_belt_shape(V2U pos, Direction2 src, Direction2 dst) {
+	if (src == DIRECTION2_INVALID || dst == DIRECTION2_INVALID || src == dst) {
+		return B32_FALSE;
+	}
+	MachineDef def = get_belt(src, dst);
+	if (!def.sprite) {
+		return B32_FALSE;
 	}
 
-	B32 connected[DIRECTION2_Count]{};
-	for (I32 dir = 0; dir < DIRECTION2_Count; dir++) {
-		Direction2 direction = Direction2(dir);
-		V2U neighbor = offset_tile(pos, direction);
-		connected[dir] = neighbor.x != U32_MAX && has_belt(neighbor);
-	}
-
-	Direction2 input = DIRECTION2_LEFT;
-	Direction2 output = DIRECTION2_RIGHT;
-	U32 connectionCount = 0;
-	for (I32 dir = 0; dir < DIRECTION2_Count; dir++) {
-		connectionCount += connected[dir] ? 1u : 0u;
-	}
-
-	if (connectionCount == 1) {
-		for (I32 dir = 0; dir < DIRECTION2_Count; dir++) {
-			if (connected[dir]) {
-				output = Direction2(dir);
-				input = opposite_direction(output);
-				break;
-			}
-		}
-	}
-	else if (connected[DIRECTION2_LEFT] && connected[DIRECTION2_RIGHT]) {
-		input = DIRECTION2_LEFT;
-		output = DIRECTION2_RIGHT;
-	}
-	else if (connected[DIRECTION2_FRONT] && connected[DIRECTION2_BACK]) {
-		input = DIRECTION2_FRONT;
-		output = DIRECTION2_BACK;
-	}
-	else if (connected[DIRECTION2_LEFT] && connected[DIRECTION2_FRONT]) {
-		input = DIRECTION2_LEFT;
-		output = DIRECTION2_FRONT;
-	}
-	else if (connected[DIRECTION2_LEFT] && connected[DIRECTION2_BACK]) {
-		input = DIRECTION2_LEFT;
-		output = DIRECTION2_BACK;
-	}
-	else if (connected[DIRECTION2_RIGHT] && connected[DIRECTION2_FRONT]) {
-		input = DIRECTION2_RIGHT;
-		output = DIRECTION2_FRONT;
-	}
-	else if (connected[DIRECTION2_RIGHT] && connected[DIRECTION2_BACK]) {
-		input = DIRECTION2_RIGHT;
-		output = DIRECTION2_BACK;
-	}
-	else if (connectionCount >= 2) {
-		Direction2 found[2]{ DIRECTION2_LEFT, DIRECTION2_RIGHT };
-		U32 foundCount = 0;
-		for (I32 dir = 0; dir < DIRECTION2_Count && foundCount < 2; dir++) {
-			if (connected[dir]) {
-				found[foundCount++] = Direction2(dir);
-			}
-		}
-		input = found[0];
-		output = found[1];
-	}
-
-	MachineDef def = get_belt(input, output);
-	machine->sprite = def.sprite;
-	machine->inputSide = input;
-	machine->outputSide = output;
-}
-
-void refresh_belt_neighborhood(V2U pos) {
-	refresh_belt_at(pos);
-	for (I32 dir = 0; dir < DIRECTION2_Count; dir++) {
-		V2U neighbor = offset_tile(pos, Direction2(dir));
-		if (neighbor.x != U32_MAX) {
-			refresh_belt_at(neighbor);
-		}
-	}
-}
-
-B32 place_belt(V2U pos) {
 	Machine* existing = get_machine_from_tile(pos);
 	if (existing) {
 		if (!machine_is_belt(existing)) {
 			return B32_FALSE;
 		}
-		refresh_belt_neighborhood(pos);
+		apply_machine_def(existing, def);
 		return B32_TRUE;
 	}
 
-	MachineDef def = get_belt(DIRECTION2_LEFT, DIRECTION2_RIGHT);
-	MachineHandle handle = try_place_machine(pos, def);
-	if (!handle.get()) {
-		return B32_FALSE;
+	return try_place_machine(pos, def).get() ? B32_TRUE : B32_FALSE;
+}
+
+B32 place_belt(V2U pos) {
+	Machine* existing = get_machine_from_tile(pos);
+	if (existing) {
+		return machine_is_belt(existing);
 	}
-	refresh_belt_neighborhood(pos);
-	return B32_TRUE;
+	return set_belt_shape(pos, DIRECTION2_LEFT, DIRECTION2_RIGHT);
 }
 
 void remove_machine(Machine* machine) {
 	if (!machine || machine->generation == 0) {
 		return;
 	}
-	V2U pos = machine->pos;
 	machineIdToMachine[machine->id] = nullptr;
 	freeMachineIds.push_back(machine->id);
 	World::set_machine(Rng2I32{ I32(machine->pos.x), I32(machine->pos.y), I32(machine->pos.x + machine->size.x - 1), I32(machine->pos.y + machine->size.y - 1) }, World::MACHINE_NULL_ID);
 	machineTiles.remove_obj_unordered(machine);
 	machine->generation = 0;
 	machineAllocator.free(machine);
-	refresh_belt_neighborhood(pos);
 }
 
 void remove_machine(V2U pos) {
