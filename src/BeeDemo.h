@@ -170,9 +170,9 @@ B32 has_conveyor(V2U32 tile) {
 }
 
 void remove_conveyor_tile(V2U32 tile) {
-    if (Factory::has_belt(V2U{ tile.x, tile.y })) {
-        Factory::remove_machine(V2U{ tile.x, tile.y });
-    }
+	if (Factory::has_belt(tile)) {
+		Factory::remove_machine(tile);
+	}
 }
 
 void add_conveyor_tile(V2U32 tile) {
@@ -405,7 +405,7 @@ B32 has_adjacent_conveyor(V2U32 tile) {
     return (has_conveyor(north) || has_conveyor(east) || has_conveyor(south) || has_conveyor(west)) ? B32_TRUE : B32_FALSE;
 }
 
-B32 try_insert_adjacent_belt_item(V2U32 tile, Inventory::Item item, U32 count = 1) {
+B32 try_insert_adjacent_belt_item(V2U32 tile, Inventory::ItemType item, U32 count = 1) {
     using namespace TileSpace;
     V2U32 neighbors[4]{
         neighbor_tile(tile, NeighborDirection::NORTH),
@@ -428,7 +428,7 @@ B32 try_insert_adjacent_belt_item(V2U32 tile, Inventory::Item item, U32 count = 
             continue;
         }
         if (belt->inventory.count == 0) {
-            belt->inventory.item = static_cast<Factory::Item>(item);
+            belt->inventory.item = Inventory::ItemType(item);
         }
         belt->inventory.count += count;
         return B32_TRUE;
@@ -548,16 +548,16 @@ B32 tile_has_harvestable_resource(V2U32 tile) {
     }
 }
 
-Inventory::Item item_for_resource_tile(V2U32 tile) {
+Inventory::ItemType item_for_resource_tile(V2U32 tile) {
     switch (TerrainGen::get_world_tile(tile)) {
-    case World::TILE_GRASS_IRON:   return Inventory::ITEM_IRON_ORE;
-    case World::TILE_GRASS_COPPER: return Inventory::ITEM_COPPER_ORE;
-    case World::TILE_GRASS_FLOWERS:return Inventory::ITEM_POLLEN;
-    default:                       return Inventory::ITEM_IRON_ORE;
+    case World::TILE_GRASS_IRON:    return Inventory::ITEM_IRON_ORE;
+    case World::TILE_GRASS_COPPER:  return Inventory::ITEM_COPPER_ORE;
+    case World::TILE_GRASS_FLOWERS: return Inventory::ITEM_POLLEN;
+    default:                        return Inventory::ITEM_IRON_ORE;
     }
 }
 
-B32 consume_resource_from_tile(V2U32 tile, Inventory::Item* itemOut) {
+B32 consume_resource_from_tile(V2U32 tile, Inventory::ItemType* itemOut) {
     if (!tile_in_bounds(tile)) {
         return B32_FALSE;
     }
@@ -710,7 +710,7 @@ void deposit_bee_cargo_to_inventory(Bee::Bee& bee) {
     if (!bee.carrying()) {
         return;
     }
-    Inventory::add_item(Inventory::Item(bee.carriedItem), bee.carriedCount);
+    Inventory::add_item(Inventory::ItemType(bee.carriedItem), bee.carriedCount);
     bee.clear_cargo();
 }
 
@@ -740,7 +740,7 @@ void handle_work_cycle_finished(const BeeSystem::Event& event) {
     }
 
     Bee::Bee& bee = colony.bees[event.beeIndex];
-    Inventory::Item item{};
+    Inventory::ItemType item{};
     if (!consume_resource_from_tile(event.task.targetTile, &item)) {
         colony.unqueue_task_for_tile(event.task.targetTile);
         bee.clear_cargo();
@@ -760,13 +760,13 @@ void handle_work_cycle_finished(const BeeSystem::Event& event) {
         }
 
         bee.set_home_anchor(depositHome.tile, depositHome.offsetWorld);
-        bee.set_cargo(U32(item), 1);
+        bee.set_cargo(item, 1);
         bee.state = BeeTasks::State::STATE_TRAVEL_HOME;
         bee.velocity = V2F32{};
     }
     else {
         bee.set_home_anchor(depositHome.tile, depositHome.offsetWorld);
-        bee.set_cargo(U32(item), 1);
+        bee.set_cargo(item, 1);
     }
 
     if (!resourceRemaining) {
@@ -857,8 +857,8 @@ void place_hive(V2U32 topLeft, B32 large) {
     hives.push_back(newHive);
 }
 
-void place_structure(V2U32 topLeft, Factory::MachineType type) {
-    V2U32 footprint = Factory::machine_footprint(type);
+void place_structure(V2U32 topLeft, Factory::MachineType type, Rotation2 orientation) {
+    V2U32 footprint = Factory::machine_footprint(type, orientation);
     if (topLeft.x + footprint.x > World::size.x || topLeft.y + footprint.y > World::size.y) {
         return;
     }
@@ -874,10 +874,10 @@ void place_structure(V2U32 topLeft, Factory::MachineType type) {
     clear_tasks_in_footprint(topLeft, footprint);
     clear_hives_in_footprint(topLeft, footprint);
     clear_machines_in_footprint(topLeft, footprint);
-    Factory::place_machine_type(V2U{ topLeft.x, topLeft.y }, type);
+    Factory::place_machine_type(V2U{ topLeft.x, topLeft.y }, type, orientation);
 }
 
-void apply_creative_brush(CreativeBrush brush, V2U32 tile) {
+void apply_creative_brush(CreativeBrush brush, V2U32 tile, Rotation2 orientation) {
     if (!tile_in_bounds(tile)) {
         return;
     }
@@ -933,19 +933,19 @@ void apply_creative_brush(CreativeBrush brush, V2U32 tile) {
     } break;
 
     case CreativeBrush::ASSEMBLER_SMALL: {
-        place_structure(tile, Factory::MACHINE_ASSEMBLER_SMALL);
+        place_structure(tile, Factory::MACHINE_ASSEMBLER, orientation);
     } break;
 
     case CreativeBrush::ASSEMBLER_LARGE: {
-        place_structure(tile, Factory::MACHINE_ASSEMBLER_LARGE);
+        place_structure(tile, Factory::MACHINE_ASSEMBLER, orientation);
     } break;
 
     case CreativeBrush::SPLITTER: {
-        place_structure(tile, Factory::MACHINE_SPLITTER);
+        place_structure(tile, Factory::MACHINE_SPLITTER, orientation);
     } break;
 
     case CreativeBrush::MERGER: {
-        place_structure(tile, Factory::MACHINE_MERGER);
+        place_structure(tile, Factory::MACHINE_MERGER, orientation);
     } break;
 
     case CreativeBrush::HIVE_SMALL: {

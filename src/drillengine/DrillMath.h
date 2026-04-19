@@ -2455,6 +2455,7 @@ enum Direction2 : I32 {
 };
 Direction2 DIRECTION2_OPPOSITE[]{ DIRECTION2_RIGHT, DIRECTION2_LEFT, DIRECTION2_BACK, DIRECTION2_FRONT };
 V2I DIRECTION2_V2I[]{ V2I{ -1, 0 }, V2I{ 1, 0 }, V2I{ 0, -1 }, V2I{ 0, 1 } };
+V2F DIRECTION2_V2F[]{ V2F{ -1, 0 }, V2F{ 1, 0 }, V2F{ 0, -1 }, V2F{ 0, 1 } };
 V2I DIRECTION2_OPPOSITE_V2I[]{ V2I{ 1, 0 }, V2I{ -1, 0 }, V2I{ 0, 1 }, V2I{ 0, -1 } };
 enum Direction3 : I32 {
 	DIRECTION3_INVALID = -1,
@@ -2467,12 +2468,33 @@ enum Direction3 : I32 {
 	DIRECTION3_Count = 6
 };
 
+// Clockwise
 enum Rotation2 : I32 {
 	ROTATION2_0,
 	ROTATION2_90,
 	ROTATION2_180,
 	ROTATION2_270,
 };
+
+V2I apply_rotation(V2I pos, Rotation2 r, V2I bounds = {}) {
+	switch (r) {
+	case ROTATION2_0: break;
+	case ROTATION2_90: pos = V2I{ bounds.y - pos.y, pos.x }; break;
+	case ROTATION2_180: pos = V2I{ bounds.x - pos.x, bounds.y - bounds.y }; break;
+	case ROTATION2_270: pos = V2I{ pos.y, bounds.x - pos.x }; break;
+	}
+	return pos;
+}
+
+V2I rotate_bounds(V2I bounds, Rotation2 r) {
+	switch (r) {
+	case ROTATION2_0: break;
+	case ROTATION2_90: bounds = V2I{ bounds.y, bounds.x }; break;
+	case ROTATION2_180: break;
+	case ROTATION2_270: bounds = V2I{ bounds.y, bounds.x }; break;
+	}
+	return bounds;
+}
 
 enum Axis2 : I32 {
 	AXIS2_INVALID = -1,
