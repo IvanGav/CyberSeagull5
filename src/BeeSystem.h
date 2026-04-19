@@ -16,6 +16,7 @@ enum class EventType : U8 {
 	EVENT_TASK_ASSIGNED,
 	EVENT_TASK_UNASSIGNED,
 	EVENT_WORK_CYCLE_FINISHED,
+	EVENT_BEE_REACHED_HOME,
 	EVENT_TASK_FINISHED,
 };
 
@@ -82,6 +83,14 @@ public:
 
 	U32 idle_bee_count() const {
 		return total_bee_count() - busy_bee_count();
+	}
+
+	U32 count_bees_inside_home_tile(V2U32 homeTile) const {
+		U32 result = 0;
+		for (U32 i = 0; i < bees.size; i++) {
+			result += bees[i].inside_hive_tile(homeTile) ? 1u : 0u;
+		}
+		return result;
 	}
 
 	void add_bee() {
@@ -160,12 +169,18 @@ public:
 	void update(F32 dtSeconds) {
 		events.clear();
 		for (U32 beeIndex = 0; beeIndex < bees.size; beeIndex++) {
-			BeeTasks::UpdateResult result = bees[beeIndex].update(dtSeconds);
 			I32 taskIndex = find_task_assigned_to_bee(beeIndex);
-			if (taskIndex >= 0 && result.finishedWork) {
-				push_event(EventType::EVENT_WORK_CYCLE_FINISHED, beeIndex, queuedTasks[taskIndex].task);
+			BeeTasks::Task eventTask = taskIndex >= 0 ? queuedTasks[taskIndex].task : BeeTasks::Task{};
+
+			BeeTasks::UpdateResult result = bees[beeIndex].update(dtSeconds);
+
+			if (result.finishedWork && taskIndex >= 0) {
+				push_event(EventType::EVENT_WORK_CYCLE_FINISHED, beeIndex, eventTask);
 			}
-			if (taskIndex >= 0 && result.taskFinished) {
+			if (result.reachedHome) {
+				push_event(EventType::EVENT_BEE_REACHED_HOME, beeIndex, eventTask);
+			}
+			if (result.taskFinished && taskIndex >= 0) {
 				BeeTasks::Task finishedTask = queuedTasks[taskIndex].task;
 				release_finished_task(beeIndex);
 				push_event(EventType::EVENT_TASK_FINISHED, beeIndex, finishedTask);
@@ -229,6 +244,7 @@ private:
 
 			HomeAnchor home = home_for_task(queued.task.targetTile);
 			bees[beeIndex].set_home_anchor(home.tile, home.offsetWorld);
+			bees[beeIndex].snap_to_home();
 			bees[beeIndex].assign_task(queued.task);
 			queued.assignedBee = beeIndex;
 			push_event(EventType::EVENT_TASK_ASSIGNED, U32(beeIndex), queued.task);

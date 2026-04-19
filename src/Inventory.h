@@ -6,54 +6,88 @@
 #include "Resources.h"
 
 namespace Inventory {
-	typedef U32 Item;
 
-	enum ItemType : U8 {
-		ITEM_IRON_ORE,
-		ITEM_COPPER_ORE,
-		ITEM_GULL,
-		ITEM_COPPER_CABLE,
-		ITEM_IRON_PLATE,
-		ITEM_GREEN_CIRCUIT,
-		ITEM_CAMERA,
-		ITEM_FEATHER,
-		ITEM_GEAR,
-		ITEM_NUCLEAR_HEART,
-		ITEM_URANIUM,
-		//ITEM_KITTY_CAT,
-		ITEM_Count
-	};
+typedef U32 Item;
 
-	Resources::Sprite* itemSprite[ITEM_Count];
-
-	U32 item_font_size = 32;
-	U32 x_off = 10;
-	U32 y_off = 20;
-
-	ArenaArrayList<Item> inv; // inv[Item] = how many of that resource is in the invenotry
-
-	// Call to create space for `item_count` resources in the inventory (0..inv_count)
-	void init() {
-		inv.clear();
-		inv.resize(ITEM_Count);
-
-		itemSprite[ITEM_IRON_ORE] = &Resources::tile.item.ironOre;
-		itemSprite[ITEM_COPPER_ORE] = &Resources::tile.item.copperOre;
-		itemSprite[ITEM_GULL] = &Resources::tile.item.gull;
-		itemSprite[ITEM_COPPER_CABLE] = &Resources::tile.item.copperCable;
-		itemSprite[ITEM_IRON_PLATE] = &Resources::tile.item.ironPlate;
-		itemSprite[ITEM_GREEN_CIRCUIT] = &Resources::tile.item.greenCircuit;
-		itemSprite[ITEM_CAMERA] = &Resources::tile.item.camera;
-		itemSprite[ITEM_FEATHER] = &Resources::tile.item.feather;
-		itemSprite[ITEM_GEAR] = &Resources::tile.item.gear;
-		itemSprite[ITEM_NUCLEAR_HEART] = &Resources::tile.item.nuclearHeart;
-		itemSprite[ITEM_URANIUM] = &Resources::tile.item.uranium;
-	}
-
-	void draw_inv() {
-		for (U32 i = 0; i < inv.size; i++) {
-			Graphics::blit_sprite_cutout(*itemSprite[i], x_off, y_off + (item_font_size + 2) * i, item_font_size/16, 0);
-			Graphics::display_num(Inventory::inv[i], x_off + item_font_size, y_off + (item_font_size + 2) * i, item_font_size);
-		}
-	}
+enum ItemType : U8 {
+    ITEM_IRON_ORE,
+    ITEM_COPPER_ORE,
+    ITEM_POLLEN,
+    ITEM_HONEY,
+    ITEM_GULL,
+    ITEM_COPPER_CABLE,
+    ITEM_IRON_PLATE,
+    ITEM_GREEN_CIRCUIT,
+    ITEM_CAMERA,
+    ITEM_FEATHER,
+    ITEM_GEAR,
+    ITEM_NUCLEAR_HEART,
+    ITEM_URANIUM,
+    ITEM_Count
 };
+
+Resources::Sprite* itemSprite[ITEM_Count];
+
+U32 item_font_size = 32;
+U32 x_off = 10;
+U32 y_off = 20;
+
+ArenaArrayList<Item> inv; // inv[item] = total amount of that item
+
+FINLINE B32 item_valid(Item item) {
+    return item < inv.size ? B32_TRUE : B32_FALSE;
+}
+
+FINLINE void clear_counts() {
+    for (U32 i = 0; i < inv.size; i++) {
+        inv[i] = 0;
+    }
+}
+
+FINLINE void add_item(Item item, U32 amount = 1) {
+    if (!item_valid(item) || amount == 0) {
+        return;
+    }
+    inv[item] += amount;
+}
+
+FINLINE B32 try_take_item(Item item, U32 amount = 1) {
+    if (!item_valid(item) || amount == 0 || inv[item] < amount) {
+        return B32_FALSE;
+    }
+    inv[item] -= amount;
+    return B32_TRUE;
+}
+
+FINLINE U32 count(Item item) {
+    return item_valid(item) ? inv[item] : 0u;
+}
+
+void init() {
+    inv.clear();
+    inv.resize(ITEM_Count);
+    clear_counts();
+
+    itemSprite[ITEM_IRON_ORE] = &Resources::tile.item.ironOre;
+    itemSprite[ITEM_COPPER_ORE] = &Resources::tile.item.copperOre;
+    itemSprite[ITEM_POLLEN] = &Resources::tile.item.kittyCat; // TEMP placeholder until pollen art exists
+    itemSprite[ITEM_HONEY] = &Resources::tile.item.kittyCat; // TEMP placeholder until honey art exists
+    itemSprite[ITEM_GULL] = &Resources::tile.item.gull;
+    itemSprite[ITEM_COPPER_CABLE] = &Resources::tile.item.copperCable;
+    itemSprite[ITEM_IRON_PLATE] = &Resources::tile.item.ironPlate;
+    itemSprite[ITEM_GREEN_CIRCUIT] = &Resources::tile.item.greenCircuit;
+    itemSprite[ITEM_CAMERA] = &Resources::tile.item.camera;
+    itemSprite[ITEM_FEATHER] = &Resources::tile.item.feather;
+    itemSprite[ITEM_GEAR] = &Resources::tile.item.gear;
+    itemSprite[ITEM_NUCLEAR_HEART] = &Resources::tile.item.nuclearHeart;
+    itemSprite[ITEM_URANIUM] = &Resources::tile.item.uranium;
+}
+
+void draw_inv() {
+    for (U32 i = 0; i < inv.size; i++) {
+        Graphics::blit_sprite_cutout(*itemSprite[i], x_off, y_off + (item_font_size + 2) * i, item_font_size / 16, 0);
+        Graphics::display_num(inv[i], x_off + item_font_size, y_off + (item_font_size + 2) * i, item_font_size);
+    }
+}
+
+}

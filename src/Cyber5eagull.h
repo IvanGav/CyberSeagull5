@@ -95,10 +95,7 @@ void update() {
 }
 
 void update_debug_inventory() {
-	Inventory::inv[0] = BeeDemo::colony.total_bee_count();
-	Inventory::inv[1] = BeeDemo::colony.busy_bee_count();
-	Inventory::inv[2] = BeeDemo::colony.idle_bee_count();
-	Inventory::inv[3] = U32(BeeDemo::colony.queuedTasks.size);
+	// Stop writing debug counters into the actual resource inventory.
 }
 
 void render() {

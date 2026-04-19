@@ -56,16 +56,28 @@ struct BeachTileInfo {
 	U32 junkNum;
 	JunkInfo junkList[MAX_JUNK_PER_BEACH_TILE];
 	void empty() {
-		add_junk();
 		junkNum = 0;
+		add_junk();
 	}
 	void add_junk() {
 		DEBUG_ASSERT(Inventory::inv.size != 0, "Inventory must be initialized before the world lol");
 		delay = F32((rng.next() % (MAX_JUNK_DELAY + MIN_JUNK_DELAY)) - MIN_JUNK_DELAY);
 		if (junkNum == MAX_JUNK_PER_BEACH_TILE) { return; }
+
+		static const Inventory::Item allowedShoreItems[] = {
+			Inventory::ITEM_IRON_ORE,
+			Inventory::ITEM_COPPER_ORE,
+			Inventory::ITEM_GULL,
+			Inventory::ITEM_FEATHER,
+			Inventory::ITEM_GEAR,
+			Inventory::ITEM_CAMERA,
+			Inventory::ITEM_URANIUM,
+		};
+
+		Inventory::Item shoreItem = allowedShoreItems[rng.next() % ARRAY_COUNT(allowedShoreItems)];
 		junkList[junkNum] = JunkInfo{ 
 			TileSpace::tile_to_world(coord) + rand01v2f(rng) - V2F{0.5,0.5},
-			(U32)rng.next() % (Inventory::inv.size)
+			shoreItem
 		};
 
 		junkNum++;
@@ -165,6 +177,34 @@ void push_beach_tile(V2U pos) {
 	beach_tiles[num_beach_tiles] = BeachTileInfo{ pos };
 	beach_tiles[num_beach_tiles].empty();
 	num_beach_tiles++;
+}
+
+BeachTileInfo* find_beach_tile(V2U tile) {
+	for (U32 i = 0; i < num_beach_tiles; i++) {
+		if (beach_tiles[i].coord.x == tile.x && beach_tiles[i].coord.y == tile.y) {
+			return &beach_tiles[i];
+		}
+	}
+	return nullptr;
+}
+
+B32 beach_has_junk(V2U tile) {
+	BeachTileInfo* beach = find_beach_tile(tile);
+	return (beach && beach->junkNum > 0) ? B32_TRUE : B32_FALSE;
+}
+
+B32 pop_beach_junk(V2U tile, Inventory::Item* outItem) {
+	BeachTileInfo* beach = find_beach_tile(tile);
+	if (!beach || beach->junkNum == 0) {
+		return B32_FALSE;
+	}
+
+	U32 index = beach->junkNum - 1;
+	if (outItem) {
+		*outItem = beach->junkList[index].item;
+	}
+	beach->junkNum--;
+	return B32_TRUE;
 }
 
 

@@ -193,7 +193,7 @@ void keyboard_callback(Win32::Key key, Win32::ButtonState state) {
 		return;
 	}
 
-	if (key == Win32::KEY_R && Win32::keyboardState[Win32::KEY_ALT]) {
+	if (key == Win32::KEY_R && Win32::keyboardState[Win32::KEY_CTRL]) {
 		BeeDemo::init(hiveTile);
 		center_camera_on_tile(hiveTile);
 		reset_drag_state();
