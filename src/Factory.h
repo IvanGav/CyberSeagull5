@@ -20,6 +20,7 @@ enum MachineType : U32 {
 	MACHINE_BELT,
 	MACHINE_SMELTER,
 	MACHINE_ASSEMBLER,
+	MACHINE_BIG_ASSEMBLER,
 	MACHINE_SPLITTER,
 	MACHINE_Count
 };
@@ -104,6 +105,7 @@ B32 Machine::enough_inputs() const {
 
 void Machine::finish_recipe() {
 	if (this->selectedRecipe.def == nullptr) {
+		__debugbreak();
 		return;
 	}
 	// if unit (belt), then say yes if have anything
@@ -143,7 +145,7 @@ void Machine::transfer(ItemStack& incoming) {
 	}
 	// a real recipe; just do a normal lookup
 	U32 index = U32(-1);
-	for (U32 i = 0; i < Recipe::MAX_UNIQUE_INPUTS; i++) {
+	for (U32 i = 0; i < this->selectedRecipe.def->numInputs; i++) {
 		if (selectedRecipe.def->inputs[i].item == incoming.item) {
 			index = i;
 			break;
@@ -329,7 +331,7 @@ MachineDef get_assembler(Rotation2 orientation) {
 	case ROTATION2_180: result.sprite = &Resources::tile.assembler.upOff; result.spriteProcessingAlt = &Resources::tile.assembler.upOn; break;
 	case ROTATION2_270: result.sprite = &Resources::tile.assembler.rightOff; result.spriteProcessingAlt = &Resources::tile.assembler.rightOn; break;
 	}
-	result.inventoryStackSize = 5;
+	result.inventoryStackSize = 6;
 	result.ioDefs[0] = rotate_iodef(IODef{ V2I{ 0, 1 }, World::MACHINE_INPUT_DOWN }, result.size, orientation);
 	result.ioDefs[1] = rotate_iodef(IODef{ V2I{ 1, 1 }, World::MACHINE_OUTPUT_DOWN }, result.size, orientation);
 	result.recipes = &Recipe::recipeGroups.assembler;
@@ -341,7 +343,7 @@ MachineDef get_smelter(Rotation2 orientation) {
 	result.type = MACHINE_SMELTER;
 	result.size = V2U{ 1, 1 };
 	result.sprite = &Resources::tile.assemblerSmall;
-	result.inventoryStackSize = 4;
+	result.inventoryStackSize = 6;
 	result.processAtOnce = 1;
 	result.recipes = &Recipe::recipeGroups.smelter;
 
@@ -361,6 +363,26 @@ MachineDef get_smelter(Rotation2 orientation) {
 		break;
 	}
 
+	return result;
+}
+
+MachineDef get_big_assembler(Rotation2 orientation) {
+	MachineDef result{};
+	result.type = MACHINE_ASSEMBLER;
+	result.size = V2U{ 3, 2 };
+	switch (orientation) {
+	case ROTATION2_0: result.sprite = &Resources::tile.bigAssembler; result.spriteProcessingAlt = &Resources::tile.bigAssemblerOn; break;
+	//case ROTATION2_90: result.sprite = &Resources::tile.assembler.leftOff; result.spriteProcessingAlt = &Resources::tile.assembler.leftOn; break;
+	//case ROTATION2_180: result.sprite = &Resources::tile.assembler.upOff; result.spriteProcessingAlt = &Resources::tile.assembler.upOn; break;
+	//case ROTATION2_270: result.sprite = &Resources::tile.assembler.rightOff; result.spriteProcessingAlt = &Resources::tile.assembler.rightOn; break;
+	defualt: __debugbreak();
+	}
+	result.inventoryStackSize = 10;
+	result.ioDefs[0] = rotate_iodef(IODef{ V2I{ 0, 1 }, World::MACHINE_INPUT_DOWN }, result.size, orientation);
+	result.ioDefs[1] = rotate_iodef(IODef{ V2I{ 1, 1 }, World::MACHINE_INPUT_DOWN }, result.size, orientation);
+	result.ioDefs[2] = rotate_iodef(IODef{ V2I{ 2, 1 }, World::MACHINE_INPUT_DOWN }, result.size, orientation);
+	result.ioDefs[3] = rotate_iodef(IODef{ V2I{ 1, 0 }, World::MACHINE_OUTPUT_UP }, result.size, orientation);
+	result.recipes = &Recipe::recipeGroups.bigAssembler;
 	return result;
 }
 
@@ -405,6 +427,7 @@ FINLINE B32 machine_is_static_structure(const Machine* machine) {
 FINLINE V2U machine_footprint(MachineType type, Rotation2 orientation) {
 	switch (type) {
 	case MACHINE_ASSEMBLER: return V2U{ 2, 2 };
+	case MACHINE_BIG_ASSEMBLER: return V2U{ 3, 2 };
 	case MACHINE_SMELTER:
 	case MACHINE_SPLITTER:
 	case MACHINE_BELT:
@@ -467,6 +490,9 @@ MachineDef get_static_machine(MachineType type, Rotation2 orientation) {
 		break;
 	case MACHINE_ASSEMBLER:
 		result = get_assembler(orientation);
+		break;
+	case MACHINE_BIG_ASSEMBLER:
+		result = get_big_assembler(orientation);
 		break;
 	case MACHINE_SPLITTER:
 		result.size = V2U{ 1, 1 };
@@ -541,6 +567,7 @@ void apply_machine_def(Machine* machine, const MachineDef& def) {
 	}
 	else {
 		machine->selectedRecipe = Recipe::RecipeRef{};
+		//machine->selectedRecipe = Recipe::RecipeRef::from(machine->recipes->options[0]);
 	}
 }
 
