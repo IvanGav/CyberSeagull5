@@ -28,6 +28,17 @@ V2U size;
 TileType* tiles;
 const U32 MACHINE_NULL_ID = 0;
 U32* tileMachineIds;
+enum MachineConnectFlags {
+	MACHINE_INPUT_UP = 1 << 0,
+	MACHINE_INPUT_DOWN = 1 << 1,
+	MACHINE_INPUT_LEFT = 1 << 2,
+	MACHINE_INPUT_RIGHT = 1 << 3,
+	MACHINE_OUTPUT_UP = 1 << 4,
+	MACHINE_OUTPUT_DOWN = 1 << 5,
+	MACHINE_OUTPUT_LEFT = 1 << 6,
+	MACHINE_OUTPUT_RIGHT = 1 << 7,
+};
+Flags8* canMachineConnect;
 
 TileType get_tile(U32* machineId, I32 x, I32 y) {
 	if (x < 0 || y < 0 || x >= size.x || y >= size.y) {
@@ -47,7 +58,7 @@ constexpr U32 MIN_JUNK_DELAY = 60;
 // list of floating items to render
 struct JunkInfo {
 	V2F coord;
-	Inventory::Item item;
+	Inventory::ItemType item;
 };
 
 // list of beach tiles currently in the world + their delay before depositing a new junk
@@ -65,7 +76,7 @@ struct BeachTileInfo {
 		delay = F32((rng.next() % (MAX_JUNK_DELAY + MIN_JUNK_DELAY)) - MIN_JUNK_DELAY);
 		if (junkNum == MAX_JUNK_PER_BEACH_TILE) { return; }
 
-		static const Inventory::Item allowedShoreItems[] = {
+		static const Inventory::ItemType allowedShoreItems[] = {
 			Inventory::ITEM_IRON_ORE,
 			Inventory::ITEM_COPPER_ORE,
 			Inventory::ITEM_GULL,
@@ -75,7 +86,7 @@ struct BeachTileInfo {
 			Inventory::ITEM_URANIUM,
 		};
 
-		Inventory::Item shoreItem = allowedShoreItems[rng.next() % ARRAY_COUNT(allowedShoreItems)];
+		Inventory::ItemType shoreItem = allowedShoreItems[rng.next() % ARRAY_COUNT(allowedShoreItems)];
 		junkList[junkNum] = JunkInfo{ 
 			TileSpace::tile_to_world(coord) + rand01v2f(rng) - V2F{0.5,0.5},
 			shoreItem
@@ -93,8 +104,37 @@ void set_machine(Rng2I32 range, U32 machineId) {
 	for (I32 y = range.minY; y <= range.maxY; y++) {
 		for (I32 x = range.minX; x <= range.maxX; x++) {
 			tileMachineIds[y * size.x + x] = machineId;
+			canMachineConnect[y * size.x + x] = 0;
 		}
 	}
+}
+
+void set_connectivity(V2U pos, Flags8 machineConnectFlags) {
+	if (pos.x < size.x && pos.y < size.y && tileMachineIds[pos.y * size.x + pos.x] != MACHINE_NULL_ID) {
+		canMachineConnect[pos.y * size.x + pos.x] = machineConnectFlags;
+	}
+}
+
+Flags8 get_connectivity_flags(V2U pos) {
+	if (pos.x >= size.x || pos.y >= size.y) {
+		return 0;
+	}
+	Flags8 connectFlags = canMachineConnect[pos.y * size.x + pos.x];
+	return connectFlags;
+}
+
+B32 can_connect_input(V2U pos, Direction2 fromDir) {
+	if (pos.x >= size.x || pos.y >= size.y) {
+		return B32_FALSE;
+	}
+	Flags8 connectFlags = canMachineConnect[pos.y * size.x + pos.x];
+	switch (fromDir) {
+	case DIRECTION2_LEFT: return connectFlags & MACHINE_INPUT_LEFT;
+	case DIRECTION2_RIGHT: return connectFlags & MACHINE_INPUT_RIGHT;
+	case DIRECTION2_FRONT: return connectFlags & MACHINE_INPUT_UP;
+	case DIRECTION2_BACK: return connectFlags & MACHINE_INPUT_DOWN;
+	}
+	return B32_FALSE;
 }
 
 void init(V2U extent) {
@@ -104,9 +144,11 @@ void init(V2U extent) {
 	beach_tiles = globalArena.alloc<BeachTileInfo>(extent.x * extent.y);
 	rng.seed_rand();
 	tileMachineIds = globalArena.alloc<U32>(extent.x * extent.y);
+	canMachineConnect = globalArena.alloc<Flags8>(extent.x * extent.y);
 	for (U32 i = 0; i < extent.x * extent.y; i++) {
 		tiles[i] = TILE_GRASS;
 		tileMachineIds[i] = MACHINE_NULL_ID;
+		canMachineConnect[i] = 0;
 	}
 
 	tileSprite[TILE_UNDEF] = &Resources::tile.undef;
@@ -225,7 +267,7 @@ B32 beach_has_junk(V2U tile) {
 	return (beach && beach->junkNum > 0) ? B32_TRUE : B32_FALSE;
 }
 
-B32 pop_beach_junk(V2U tile, Inventory::Item* outItem) {
+B32 pop_beach_junk(V2U tile, Inventory::ItemType* outItem) {
 	BeachTileInfo* beach = find_beach_tile(tile);
 	if (!beach || beach->junkNum == 0) {
 		return B32_FALSE;

@@ -7,8 +7,6 @@
 
 namespace Inventory {
 
-typedef U32 Item;
-
 enum ItemType : U8 {
     ITEM_IRON_ORE,
     ITEM_COPPER_ORE,
@@ -27,15 +25,20 @@ enum ItemType : U8 {
 	ITEM_Count
 };
 
+struct ItemStack {
+    Inventory::ItemType item;
+    U32 count;
+};
+
 Resources::Sprite* itemSprite[ITEM_Count];
 
 U32 item_font_size = 32;
 U32 x_off = 10;
 U32 y_off = 20;
 
-ArenaArrayList<Item> inv; // inv[item] = total amount of that item
+ArenaArrayList<U32> inv; // inv[item] = total amount of that item
 
-FINLINE B32 item_valid(Item item) {
+FINLINE B32 item_valid(ItemType item) {
     return item < inv.size ? B32_TRUE : B32_FALSE;
 }
 
@@ -45,14 +48,14 @@ FINLINE void clear_counts() {
     }
 }
 
-FINLINE void add_item(Item item, U32 amount = 1) {
+FINLINE void add_item(ItemType item, U32 amount = 1) {
     if (!item_valid(item) || amount == 0) {
         return;
     }
     inv[item] += amount;
 }
 
-FINLINE B32 try_take_item(Item item, U32 amount = 1) {
+FINLINE B32 try_take_item(ItemType item, U32 amount = 1) {
     if (!item_valid(item) || amount == 0 || inv[item] < amount) {
         return B32_FALSE;
     }
@@ -60,7 +63,7 @@ FINLINE B32 try_take_item(Item item, U32 amount = 1) {
     return B32_TRUE;
 }
 
-FINLINE U32 count(Item item) {
+FINLINE U32 count(ItemType item) {
     return item_valid(item) ? inv[item] : 0u;
 }
 

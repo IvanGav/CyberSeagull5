@@ -34,22 +34,18 @@ Direction2 direction_from_to(V2U32 from, V2U32 to) {
 }
 
 void begin_conveyor_drag(V2U32 hoveredTile) {
-	V2U tile{ hoveredTile.x, hoveredTile.y };
-	if (!Factory::has_belt(tile)) {
-		BeeDemo::apply_creative_brush(CreativeBrush::CONVEYOR, hoveredTile);
+	V2U tile{ hoveredTile };
+	if (!Factory::has_machine(tile)) {
+		BeeDemo::apply_creative_brush(CreativeBrush::CONVEYOR, hoveredTile, ROTATION2_0);
 		if (!Factory::has_belt(tile)) {
 			conveyorDragActive = B32_FALSE;
 			conveyorDragHasIncoming = B32_FALSE;
 			conveyorLastInputSide = DIRECTION2_INVALID;
 			return;
 		}
-		conveyorDragHasIncoming = B32_FALSE;
-		conveyorLastInputSide = DIRECTION2_INVALID;
 	}
-	else {
-		conveyorLastInputSide = Factory::belt_input_side(tile);
-		conveyorDragHasIncoming = conveyorLastInputSide != DIRECTION2_INVALID ? B32_TRUE : B32_FALSE;
-	}
+	conveyorLastInputSide = DIRECTION2_INVALID;
+	conveyorDragHasIncoming = B32_FALSE;
 	conveyorDragActive = B32_TRUE;
 	conveyorLastTile = hoveredTile;
 }
@@ -60,35 +56,25 @@ void continue_conveyor_drag(V2U32 hoveredTile) {
 		return;
 	}
 
+	V2U nextTile{ hoveredTile.x, hoveredTile.y };
+
 	Direction2 previousInput = conveyorDragHasIncoming ? conveyorLastInputSide : Factory::opposite_direction(newDirection);
 	if (previousInput == newDirection) {
 		return;
 	}
 
 	V2U previousTile{ conveyorLastTile.x, conveyorLastTile.y };
-	if (!Factory::set_belt_shape(previousTile, previousInput, newDirection)) {
-		return;
-	}
+	Factory::set_belt_shape(previousTile, previousInput, newDirection);
 
-	V2U nextTile{ hoveredTile.x, hoveredTile.y };
 	Direction2 nextInput = Factory::opposite_direction(newDirection);
 	Direction2 nextOutput = newDirection;
-	if (Factory::has_belt(nextTile)) {
-		Direction2 existingOutput = Factory::belt_output_side(nextTile);
-		if (existingOutput != DIRECTION2_INVALID && existingOutput != nextInput) {
-			nextOutput = existingOutput;
-		}
-		if (nextOutput == nextInput) {
-			nextOutput = newDirection;
-		}
-	}
 
 	if (!Factory::set_belt_shape(nextTile, nextInput, nextOutput)) {
 		return;
 	}
 
 	conveyorLastTile = hoveredTile;
-	conveyorLastInputSide = Factory::belt_input_side(nextTile);
+	conveyorLastInputSide = nextInput;
 	conveyorDragHasIncoming = conveyorLastInputSide != DIRECTION2_INVALID ? B32_TRUE : B32_FALSE;
 }
 
@@ -126,7 +112,7 @@ void apply_drag_brush(CreativeBrush brush) {
 	}
 	lastDraggedTile = hoveredTile;
 	hasLastDraggedTile = B32_TRUE;
-	BeeDemo::apply_creative_brush(brush, hoveredTile);
+	BeeDemo::apply_creative_brush(brush, hoveredTile, ROTATION2_0);
 }
 
 void apply_task_unassign() {
@@ -200,7 +186,7 @@ void keyboard_callback(Win32::Key key, Win32::ButtonState state) {
 		conveyorDragActive = B32_FALSE;
 	}
 
-	if (key == Win32::KEY_R && Win32::keyboardState[Win32::KEY_ALT]) {
+	if (key == Win32::KEY_R && Win32::keyboardState[Win32::KEY_CTRL]) {
 		BeeDemo::init(hiveTile);
 		center_camera_on_tile(hiveTile);
 		reset_drag_state();
@@ -246,6 +232,11 @@ void mouse_callback(Win32::MouseButton button, Win32::MouseValue state) {
 		if (CreativeToolkit::tilesheetVisible) {
 			uiLeftCapture = CreativeToolkit::handle_tilesheet_click(mouse);
 			return;
+		}
+		V2U tilePos;
+		if (mouse_to_tile(&tilePos) && Factory::machine_is_belt(Factory::get_machine_from_tile(tilePos))) {
+			Factory::get_machine_from_tile(tilePos)->inventory[0].count = 1;
+			Factory::get_machine_from_tile(tilePos)->inventory[0].item = Inventory::ITEM_IRON_PLATE;
 		}
 	}
 

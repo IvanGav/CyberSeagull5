@@ -12,11 +12,9 @@ namespace Recipe {
 	// singular recipe
 	struct RecipeDef {
 		U32 numInputs;
-		ItemType inputs[MAX_UNIQUE_INPUTS];
-		U32 inputCounts[MAX_UNIQUE_INPUTS];
+		ItemStack inputs[MAX_UNIQUE_INPUTS];
 
-		ItemType output;
-		U32 outputCount;
+		ItemStack output;
 
 		F32 time;
 		Resources::Sprite* recipeSprite;
@@ -36,27 +34,33 @@ namespace Recipe {
 	};
 
 	struct {
+		RecipeDef unit;
 		RecipeDef ironSmelt;
 		RecipeDef ironGear;
 	} recipeList;
 
 	struct {
+		RecipeGroup belt;
 		RecipeGroup assembler;
 	} recipeGroups;
 
 
 	void init() {
+		recipeList.unit = RecipeDef{
+			0, {}, {}, 1.0, nullptr // defines a 1 second crafting time with 0 inputs/outputs; special case for belts and such
+		};
 		recipeList.ironSmelt = RecipeDef{
-			1, {ITEM_IRON_ORE}, {2},
-			ITEM_IRON_PLATE, 1,
+			1, {{ITEM_IRON_ORE, 2}},
+			{ITEM_IRON_PLATE, 1 },
 			5.0, &Resources::tile.item.ironPlate
 		};
 		recipeList.ironGear = RecipeDef{
-			1, {ITEM_IRON_PLATE}, {4},
-			ITEM_GEAR, 3,
+			1, {{ITEM_IRON_PLATE, 4}},
+			{ITEM_GEAR, 3 },
 			2.0,& Resources::tile.item.gear
 		};
 
+		recipeGroups.belt = RecipeGroup::make(make_arena_array_list(globalArena, &recipeList.unit));
 		recipeGroups.assembler = RecipeGroup::make(make_arena_array_list(globalArena, &recipeList.ironSmelt,&recipeList.ironGear));
 	}
 
@@ -71,9 +75,12 @@ namespace Recipe {
 		void reset() {
 			if(def != nullptr) progress = def->time;
 		}
-		// call every frame; return true if recipe has just finished
+		// call every frame; return true if recipe has finished
 		bool tick(F32 dt) {
 			progress -= dt;
+			if (progress <= 0.0) {
+				progress = 0.0;
+			}
 			return progress <= 0.0;
 		}
 	};

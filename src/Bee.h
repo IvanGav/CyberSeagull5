@@ -64,7 +64,7 @@ public:
     Task activeTask{};
     B32 hasTask = B32_FALSE;
 
-    U32 carriedItem = 0;
+    Inventory::ItemType carriedItem{};
     U32 carriedCount = 0;
 
     V2U32 pathTiles[MAX_PATH_TILES]{};
@@ -140,13 +140,13 @@ public:
         return carriedCount != 0 ? B32_TRUE : B32_FALSE;
     }
 
-    void set_cargo(U32 item, U32 count = 1) {
+    void set_cargo(Inventory::ItemType item, U32 count = 1) {
         carriedItem = item;
         carriedCount = count;
     }
 
     void clear_cargo() {
-        carriedItem = 0;
+        carriedItem = Inventory::ITEM_HONEY;
         carriedCount = 0;
     }
 

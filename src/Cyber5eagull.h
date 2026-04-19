@@ -93,7 +93,7 @@ void update() {
 	F64 currentFrameTime = current_time_seconds();
 	dt = min(F32(currentFrameTime - lastFrameTime), 0.1F);
 
-	Factory::update();
+	Factory::update(dt);
 	World::beach_update(dt);
 	BeeDemo::update(dt);
 	EditorInteraction::update_drag_interactions();

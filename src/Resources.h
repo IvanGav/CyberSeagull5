@@ -105,6 +105,16 @@ struct {
 		Sprite lemonJuice;
 	} item;
 	struct {
+		Sprite downOff;
+		Sprite downOn;
+		Sprite upOff;
+		Sprite upOn;
+		Sprite leftOff;
+		Sprite leftOn;
+		Sprite rightOff;
+		Sprite rightOn;
+	} assembler;
+	struct {
 		Sprite belt;
 		Sprite assembler;
 		Sprite hive;
@@ -183,6 +193,15 @@ void load() {
 	tile.rock.left = Sprite{ &tileset, 16 * 10, 12 * 16, 16, 16, 1 };
 	tile.rock.full = Sprite{ &tileset, 16 * 11, 12 * 16, 16, 16, 1 };
 	tile.rock.right = Sprite{ &tileset, 16 * 12, 12 * 16, 16, 16, 1 };
+
+	tile.assembler.downOff = Sprite{ &tileset, 128, 112, 32, 32, 1 };
+	tile.assembler.downOn = Sprite{ &tileset, 160, 112, 32, 32, 1 };
+	tile.assembler.upOff = Sprite{ &tileset, 192, 112, 32, 32, 1 };
+	tile.assembler.upOn = Sprite{ &tileset, 224, 112, 32, 32, 1 };
+	tile.assembler.leftOff = Sprite{ &tileset, 128, 144, 32, 32, 1 };
+	tile.assembler.leftOn = Sprite{ &tileset, 160, 144, 32, 32, 1 };
+	tile.assembler.rightOff = Sprite{ &tileset, 192, 144, 32, 32, 1 };
+	tile.assembler.rightOn = Sprite{ &tileset, 224, 144, 32, 32, 1 };
 }
 
 }
