@@ -134,7 +134,6 @@ void render_tilesheet_picker() {
 	if (selectedBrush == CreativeBrush::ASSEMBLER_SMALL) highlight_tileset_cell(1, 3, RGBA8{ 255, 255, 80, 255 });
 	if (selectedBrush == CreativeBrush::ASSEMBLER_LARGE) { highlight_tileset_cell(0, 6, RGBA8{ 255, 255, 80, 255 }); highlight_tileset_cell(1, 6, RGBA8{ 255, 255, 80, 255 }); highlight_tileset_cell(0, 7, RGBA8{ 255, 255, 80, 255 }); highlight_tileset_cell(1, 7, RGBA8{ 255, 255, 80, 255 }); }
 	if (selectedBrush == CreativeBrush::SPLITTER) highlight_tileset_cell(2, 3, RGBA8{ 255, 255, 80, 255 });
-	if (selectedBrush == CreativeBrush::MERGER) highlight_tileset_cell(2, 4, RGBA8{ 255, 255, 80, 255 });
 	if (selectedBrush == CreativeBrush::HIVE_SMALL) highlight_tileset_cell(1, 2, RGBA8{ 255, 255, 80, 255 });
 	if (selectedBrush == CreativeBrush::HIVE_BIG) { highlight_tileset_cell(0, 4, RGBA8{ 255, 255, 80, 255 }); highlight_tileset_cell(1, 4, RGBA8{ 255, 255, 80, 255 }); highlight_tileset_cell(0, 5, RGBA8{ 255, 255, 80, 255 }); highlight_tileset_cell(1, 5, RGBA8{ 255, 255, 80, 255 }); }
 }
