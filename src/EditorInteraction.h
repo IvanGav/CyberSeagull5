@@ -36,7 +36,7 @@ Direction2 direction_from_to(V2U32 from, V2U32 to) {
 void begin_conveyor_drag(V2U32 hoveredTile) {
 	V2U tile{ hoveredTile };
 	if (!Factory::has_machine(tile)) {
-		BeeDemo::apply_creative_brush(CreativeBrush::CONVEYOR, hoveredTile);
+		BeeDemo::apply_creative_brush(CreativeBrush::CONVEYOR, hoveredTile, ROTATION2_0);
 		if (!Factory::has_belt(tile)) {
 			conveyorDragActive = B32_FALSE;
 			conveyorDragHasIncoming = B32_FALSE;
@@ -112,7 +112,7 @@ void apply_drag_brush(CreativeBrush brush) {
 	}
 	lastDraggedTile = hoveredTile;
 	hasLastDraggedTile = B32_TRUE;
-	BeeDemo::apply_creative_brush(brush, hoveredTile);
+	BeeDemo::apply_creative_brush(brush, hoveredTile, ROTATION2_0);
 }
 
 void apply_task_unassign() {
@@ -179,6 +179,13 @@ void keyboard_callback(Win32::Key key, Win32::ButtonState state) {
 		return;
 	}
 
+	if (key == Win32::KEY_I) {
+		SelectUI::open = !SelectUI::open;
+		hasLastDraggedTile = B32_FALSE;
+		uiLeftCapture = B32_FALSE;
+		conveyorDragActive = B32_FALSE;
+	}
+
 	if (key == Win32::KEY_R && Win32::keyboardState[Win32::KEY_CTRL]) {
 		BeeDemo::init(hiveTile);
 		center_camera_on_tile(hiveTile);
@@ -219,6 +226,9 @@ void mouse_callback(Win32::MouseButton button, Win32::MouseValue state) {
 
 	if (button == Win32::MOUSE_BUTTON_LEFT && state.state == Win32::BUTTON_STATE_DOWN) {
 		V2F32 mouse = Win32::get_mouse();
+		if (SelectUI::open) {
+			uiLeftCapture = SelectUI::click_callback(Win32::get_mouse());
+		}
 		if (CreativeToolkit::tilesheetVisible) {
 			uiLeftCapture = CreativeToolkit::handle_tilesheet_click(mouse);
 			return;

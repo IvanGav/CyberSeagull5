@@ -61,6 +61,7 @@ struct {
 	Sprite sand;
 	Sprite beach;
 	Sprite water;
+	Sprite mountain;
 	Sprite oil;
 	Sprite assemblerSmall;
 	Sprite assemblerLarge;
@@ -99,6 +100,9 @@ struct {
 		Sprite nuclearHeart;
 		Sprite uranium;
 		Sprite kittyCat;
+		Sprite pollen;
+		Sprite honey;
+		Sprite lemonJuice;
 	} item;
 	struct {
 		Sprite downOff;
@@ -110,12 +114,25 @@ struct {
 		Sprite rightOff;
 		Sprite rightOn;
 	} assembler;
+	struct {
+		Sprite belt;
+		Sprite assembler;
+		Sprite hive;
+	} icon;
+	struct {
+		Sprite full;
+		Sprite top;
+		Sprite left;
+		Sprite right;
+		Sprite topLeft;
+		Sprite topRight;
+	} rock;
 } tile;
 
 void load() {
 	scrung = load_texture("scrung.png"a);
 	scrungPart = Sprite{ &scrung, 128, 128, 128, 128, 1 };
-	tileset = load_texture("tileset_v5.png"a);
+	tileset = load_texture("tileset_v7.png"a);
 	tile.undef = Sprite{ &tileset, 0, 0, 16, 16, 1 };
 	tile.grass = Sprite{ &tileset, 16, 0, 16, 16, 1 };
 	tile.grassIron = Sprite{ &tileset, 32, 0, 16, 16, 1 };
@@ -124,6 +141,7 @@ void load() {
 	tile.sand = Sprite{ &tileset, 0, 16, 16, 16, 1 };
 	tile.beach = Sprite{ &tileset, 16, 16, 16, 16, 1 };
 	tile.water = Sprite{ &tileset, 0, 8 * 16, 16, 16, 2 };
+	tile.mountain = Sprite{ &tileset, 11 * 16, 13 * 16, 16, 16, 1 };
 	tile.oil = Sprite{ &tileset,3 * 16, 5 * 16, 16, 16, 2 };
 	tile.assemblerSmall = Sprite{ &tileset, 16, 48, 16, 16, 1 };
 	tile.assemblerLarge = Sprite{ &tileset, 0, 96, 32, 32, 1 };
@@ -161,6 +179,20 @@ void load() {
 	tile.item.nuclearHeart = Sprite{ &tileset, 9 * 16, 13 * 16, 16, 16, 1 };
 	tile.item.uranium = Sprite{ &tileset, 10 * 16, 13 * 16, 16, 16, 1 };
 	tile.item.kittyCat = Sprite{ &tileset, 11 * 16, 13 * 16, 16, 16, 1 };
+	tile.item.pollen = Sprite{ &tileset, 12 * 16, 13 * 16, 16, 16, 1 };
+	tile.item.honey = Sprite{ &tileset, 13 * 16, 13 * 16, 16, 16, 1 };
+	tile.item.lemonJuice = Sprite{ &tileset, 14 * 16, 13 * 16, 16, 16, 1 };
+
+	tile.icon.belt = Sprite{ &tileset, 0 * 16, 14 * 16, 16, 16, 1 };
+	tile.icon.assembler = Sprite{ &tileset, 1 * 16, 14 * 16, 16, 16, 1 };
+	tile.icon.hive = Sprite{ &tileset, 2 * 16, 14 * 16, 16, 16, 1 };
+
+	tile.rock.topLeft = Sprite{ &tileset, 16 * 10, 11 * 16, 16, 16, 1 };
+	tile.rock.top = Sprite{ &tileset, 16 * 11, 11 * 16, 16, 16, 1 };
+	tile.rock.topRight = Sprite{ &tileset, 16 * 12, 11 * 16, 16, 16, 1 };
+	tile.rock.left = Sprite{ &tileset, 16 * 10, 12 * 16, 16, 16, 1 };
+	tile.rock.full = Sprite{ &tileset, 16 * 11, 12 * 16, 16, 16, 1 };
+	tile.rock.right = Sprite{ &tileset, 16 * 12, 12 * 16, 16, 16, 1 };
 
 	tile.assembler.downOff = Sprite{ &tileset, 128, 112, 32, 32, 1 };
 	tile.assembler.downOn = Sprite{ &tileset, 160, 112, 32, 32, 1 };

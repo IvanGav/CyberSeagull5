@@ -11,7 +11,7 @@ static constexpr U32 MAX_PATCH_TILES = 128u;
 static constexpr U32 HIVE_RESOURCE_SAFE_RADIUS = 4u;
 
 struct HiveDesc {
-	V2U32 tile{}; // top-left tile of the hive footprint
+	V2U32 tile{};
 	B32 large = B32_FALSE;
 };
 
@@ -276,10 +276,143 @@ void generate_random_patches(WorldGenerationState* state, const ArenaArrayList<H
 	}
 }
 
+B32 can_place_mountain_tile(const ArenaArrayList<HiveDesc>& hives, V2U32 tile) {
+	if (!tile_in_bounds(tile)) {
+		return B32_FALSE;
+	}
+	if (tile_reserved_for_hive(tile, hives) || tile_in_any_hive_safe_zone(tile, hives)) {
+		return B32_FALSE;
+	}
+	return get_world_tile(tile) == World::TILE_GRASS ? B32_TRUE : B32_FALSE;
+}
+
+void claim_mountain_tile(WorldGenerationState* state, const ArenaArrayList<HiveDesc>& hives, V2U32 tile) {
+	if (!can_place_mountain_tile(hives, tile)) {
+		return;
+	}
+	U32 index = world_tile_index(tile);
+	set_world_tile(tile, World::TILE_MOUNTAIN);
+	state->resourceClaimMask[index] = 1u;
+	state->resourceBlockMask[index] = 1u;
+}
+
+V2F32 normalize_v2_safe(V2F32 v, F32 epsilon) {
+	F32 lenSq = length_sq(v);
+	if (lenSq <= epsilon * epsilon) {
+		return V2F32{};
+	}
+	F32 invLen = 1.0F / sqrtf32(lenSq);
+	return v * invLen;
+}
+
+void stamp_mountain_blob(WorldGenerationState* state, const ArenaArrayList<HiveDesc>& hives, V2F32 centerWorld, F32 radiusX, F32 radiusY, U32 seed) {
+	I32 minX = max(I32(floorf32(centerWorld.x - radiusX - 1.0F)), 0);
+	I32 maxX = min(I32(ceilf32(centerWorld.x + radiusX + 1.0F)), I32(World::size.x) - 1);
+	I32 minY = max(I32(floorf32(centerWorld.y - radiusY - 1.0F)), 0);
+	I32 maxY = min(I32(ceilf32(centerWorld.y + radiusY + 1.0F)), I32(World::size.y) - 1);
+	for (I32 y = minY; y <= maxY; y++) {
+		for (I32 x = minX; x <= maxX; x++) {
+			V2U32 tile{ U32(x), U32(y) };
+			V2F32 tileCenter = TileSpace::tile_to_world_center(tile);
+			F32 dx = (tileCenter.x - centerWorld.x) / max(radiusX, 0.5F);
+			F32 dy = (tileCenter.y - centerWorld.y) / max(radiusY, 0.5F);
+			F32 dist = dx * dx + dy * dy;
+			U32 noiseHash = hash32(seed ^ (x * 0x9E3779B9u) ^ (y * 0x85EBCA6Bu));
+			F32 threshold = 1.0F + F32((noiseHash >> 24) & 7u) * 0.04F;
+			if (dist <= threshold) {
+				claim_mountain_tile(state, hives, tile);
+			}
+		}
+	}
+}
+
+void generate_mountain_range(WorldGenerationState* state, const ArenaArrayList<HiveDesc>& hives, V2U32 startTile, U32 rangeSteps, F32 baseRadius, U32 seed) {
+	V2F32 position = TileSpace::tile_to_world_center(startTile);
+	F32 angle = 0.14F + F32(seed & 255u) * (1.0F / 2048.0F);
+	F32 sinAngle = 0.0F;
+	F32 cosAngle = sincosf32(&sinAngle, angle);
+	V2F32 direction = normalize_v2_safe(V2F32{ cosAngle * 0.75F, sinAngle }, 0.0001F);
+	for (U32 step = 0; step < rangeSteps; step++) {
+		F32 t = rangeSteps > 1u ? F32(step) / F32(rangeSteps - 1u) : 0.0F;
+		U32 stepHash = hash32(seed ^ (step * 0x9E3779B9u));
+		F32 radiusX = baseRadius + 0.7F * sinf32(t * 0.5F) + F32((stepHash >> 24) & 3u) * 0.15F;
+		F32 radiusY = baseRadius * 0.85F + F32((stepHash >> 20) & 3u) * 0.12F;
+		stamp_mountain_blob(state, hives, position, radiusX, radiusY, stepHash);
+		if ((stepHash & 7u) == 0u) {
+			V2F32 side = get_orthogonal(direction);
+			F32 branchOffset = ((stepHash >> 8) & 1u) ? 1.1F : -1.1F;
+			stamp_mountain_blob(state, hives, position + side * branchOffset, radiusX * 0.65F, radiusY * 0.65F, stepHash ^ 0xA57E2D1Bu);
+		}
+		F32 turnDelta = (F32((stepHash >> 12) & 31u) - 15.0F) * 0.0009F;
+		angle += turnDelta;
+		cosAngle = sincosf32(&sinAngle, angle);
+		direction = normalize_v2_safe(V2F32{ cosAngle * 0.75F, sinAngle }, 0.0001F);
+		position += direction * (1.05F + F32((stepHash >> 17) & 3u) * 0.18F);
+		if (position.x < 12.0F || position.x > F32(World::size.x) - 4.0F || position.y < 2.0F || position.y > F32(World::size.y) - 3.0F) {
+			break;
+		}
+	}
+}
+
+void generate_mountain_ranges(WorldGenerationState* state, const ArenaArrayList<HiveDesc>& hives) {
+	if (World::size.x < 24u || World::size.y < 18u) {
+		return;
+	}
+	U32 rangeCount = 2u + (state->seed & 1u);
+	for (U32 rangeIndex = 0; rangeIndex < rangeCount; rangeIndex++) {
+		for (U32 attempt = 0; attempt < 24u; attempt++) {
+			U32 hash = hash32(state->seed ^ 0x6D2B79F5u ^ (rangeIndex * 0x9E3779B9u) ^ (attempt * 0x85EBCA6Bu));
+			V2U32 startTile{
+				World::size.x / 3u + (hash % max(World::size.x / 2u, 1u)),
+				4u + ((hash >> 11) % max(World::size.y - 8u, 1u))
+			};
+			if (!can_place_mountain_tile(hives, startTile)) {
+				continue;
+			}
+			U32 steps = 10u + ((hash >> 22) & 15u);
+			F32 radius = 1.4F + F32((hash >> 18) & 7u) * 0.18F;
+			generate_mountain_range(state, hives, startTile, steps, radius, hash);
+			break;
+		}
+	}
+}
+
 void seed_starter_patches(WorldGenerationState* state, const ArenaArrayList<HiveDesc>& hives, V2U32 hiveTile) {
 	try_grow_irregular_patch(state, hives, offset_tile_signed(hiveTile, 5, -2), World::TILE_GRASS_IRON, 7u, state->seed ^ 0x11111111u, B32_FALSE, 1);
 	try_grow_irregular_patch(state, hives, offset_tile_signed(hiveTile, 5, 2), World::TILE_GRASS_COPPER, 7u, state->seed ^ 0x22222222u, B32_FALSE, 1);
-	try_grow_irregular_patch(state, hives, offset_tile_signed(hiveTile, 8, 0), World::TILE_GRASS_FLOWERS, 8u, state->seed ^ 0x33333333u, B32_FALSE, 1);
+	for (U32 attempt = 0; attempt < 8u; attempt++) {
+		U32 hash = hash32(state->seed ^ 0x33333333u ^ (attempt * 0x9E3779B9u));
+		I32 dx = 6 + I32((hash >> 3) & 3u);
+		I32 dy = I32(hash & 1u ? (2 + I32((hash >> 7) & 3u)) : -(2 + I32((hash >> 7) & 3u)));
+		if (try_grow_irregular_patch(state, hives, offset_tile_signed(hiveTile, dx, dy), World::TILE_GRASS_FLOWERS, 10u + ((hash >> 12) & 3u), hash, B32_FALSE, 1)) {
+			break;
+		}
+	}
+}
+
+B32 any_tile_of_type_in_radius(V2U32 center, I32 radius, World::TileType type) {
+	for (I32 y = max(I32(center.y) - radius, 0); y <= min(I32(center.y) + radius, I32(World::size.y) - 1); y++) {
+		for (I32 x = max(I32(center.x) - radius, 0); x <= min(I32(center.x) + radius, I32(World::size.x) - 1); x++) {
+			if (get_world_tile(V2U32{ U32(x), U32(y) }) == type) {
+				return B32_TRUE;
+			}
+		}
+	}
+	return B32_FALSE;
+}
+
+void ensure_nearby_flowers(WorldGenerationState* state, const ArenaArrayList<HiveDesc>& hives, V2U32 hiveTile) {
+	if (any_tile_of_type_in_radius(hiveTile, 12, World::TILE_GRASS_FLOWERS)) {
+		return;
+	}
+	for (U32 attempt = 0; attempt < 16u; attempt++) {
+		U32 hash = hash32(state->seed ^ 0xF10A0F55u ^ (attempt * 0x85EBCA6Bu));
+		I32 dx = 6 + I32((hash >> 4) & 5u);
+		I32 dy = I32((hash >> 1) & 1u ? (I32((hash >> 9) & 5u) - 2) : -(I32((hash >> 9) & 5u) - 2));
+		if (try_grow_irregular_patch(state, hives, offset_tile_signed(hiveTile, dx, dy), World::TILE_GRASS_FLOWERS, 11u + ((hash >> 13) & 3u), hash, B32_FALSE, 1)) {
+			return;
+		}
+	}
 }
 
 void generate(WorldGenerationState* state, ArenaArrayList<HiveDesc>* hives, V2U32 mainHiveTile) {
@@ -289,10 +422,12 @@ void generate(WorldGenerationState* state, ArenaArrayList<HiveDesc>* hives, V2U3
 	reset_hives(hives, mainHiveTile);
 	clear_resource_masks(state);
 	seed_base_terrain(state);
+	generate_mountain_ranges(state, *hives);
 	seed_starter_patches(state, *hives, mainHiveTile);
 	generate_random_patches(state, *hives, World::TILE_GRASS_IRON, 3u, 7u, 12u, 0x51A91D1Du);
 	generate_random_patches(state, *hives, World::TILE_GRASS_COPPER, 3u, 7u, 12u, 0xC0FFEE11u);
 	generate_random_patches(state, *hives, World::TILE_GRASS_FLOWERS, 4u, 8u, 14u, 0xF10A0F55u);
+	ensure_nearby_flowers(state, *hives, mainHiveTile);
 }
 
 }

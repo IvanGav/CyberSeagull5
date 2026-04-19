@@ -85,4 +85,49 @@ void display_num(U32 text, I32 x, I32 y, I32 fontSize) {
 	}
 }
 
+void border(I32 x, I32 y, I32 sizeX, I32 sizeY, I32 borderSize, RGBA8 color) {
+	if (x + (y + sizeY) * sizeX > Win32::framebufferWidth * Win32::framebufferHeight) {
+		__debugbreak();
+		return; // silently fail; TODO fix later so it properly clips
+	}
+	DEBUG_ASSERT(sizeX > borderSize*2 && sizeY > borderSize*2, "Size of the box must be at least as big as twice the border size");
+	I32 dstX = max(x, 0);
+	I32 dstY = max(y, 0);
+	for (I32 boxY = 0; boxY < borderSize; boxY++) {
+		RGBA8* dst = &Win32::framebuffer[(dstY + boxY) * Win32::framebufferWidth] + dstX;
+		RGBA8* dst2 = &Win32::framebuffer[(dstY + boxY + (sizeY - borderSize)) * Win32::framebufferWidth] + dstX;
+		for (I32 boxX = 0; boxX < sizeX; boxX++) {
+			dst[boxX] = color;
+			dst2[boxX] = color;
+		}
+	}
+	for (I32 boxX = 0; boxX < borderSize; boxX++) {
+		RGBA8* dst = &Win32::framebuffer[(dstY + borderSize) * Win32::framebufferWidth] + dstX + boxX;
+		RGBA8* dst2 = &Win32::framebuffer[(dstY + borderSize) * Win32::framebufferWidth] + (dstX + boxX + (sizeX - borderSize));
+		for (I32 boxY = 0; boxY < sizeY - borderSize; boxY++) {
+			dst[boxY * Win32::framebufferWidth] = color;
+			dst2[boxY * Win32::framebufferWidth] = color;
+		}
+	}
+}
+
+// Really terrible box, but at least with a border..
+// sizeX and sizeY **do** include the border
+void box(I32 x, I32 y, I32 sizeX, I32 sizeY, I32 borderSize, RGBA8 borderColor, RGBA8 fillColor) {
+	if (x + (y + sizeY) * sizeX > Win32::framebufferWidth * Win32::framebufferHeight) {
+		__debugbreak();
+		return; // silently fail; TODO fix later so it properly clips
+	}
+	DEBUG_ASSERT(sizeX > 4 && sizeY > 4, "Size of the box must be at least 4 pixels");
+	I32 dstX = max(x, 0);
+	I32 dstY = max(y, 0);
+	Graphics::border(x, y, sizeX, sizeY, borderSize, borderColor);
+	for (I32 boxY = borderSize; boxY < sizeY - borderSize; boxY++) {
+		RGBA8* dst = &Win32::framebuffer[(dstY + boxY) * Win32::framebufferWidth] + dstX;
+		for (I32 boxX = borderSize; boxX < sizeX - borderSize; boxX++) {
+			dst[boxX] = fillColor;
+		}
+	}
+}
+
 }

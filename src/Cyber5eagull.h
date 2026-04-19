@@ -8,6 +8,7 @@
 #include "Factory.h"
 #include "BeeDemo.h"
 #include "CreativeToolkit.h"
+#include "SelectUI.h"
 #include "EditorInteraction.h"
 
 namespace Cyber5eagull {
@@ -92,14 +93,9 @@ B32 mouse_to_tile(V2U32* tileOut) {
 
 void update(F32 dt) {
 	Factory::update(dt);
+	World::beach_update(dt);
 }
 
-void update_debug_inventory() {
-	Inventory::inv[0] = BeeDemo::colony.total_bee_count();
-	Inventory::inv[1] = BeeDemo::colony.busy_bee_count();
-	Inventory::inv[2] = BeeDemo::colony.idle_bee_count();
-	Inventory::inv[3] = U32(BeeDemo::colony.queuedTasks.size);
-}
 
 void render() {
 	F64 currentFrameTime = current_time_seconds();
@@ -122,7 +118,6 @@ void render() {
 	}
 	clamp_camera();
 	BeeDemo::update(dt);
-	update_debug_inventory();
 
 	memset(Win32::framebuffer, 0, Win32::framebufferWidth * Win32::framebufferHeight * sizeof(RGBA8));
 	World::render(camera, worldTileScale);
@@ -136,6 +131,8 @@ void render() {
 	BeeDemo::render_bees(camera, worldTileScale, currentFrameTime);
 	Inventory::draw_inv();
 	CreativeToolkit::render_ui();
+	//Graphics::box(100, 50, 350, 200, 4, RGBA8{ 250,250,250,255 }, RGBA8{ 50,250,50,255 });
+	SelectUI::draw();
 	lastFrameTime = currentFrameTime;
 }
 
@@ -147,6 +144,7 @@ U32 run_cyber5eagull() {
 	lastFrameTime = current_time_seconds();
 
 	Resources::load();
+	SelectUI::debug_selections(); // TODO debug selections for now; don't need this later
 	Inventory::init();
 	World::init(V2U{ WORLD_WIDTH, WORLD_HEIGHT });
 	Factory::init();
@@ -155,10 +153,8 @@ U32 run_cyber5eagull() {
 	BeeDemo::init(hiveTile);
 	center_camera_on_tile(hiveTile);
 	Win32::show_window();
-	update_debug_inventory();
 
 	while (!Win32::windowShouldClose) {
-		World::beach_update(dt);
 		swap(&frameArena, &lastFrameArena);
 		frameArena.reset();
 		Win32::poll_events();

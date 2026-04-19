@@ -16,6 +16,7 @@ enum class EventType : U8 {
 	EVENT_TASK_ASSIGNED,
 	EVENT_TASK_UNASSIGNED,
 	EVENT_WORK_CYCLE_FINISHED,
+	EVENT_BEE_REACHED_HOME,
 	EVENT_TASK_FINISHED,
 };
 
@@ -55,6 +56,11 @@ public:
 		beeSpeed = beeMoveSpeed;
 		for (U32 i = 0; i < beeCount; i++) {
 			bees.push_back(Bee::Bee{ hiveTile, defaultHome.offsetWorld, beeSpeed });
+			Bee::Bee& bee = bees.back();
+			F32 phaseOffset = F32((i * 173u) & 1023u) * (1.0F / 1024.0F);
+			bee.flightPhaseTurns += phaseOffset;
+			bee.chaosSeed = Bee::hash01((i + 1u) * 0x9E3779B9u ^ hiveTile.x * 0x85EBCA6Bu ^ hiveTile.y * 0xC2B2AE35u);
+			bee.speedJitterSeed = Bee::hash01((i + 1u) * 0x27D4EB2Fu ^ hiveTile.x * 0x165667B1u ^ hiveTile.y * 0xD3A2646Cu);
 		}
 	}
 
@@ -84,13 +90,31 @@ public:
 		return total_bee_count() - busy_bee_count();
 	}
 
+	U32 count_bees_inside_home_tile(V2U32 homeTile) const {
+		U32 result = 0;
+		for (U32 i = 0; i < bees.size; i++) {
+			result += bees[i].inside_hive_tile(homeTile) ? 1u : 0u;
+		}
+		return result;
+	}
+
 	void add_bee() {
 		bees.push_back(Bee::Bee{ defaultHome.tile, defaultHome.offsetWorld, beeSpeed });
+			Bee::Bee& bee = bees.back();
+		U32 i = bees.size - 1;
+		bee.flightPhaseTurns += F32((i * 173u) & 1023u) * (1.0F / 1024.0F);
+		bee.chaosSeed = Bee::hash01((i + 1u) * 0x9E3779B9u ^ defaultHome.tile.x * 0x85EBCA6Bu ^ defaultHome.tile.y * 0xC2B2AE35u);
+		bee.speedJitterSeed = Bee::hash01((i + 1u) * 0x27D4EB2Fu ^ defaultHome.tile.x * 0x165667B1u ^ defaultHome.tile.y * 0xD3A2646Cu);
 		assign_waiting_tasks();
 	}
 
 	void add_bee(HomeAnchor home) {
 		bees.push_back(Bee::Bee{ home.tile, home.offsetWorld, beeSpeed });
+			Bee::Bee& bee = bees.back();
+		U32 i = bees.size - 1;
+		bee.flightPhaseTurns += F32((i * 173u) & 1023u) * (1.0F / 1024.0F);
+		bee.chaosSeed = Bee::hash01((i + 1u) * 0x9E3779B9u ^ home.tile.x * 0x85EBCA6Bu ^ home.tile.y * 0xC2B2AE35u);
+		bee.speedJitterSeed = Bee::hash01((i + 1u) * 0x27D4EB2Fu ^ home.tile.x * 0x165667B1u ^ home.tile.y * 0xD3A2646Cu);
 		assign_waiting_tasks();
 	}
 
@@ -160,12 +184,18 @@ public:
 	void update(F32 dtSeconds) {
 		events.clear();
 		for (U32 beeIndex = 0; beeIndex < bees.size; beeIndex++) {
-			BeeTasks::UpdateResult result = bees[beeIndex].update(dtSeconds);
 			I32 taskIndex = find_task_assigned_to_bee(beeIndex);
-			if (taskIndex >= 0 && result.finishedWork) {
-				push_event(EventType::EVENT_WORK_CYCLE_FINISHED, beeIndex, queuedTasks[taskIndex].task);
+			BeeTasks::Task eventTask = taskIndex >= 0 ? queuedTasks[taskIndex].task : BeeTasks::Task{};
+
+			BeeTasks::UpdateResult result = bees[beeIndex].update(dtSeconds);
+
+			if (result.finishedWork && taskIndex >= 0) {
+				push_event(EventType::EVENT_WORK_CYCLE_FINISHED, beeIndex, eventTask);
 			}
-			if (taskIndex >= 0 && result.taskFinished) {
+			if (result.reachedHome) {
+				push_event(EventType::EVENT_BEE_REACHED_HOME, beeIndex, eventTask);
+			}
+			if (result.taskFinished && taskIndex >= 0) {
 				BeeTasks::Task finishedTask = queuedTasks[taskIndex].task;
 				release_finished_task(beeIndex);
 				push_event(EventType::EVENT_TASK_FINISHED, beeIndex, finishedTask);
@@ -229,6 +259,7 @@ private:
 
 			HomeAnchor home = home_for_task(queued.task.targetTile);
 			bees[beeIndex].set_home_anchor(home.tile, home.offsetWorld);
+			bees[beeIndex].snap_to_home();
 			bees[beeIndex].assign_task(queued.task);
 			queued.assignedBee = beeIndex;
 			push_event(EventType::EVENT_TASK_ASSIGNED, U32(beeIndex), queued.task);
@@ -249,6 +280,7 @@ private:
 			return;
 		}
 	}
+
 };
 
 }
