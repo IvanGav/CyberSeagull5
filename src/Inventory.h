@@ -68,7 +68,7 @@ FINLINE I32 row_height() {
 }
 
 FINLINE I32 panel_width() {
-    return I32(item_font_size) + 72;
+    return I32(item_font_size) + 82;
 }
 
 FINLINE I32 panel_height() {
@@ -218,7 +218,7 @@ void draw_inv() {
         I32 iconX = rowX + 4;
         I32 iconY = rowY + 4;
         Graphics::blit_sprite_cutout(*itemSprite[i], iconX, iconY, item_font_size / 16, 0);
-        Graphics::display_num(inv[i], iconX + I32(item_font_size) + 6, rowY + 4, item_font_size);
+        Graphics::display_num(inv[i], iconX + I32(item_font_size) + 15, rowY + 4, item_font_size);
     }
 }
 
