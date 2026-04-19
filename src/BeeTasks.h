@@ -77,4 +77,14 @@ Task make_build_task(V2U32 targetTile, F32 workDurationSeconds) {
 	return task;
 }
 
+Task make_generic_task(V2U32 targetTile, F32 workDurationSeconds, B32 persistent = B32_FALSE, B32 returnHomeAfterWork = B32_TRUE) {
+	Task task{};
+	task.type = TaskType::TASK_GENERIC;
+	task.targetTile = targetTile;
+	task.workDurationSeconds = workDurationSeconds;
+	task.persistent = persistent;
+	task.returnHomeAfterWork = returnHomeAfterWork;
+	return task;
+}
+
 }

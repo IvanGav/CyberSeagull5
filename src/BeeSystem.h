@@ -2,7 +2,6 @@
 
 #include "Bee.h"
 
-
 namespace BeeSystem {
 
 using namespace Bee;

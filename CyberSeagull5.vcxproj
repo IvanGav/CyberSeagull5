@@ -173,6 +173,13 @@
     <ClInclude Include="src\Win32.h" />
     <ClInclude Include="src\World.h" />
   </ItemGroup>
+  <ItemGroup>
+    <Image Include="resources\textures\bee.gif" />
+    <Image Include="resources\textures\beemine.gif" />
+    <Image Include="resources\textures\scrung.png" />
+    <Image Include="resources\textures\tileset_v1.png" />
+    <Image Include="resources\textures\tileset_v2.png" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
