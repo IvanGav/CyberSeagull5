@@ -27,138 +27,378 @@ namespace Cyber5eagull::CreativeToolkit {
 
 using BeeDemo::CreativeBrush;
 
-static constexpr I32 TILESET_PANEL_PADDING = 12;
-
-struct RectI {
-	I32 x = 0;
-	I32 y = 0;
-	I32 w = 0;
-	I32 h = 0;
+ArenaArrayList<Resources::Sprite*> selections;
+static constexpr U32 BRUSH_COUNT = 17u;
+CreativeBrush brushOrder[BRUSH_COUNT] = {
+	CreativeBrush::TASK_SELECT,
+	CreativeBrush::ERASE,
+	CreativeBrush::GRASS,
+	CreativeBrush::IRON,
+	CreativeBrush::COPPER,
+	CreativeBrush::FLOWERS,
+	CreativeBrush::SAND,
+	CreativeBrush::BEACH,
+	CreativeBrush::WATER,
+	CreativeBrush::MOUNTAIN,
+	CreativeBrush::CONVEYOR,
+	CreativeBrush::ASSEMBLER_SMALL,
+	CreativeBrush::ASSEMBLER_LARGE,
+	CreativeBrush::SPLITTER,
+	CreativeBrush::MERGER,
+	CreativeBrush::HIVE_SMALL,
+	CreativeBrush::HIVE_BIG,
 };
 
-CreativeBrush selectedBrush = CreativeBrush::TASK_SELECT;
+I32 itemSize = 16;
+I32 scale = 4;
+I32 selectedItem = 0;
 B32 tilesheetVisible = B32_FALSE;
 
-B32 point_in_rect(V2F32 point, const RectI& rect) {
-	return point.x >= F32(rect.x) && point.y >= F32(rect.y) && point.x < F32(rect.x + rect.w) && point.y < F32(rect.y + rect.h) ? B32_TRUE : B32_FALSE;
+I32 borderPadding = 50;
+I32 borderSize = 3;
+I32 selectBorderSize = 2;
+
+RGBA8 selectedColor = RGBA8{ 255, 255, 80, 255 };
+RGBA8 borderColor = RGBA8{ 0, 0, 0, 255 };
+RGBA8 fillColor = RGBA8{ 100, 130, 170, 255 };
+
+CreativeBrush selectedBrush = CreativeBrush::TASK_SELECT;
+Rotation2 selectedRotation = ROTATION2_0;
+
+FINLINE Resources::Sprite* brush_icon(CreativeBrush brush) {
+	if (brush == CreativeBrush::ERASE) {
+		return &Resources::tile.undef;
+	}
+	return BeeDemo::creative_brush_sprite(brush);
 }
 
-I32 tileset_picker_scale() {
-	I32 maxWidth = max(Win32::framebufferWidth - 160, 64);
-	I32 maxHeight = max(Win32::framebufferHeight - 120, 64);
-	I32 scaleX = maxWidth / I32(Resources::tileset.width);
-	I32 scaleY = maxHeight / I32(Resources::tileset.height);
-	return clamp(min(scaleX, scaleY), 1, 4);
+FINLINE B32 brush_uses_rotation(CreativeBrush brush) {
+	switch (brush) {
+	case CreativeBrush::ASSEMBLER_SMALL:
+	case CreativeBrush::ASSEMBLER_LARGE:
+	case CreativeBrush::SPLITTER:
+	case CreativeBrush::MERGER:
+		return B32_TRUE;
+	default:
+		return B32_FALSE;
+	}
 }
 
-RectI tileset_texture_rect() {
-	I32 scale = tileset_picker_scale();
-	RectI rect{};
-	rect.w = I32(Resources::tileset.width) * scale;
-	rect.h = I32(Resources::tileset.height) * scale;
-	rect.x = max((Win32::framebufferWidth - rect.w) / 2, 0);
-	rect.y = max((Win32::framebufferHeight - rect.h) / 2 - 16, 0);
-	return rect;
+FINLINE void set_selected_brush(CreativeBrush brush) {
+	selectedBrush = brush;
+	selectedRotation = ROTATION2_0;
+	for (U32 i = 0; i < BRUSH_COUNT; i++) {
+		if (brushOrder[i] == brush) {
+			selectedItem = I32(i);
+			break;
+		}
+	}
 }
 
-RectI tileset_panel_rect() {
-	RectI tex = tileset_texture_rect();
-	RectI panel{};
-	panel.x = max(tex.x - TILESET_PANEL_PADDING, 0);
-	panel.y = max(tex.y - TILESET_PANEL_PADDING, 0);
-	panel.w = min(tex.w + TILESET_PANEL_PADDING * 2, Win32::framebufferWidth - panel.x);
-	panel.h = min(tex.h + TILESET_PANEL_PADDING * 2, Win32::framebufferHeight - panel.y);
-	return panel;
+FINLINE void rotate_cw() {
+	switch (selectedRotation) {
+	case ROTATION2_0: selectedRotation = ROTATION2_90; break;
+	case ROTATION2_90: selectedRotation = ROTATION2_180; break;
+	case ROTATION2_180: selectedRotation = ROTATION2_270; break;
+	default: selectedRotation = ROTATION2_0; break;
+	}
 }
 
-void draw_frame_rect(const RectI& rect, RGBA8 color, I32 thickness = 1) {
-	BeeDemo::fill_rect(rect.x, rect.y, rect.w, thickness, color);
-	BeeDemo::fill_rect(rect.x, rect.y + rect.h - thickness, rect.w, thickness, color);
-	BeeDemo::fill_rect(rect.x, rect.y, thickness, rect.h, color);
-	BeeDemo::fill_rect(rect.x + rect.w - thickness, rect.y, thickness, rect.h, color);
+FINLINE void rotate_ccw() {
+	switch (selectedRotation) {
+	case ROTATION2_0: selectedRotation = ROTATION2_270; break;
+	case ROTATION2_90: selectedRotation = ROTATION2_0; break;
+	case ROTATION2_180: selectedRotation = ROTATION2_90; break;
+	default: selectedRotation = ROTATION2_180; break;
+	}
 }
 
-void highlight_tileset_cell(I32 cellX, I32 cellY, RGBA8 color) {
-	RectI tex = tileset_texture_rect();
-	I32 scale = tileset_picker_scale();
-	RectI cellRect{};
-	cellRect.x = tex.x + cellX * 16 * scale;
-	cellRect.y = tex.y + cellY * 16 * scale;
-	cellRect.w = 16 * scale;
-	cellRect.h = 16 * scale;
-	draw_frame_rect(cellRect, color, max(scale / 2, 1));
+FINLINE I32 item_screen_size() {
+	return max(itemSize * scale, 1);
 }
 
-void render_tilesheet_picker() {
-	BeeDemo::fill_rect_blended(0, 0, Win32::framebufferWidth, Win32::framebufferHeight, RGBA8{ 0, 0, 0, 140 });
-	RectI panel = tileset_panel_rect();
-	RectI tex = tileset_texture_rect();
-	BeeDemo::fill_rect(panel.x, panel.y, panel.w, panel.h, RGBA8{ 26, 26, 26, 255 });
-	draw_frame_rect(panel, RGBA8{ 120, 120, 120, 255 });
-	Graphics::blit_texture(Resources::tileset, tex.x, tex.y, tileset_picker_scale());
+FINLINE I32 items_per_row() {
+	I32 usableWidth = Win32::framebufferWidth - borderPadding * 2 - borderSize * 2;
+	return max(usableWidth / item_screen_size(), 1);
+}
 
-	highlight_tileset_cell(0, 10, RGBA8{ 120, 220, 120, 255 });
-	highlight_tileset_cell(1, 0, RGBA8{ 120, 220, 120, 255 });
-	highlight_tileset_cell(2, 0, RGBA8{ 120, 220, 120, 255 });
-	highlight_tileset_cell(2, 1, RGBA8{ 120, 220, 120, 255 });
-	highlight_tileset_cell(2, 2, RGBA8{ 120, 220, 120, 255 });
-	highlight_tileset_cell(0, 1, RGBA8{ 120, 220, 120, 255 });
-	highlight_tileset_cell(1, 1, RGBA8{ 120, 220, 120, 255 });
-	highlight_tileset_cell(0, 2, RGBA8{ 120, 220, 120, 255 });
-	highlight_tileset_cell(11, 13, RGBA8{ 120, 220, 120, 255 });
-	highlight_tileset_cell(4, 0, RGBA8{ 120, 220, 120, 255 });
-	highlight_tileset_cell(1, 3, RGBA8{ 120, 220, 120, 255 });
-	highlight_tileset_cell(0, 6, RGBA8{ 120, 220, 120, 255 });
-	highlight_tileset_cell(1, 6, RGBA8{ 120, 220, 120, 255 });
-	highlight_tileset_cell(0, 7, RGBA8{ 120, 220, 120, 255 });
-	highlight_tileset_cell(1, 7, RGBA8{ 120, 220, 120, 255 });
-	highlight_tileset_cell(2, 3, RGBA8{ 120, 220, 120, 255 });
-	highlight_tileset_cell(2, 4, RGBA8{ 120, 220, 120, 255 });
-	highlight_tileset_cell(1, 2, RGBA8{ 120, 220, 120, 255 });
-	highlight_tileset_cell(0, 4, RGBA8{ 120, 220, 120, 255 });
-	highlight_tileset_cell(1, 4, RGBA8{ 120, 220, 120, 255 });
-	highlight_tileset_cell(0, 5, RGBA8{ 120, 220, 120, 255 });
-	highlight_tileset_cell(1, 5, RGBA8{ 120, 220, 120, 255 });
+FINLINE I32 row_count() {
+	I32 perRow = items_per_row();
+	return I32(BRUSH_COUNT / U32(perRow)) + ((BRUSH_COUNT % U32(perRow)) > 0 ? 1 : 0);
+}
 
-	Resources::Sprite* selectedSprite = BeeDemo::creative_brush_sprite(selectedBrush);
-	if (selectedBrush == CreativeBrush::TASK_SELECT) highlight_tileset_cell(0, 10, RGBA8{ 255, 255, 80, 255 });
-	if (selectedSprite == &Resources::tile.grass) highlight_tileset_cell(1, 0, RGBA8{ 255, 255, 80, 255 });
-	if (selectedSprite == &Resources::tile.grassIron) highlight_tileset_cell(2, 0, RGBA8{ 255, 255, 80, 255 });
-	if (selectedSprite == &Resources::tile.grassCopper) highlight_tileset_cell(2, 1, RGBA8{ 255, 255, 80, 255 });
-	if (selectedSprite == &Resources::tile.grassFlowers) highlight_tileset_cell(2, 2, RGBA8{ 255, 255, 80, 255 });
-	if (selectedSprite == &Resources::tile.sand) highlight_tileset_cell(0, 1, RGBA8{ 255, 255, 80, 255 });
-	if (selectedSprite == &Resources::tile.beach) highlight_tileset_cell(1, 1, RGBA8{ 255, 255, 80, 255 });
-	if (selectedSprite == &Resources::tile.water) highlight_tileset_cell(0, 2, RGBA8{ 255, 255, 80, 255 });
-	if (selectedSprite == &Resources::tile.mountain) highlight_tileset_cell(11, 13, RGBA8{ 255, 255, 80, 255 });
-	if (selectedSprite == &Resources::tile.belt.leftToRight) highlight_tileset_cell(4, 0, RGBA8{ 255, 255, 80, 255 });
-	if (selectedBrush == CreativeBrush::ASSEMBLER_SMALL) highlight_tileset_cell(1, 3, RGBA8{ 255, 255, 80, 255 });
-	if (selectedBrush == CreativeBrush::ASSEMBLER_LARGE) { highlight_tileset_cell(0, 6, RGBA8{ 255, 255, 80, 255 }); highlight_tileset_cell(1, 6, RGBA8{ 255, 255, 80, 255 }); highlight_tileset_cell(0, 7, RGBA8{ 255, 255, 80, 255 }); highlight_tileset_cell(1, 7, RGBA8{ 255, 255, 80, 255 }); }
-	if (selectedBrush == CreativeBrush::SPLITTER) highlight_tileset_cell(2, 3, RGBA8{ 255, 255, 80, 255 });
-	if (selectedBrush == CreativeBrush::MERGER) highlight_tileset_cell(2, 4, RGBA8{ 255, 255, 80, 255 });
-	if (selectedBrush == CreativeBrush::HIVE_SMALL) highlight_tileset_cell(1, 2, RGBA8{ 255, 255, 80, 255 });
-	if (selectedBrush == CreativeBrush::HIVE_BIG) { highlight_tileset_cell(0, 4, RGBA8{ 255, 255, 80, 255 }); highlight_tileset_cell(1, 4, RGBA8{ 255, 255, 80, 255 }); highlight_tileset_cell(0, 5, RGBA8{ 255, 255, 80, 255 }); highlight_tileset_cell(1, 5, RGBA8{ 255, 255, 80, 255 }); }
+FINLINE void close_ui() {
+	tilesheetVisible = B32_FALSE;
+}
+
+FINLINE void open_ui() {
+	SelectUI::open = B32_FALSE;
+	tilesheetVisible = B32_TRUE;
+}
+
+FINLINE void toggle_ui() {
+	if (tilesheetVisible) {
+		close_ui();
+	}
+	else {
+		open_ui();
+	}
+}
+
+FINLINE Resources::Sprite* preview_sprite(CreativeBrush brush, Rotation2 orientation) {
+	switch (brush) {
+	case CreativeBrush::TASK_SELECT:
+	case CreativeBrush::ERASE:
+		return nullptr;
+	case CreativeBrush::CONVEYOR:
+		switch (orientation) {
+		case ROTATION2_90: return &Resources::tile.belt.downToUp;
+		case ROTATION2_180: return &Resources::tile.belt.rightToLeft;
+		case ROTATION2_270: return &Resources::tile.belt.upToDown;
+		default: return &Resources::tile.belt.leftToRight;
+		}
+	case CreativeBrush::ASSEMBLER_SMALL:
+	case CreativeBrush::ASSEMBLER_LARGE:
+		switch (orientation) {
+		case ROTATION2_90: return &Resources::tile.assembler.leftOff;
+		case ROTATION2_180: return &Resources::tile.assembler.upOff;
+		case ROTATION2_270: return &Resources::tile.assembler.rightOff;
+		default: return &Resources::tile.assembler.downOff;
+		}
+	case CreativeBrush::HIVE_SMALL:
+		return &Resources::tile.hive;
+	case CreativeBrush::HIVE_BIG:
+		return &Resources::tile.hiveLarge;
+	default:
+		return BeeDemo::creative_brush_sprite(brush);
+	}
+}
+
+FINLINE V2U preview_footprint_tiles(CreativeBrush brush) {
+	switch (brush) {
+	case CreativeBrush::ASSEMBLER_SMALL:
+	case CreativeBrush::ASSEMBLER_LARGE:
+	case CreativeBrush::HIVE_BIG:
+		return V2U{ 2, 2 };
+	default:
+		return V2U{ 1, 1 };
+	}
+}
+
+FINLINE void init_ui() {
+	selections.clear();
+	for (U32 i = 0; i < BRUSH_COUNT; i++) {
+		selections.push_back(brush_icon(brushOrder[i]));
+	}
+	selectedItem = 0;
+	selectedBrush = brushOrder[0];
+	selectedRotation = ROTATION2_0;
+	tilesheetVisible = B32_FALSE;
+}
+
+FINLINE void draw_rotation_badge(I32 panelX, I32 panelY, I32 panelW) {
+	if (!brush_uses_rotation(selectedBrush)) {
+		return;
+	}
+
+	RGBA8 badgeColor = RGBA8{ 220, 220, 80, 255 };
+	switch (selectedRotation) {
+	case ROTATION2_0:   badgeColor = RGBA8{ 220, 220, 80, 255 }; break;
+	case ROTATION2_90:  badgeColor = RGBA8{ 80, 220, 220, 255 }; break;
+	case ROTATION2_180: badgeColor = RGBA8{ 220, 120, 80, 255 }; break;
+	case ROTATION2_270: badgeColor = RGBA8{ 180, 80, 220, 255 }; break;
+	}
+
+	I32 size = 10;
+	Graphics::box(panelX + panelW - size - 4, panelY + 4, size, size, 1, RGBA8{ 0, 0, 0, 255 }, badgeColor);
 }
 
 void render_ui() {
-	if (tilesheetVisible) {
-		render_tilesheet_picker();
+	if (!tilesheetVisible) return;
+	I32 itemScreenSize = item_screen_size();
+	I32 perRow = items_per_row();
+	I32 rows = max(row_count(), 1);
+	I32 panelW = perRow * itemScreenSize + borderSize * 2;
+	I32 panelH = rows * itemScreenSize + borderSize * 2;
+	I32 panelX = max(Win32::framebufferWidth - borderPadding - panelW, 0);
+	I32 panelY = borderPadding;
+	I32 beginX = panelX + borderSize;
+	I32 beginY = panelY + borderSize;
+
+	Graphics::box(panelX, panelY, panelW, panelH, borderSize, borderColor, fillColor);
+	for (U32 i = 0; i < BRUSH_COUNT; i++) {
+		Resources::Sprite* sprite = selections[i];
+		if (!sprite) continue;
+		I32 x = beginX + I32(i % U32(perRow)) * itemScreenSize;
+		I32 y = beginY + I32(i / U32(perRow)) * itemScreenSize;
+		SelectUI::draw_sprite_in_cell(*sprite, x, y, itemScreenSize);
+		if (brushOrder[i] == CreativeBrush::ERASE) {
+			Graphics::border(x, y, itemScreenSize, itemScreenSize, 2, RGBA8{ 180, 80, 80, 255 });
+		}
+	}
+
+	Graphics::border(
+		beginX + (selectedItem % perRow) * itemScreenSize,
+		beginY + (selectedItem / perRow) * itemScreenSize,
+		itemScreenSize, itemScreenSize, selectBorderSize, selectedColor
+	);
+	draw_rotation_badge(panelX, panelY, panelW);
+}
+
+B32 handle_ui_click(V2F32 mousePos) {
+	if (!tilesheetVisible) return B32_FALSE;
+	V2I32 mouse = { (I32)mousePos.x, (I32)mousePos.y };
+	I32 itemScreenSize = item_screen_size();
+	I32 perRow = items_per_row();
+	I32 rows = max(row_count(), 1);
+	I32 panelW = perRow * itemScreenSize + borderSize * 2;
+	I32 panelX = max(Win32::framebufferWidth - borderPadding - panelW, 0);
+	I32 panelY = borderPadding;
+	I32 beginX = panelX + borderSize;
+	I32 beginY = panelY + borderSize;
+
+	mouse.x -= beginX;
+	mouse.y -= beginY;
+
+	I32 interactableBoxW = perRow * itemScreenSize;
+	I32 interactableBoxH = rows * itemScreenSize;
+	if (!(mouse.x >= 0 && mouse.x < interactableBoxW && mouse.y >= 0 && mouse.y < interactableBoxH)) {
+		return B32_FALSE;
+	}
+
+	mouse.x /= itemScreenSize;
+	mouse.y /= itemScreenSize;
+	I32 index = mouse.x + mouse.y * perRow;
+	if (index < 0 || U32(index) >= BRUSH_COUNT) {
+		return B32_TRUE;
+	}
+
+	selectedItem = index;
+	selectedBrush = brushOrder[U32(index)];
+	selectedRotation = ROTATION2_0;
+	close_ui();
+	return B32_TRUE;
+}
+
+FINLINE void blit_sprite_cutout_blended(Resources::Sprite& sprite, I32 x, I32 y, I32 scaleFactor, I32 animFrame, U8 alpha) {
+	if (alpha == 0) {
+		return;
+	}
+	I32 dstX = max(x, 0);
+	I32 dstY = max(y, 0);
+	I32 srcX = (x >= 0 ? 0 : -x) + (I32(sprite.x) + animFrame * I32(sprite.width)) * scaleFactor;
+	I32 srcY = (y >= 0 ? 0 : -y) + I32(sprite.y) * scaleFactor;
+	I32 sizeX = min<I32>(x + I32(sprite.width) * scaleFactor, Win32::framebufferWidth) - dstX;
+	I32 sizeY = min<I32>(y + I32(sprite.height) * scaleFactor, Win32::framebufferHeight) - dstY;
+	if (sizeX <= 0 || sizeY <= 0) {
+		return;
+	}
+
+	for (I32 blitY = 0; blitY < sizeY; blitY++) {
+		RGBA8* src = &sprite.tex->pixels[((blitY + srcY) / scaleFactor) * sprite.tex->width];
+		RGBA8* dst = &Win32::framebuffer[(blitY + dstY) * Win32::framebufferWidth] + dstX;
+		for (I32 blitX = 0; blitX < sizeX; blitX++) {
+			RGBA8 srcPx = src[(srcX + blitX) / scaleFactor];
+			if (srcPx.a == 0) {
+				continue;
+			}
+			U32 srcA = (U32(srcPx.a) * U32(alpha)) / 255u;
+			if (srcA == 0) {
+				continue;
+			}
+			U32 invA = 255u - srcA;
+			RGBA8 dstPx = dst[blitX];
+			dst[blitX].r = U8((U32(dstPx.r) * invA + U32(srcPx.r) * srcA) / 255u);
+			dst[blitX].g = U8((U32(dstPx.g) * invA + U32(srcPx.g) * srcA) / 255u);
+			dst[blitX].b = U8((U32(dstPx.b) * invA + U32(srcPx.b) * srcA) / 255u);
+			dst[blitX].a = 255;
+		}
 	}
 }
 
-B32 handle_tilesheet_click(V2F32 mouse) {
-	RectI tex = tileset_texture_rect();
-	if (!point_in_rect(mouse, tex)) {
-		tilesheetVisible = B32_FALSE;
-		return B32_TRUE;
+FINLINE void draw_preview_border(I32 x, I32 y, I32 width, I32 height, RGBA8 color) {
+	BeeDemo::fill_rect(x, y, width, 1, color);
+	BeeDemo::fill_rect(x, y + height - 1, width, 1, color);
+	BeeDemo::fill_rect(x, y, 1, height, color);
+	BeeDemo::fill_rect(x + width - 1, y, 1, height, color);
+}
+
+FINLINE void draw_rotation_marker(I32 x, I32 y, I32 width, I32 height, Rotation2 orientation) {
+	I32 thickness = max(min(width, height) / 10, 2);
+	I32 markerLen = max(min(width, height) / 3, thickness + 2);
+	RGBA8 color = RGBA8{ 255, 235, 90, 210 };
+	BeeDemo::fill_rect_blended(x + thickness, y + thickness, width - thickness * 2, height - thickness * 2, RGBA8{ 255, 255, 255, 10 });
+	switch (orientation) {
+	case ROTATION2_0:
+		BeeDemo::fill_rect_blended(x + width / 2 - thickness / 2, y + height - markerLen, thickness, markerLen - thickness, color);
+		BeeDemo::fill_rect_blended(x + width / 2 - markerLen / 2, y + height - thickness, markerLen, thickness, color);
+		break;
+	case ROTATION2_90:
+		BeeDemo::fill_rect_blended(x, y + height / 2 - markerLen / 2, thickness, markerLen, color);
+		BeeDemo::fill_rect_blended(x, y + height / 2 - thickness / 2, markerLen, thickness, color);
+		break;
+	case ROTATION2_180:
+		BeeDemo::fill_rect_blended(x + width / 2 - thickness / 2, y, thickness, markerLen, color);
+		BeeDemo::fill_rect_blended(x + width / 2 - markerLen / 2, y, markerLen, thickness, color);
+		break;
+	case ROTATION2_270:
+		BeeDemo::fill_rect_blended(x + width - markerLen, y + height / 2 - thickness / 2, markerLen, thickness, color);
+		BeeDemo::fill_rect_blended(x + width - thickness, y + height / 2 - markerLen / 2, thickness, markerLen, color);
+		break;
 	}
-	I32 scale = tileset_picker_scale();
-	I32 texX = (I32(mouse.x) - tex.x) / scale;
-	I32 texY = (I32(mouse.y) - tex.y) / scale;
-	I32 cellX = texX / 16;
-	I32 cellY = texY / 16;
-	selectedBrush = BeeDemo::creative_brush_from_tileset_cell(cellX, cellY, selectedBrush);
-	tilesheetVisible = B32_FALSE;
-	return B32_TRUE;
+}
+
+void render_world_preview(V2F32 currentCamera, I32 currentWorldTileScale, F64 currentFrameTime) {
+	if (tilesheetVisible || SelectUI::open) {
+		return;
+	}
+	if (selectedBrush == CreativeBrush::TASK_SELECT) {
+		return;
+	}
+
+	V2U32 hoveredTile{};
+	if (!mouse_to_tile(&hoveredTile)) {
+		return;
+	}
+
+	V2U footprint = preview_footprint_tiles(selectedBrush);
+	I32 tilePixels = 16 * currentWorldTileScale;
+	V2F32 screenTopLeftF = TileSpace::tile_to_world(hoveredTile) * F32(tilePixels) - currentCamera;
+	I32 screenX = I32(roundf32(screenTopLeftF.x));
+	I32 screenY = I32(roundf32(screenTopLeftF.y));
+	I32 previewWidth = I32(footprint.x) * tilePixels;
+	I32 previewHeight = I32(footprint.y) * tilePixels;
+
+	RGBA8 fillTint = RGBA8{ 255, 255, 255, 36 };
+	RGBA8 borderTint = RGBA8{ 255, 255, 160, 180 };
+	if (selectedBrush == CreativeBrush::ERASE) {
+		fillTint = RGBA8{ 220, 80, 80, 48 };
+		borderTint = RGBA8{ 255, 120, 120, 220 };
+	}
+	else if (brush_uses_rotation(selectedBrush)) {
+		fillTint = RGBA8{ 120, 180, 255, 40 };
+		borderTint = RGBA8{ 160, 220, 255, 220 };
+	}
+
+	BeeDemo::fill_rect_blended(screenX, screenY, previewWidth, previewHeight, fillTint);
+	for (U32 y = 1; y < footprint.y; y++) {
+		BeeDemo::fill_rect(screenX, screenY + I32(y) * tilePixels, previewWidth, 1, RGBA8{ 255, 255, 255, 120 });
+	}
+	for (U32 x = 1; x < footprint.x; x++) {
+		BeeDemo::fill_rect(screenX + I32(x) * tilePixels, screenY, 1, previewHeight, RGBA8{ 255, 255, 255, 120 });
+	}
+	Resources::Sprite* sprite = preview_sprite(selectedBrush, selectedRotation);
+	if (sprite) {
+		I32 animFrame = 0;
+		if (sprite->animFrames > 1) {
+			animFrame = I32(currentFrameTime * 6.0) % I32(sprite->animFrames);
+		}
+		blit_sprite_cutout_blended(*sprite, screenX, screenY, currentWorldTileScale, animFrame, 140);
+	}
+	draw_preview_border(screenX, screenY, previewWidth, previewHeight, borderTint);
+	if (brush_uses_rotation(selectedBrush)) {
+		draw_rotation_marker(screenX, screenY, previewWidth, previewHeight, selectedRotation);
+	}
 }
 
 }
