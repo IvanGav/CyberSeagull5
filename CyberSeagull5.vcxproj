@@ -169,11 +169,18 @@
     <ClInclude Include="src\drillengine\SerializeToolsPowerOf5Table.txt" />
     <ClInclude Include="src\Factory.h" />
     <ClInclude Include="src\Graphics.h" />
-    <ClInclude Include="src\Inventory.h" />
     <ClInclude Include="src\Resources.h" />
     <ClInclude Include="src\TileSpace.h" />
     <ClInclude Include="src\Win32.h" />
     <ClInclude Include="src\World.h" />
+    <ClInclude Include="src\Inventory.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="resources\textures\bee.gif" />
+    <Image Include="resources\textures\beemine.gif" />
+    <Image Include="resources\textures\scrung.png" />
+    <Image Include="resources\textures\tileset_v1.png" />
+    <Image Include="resources\textures\tileset_v2.png" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
