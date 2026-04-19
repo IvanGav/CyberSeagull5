@@ -44,7 +44,6 @@ CreativeBrush brushOrder[BRUSH_COUNT] = {
 	CreativeBrush::ASSEMBLER_SMALL,
 	CreativeBrush::ASSEMBLER_LARGE,
 	CreativeBrush::SPLITTER,
-	CreativeBrush::MERGER,
 	CreativeBrush::HIVE_SMALL,
 	CreativeBrush::HIVE_BIG,
 };
@@ -77,7 +76,6 @@ FINLINE B32 brush_uses_rotation(CreativeBrush brush) {
 	case CreativeBrush::ASSEMBLER_SMALL:
 	case CreativeBrush::ASSEMBLER_LARGE:
 	case CreativeBrush::SPLITTER:
-	case CreativeBrush::MERGER:
 		return B32_TRUE;
 	default:
 		return B32_FALSE;

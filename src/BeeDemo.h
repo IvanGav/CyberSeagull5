@@ -45,7 +45,6 @@ enum class CreativeBrush : U8 {
     ASSEMBLER_SMALL,
     ASSEMBLER_LARGE,
     SPLITTER,
-    MERGER,
     HIVE_SMALL,
     HIVE_BIG,
     COUNT
@@ -818,7 +817,6 @@ Resources::Sprite* creative_brush_sprite(CreativeBrush brush) {
     case CreativeBrush::ASSEMBLER_SMALL: return &Resources::tile.assemblerSmall;
     case CreativeBrush::ASSEMBLER_LARGE: return &Resources::tile.assemblerLarge;
     case CreativeBrush::SPLITTER: return &Resources::tile.splitter;
-    case CreativeBrush::MERGER: return &Resources::tile.merger;
     case CreativeBrush::HIVE_SMALL: return &Resources::tile.hive;
     case CreativeBrush::HIVE_BIG: return &Resources::tile.hiveLarge;
     default: return nullptr;
@@ -838,7 +836,6 @@ CreativeBrush creative_brush_from_tileset_cell(I32 cellX, I32 cellY, CreativeBru
     if (cellX == 1 && cellY == 3) return CreativeBrush::ASSEMBLER_SMALL;
     if ((cellX == 0 || cellX == 1) && (cellY == 6 || cellY == 7)) return CreativeBrush::ASSEMBLER_LARGE;
     if (cellX == 2 && cellY == 3) return CreativeBrush::SPLITTER;
-    if (cellX == 2 && cellY == 4) return CreativeBrush::MERGER;
     if (cellX == 1 && cellY == 2) return CreativeBrush::HIVE_SMALL;
     if ((cellX == 0 || cellX == 1) && (cellY == 4 || cellY == 5)) return CreativeBrush::HIVE_BIG;
     return fallback;
@@ -943,10 +940,6 @@ void apply_creative_brush(CreativeBrush brush, V2U32 tile, Rotation2 orientation
 
     case CreativeBrush::SPLITTER: {
         place_structure(tile, Factory::MACHINE_SPLITTER, orientation);
-    } break;
-
-    case CreativeBrush::MERGER: {
-        place_structure(tile, Factory::MACHINE_MERGER, orientation);
     } break;
 
     case CreativeBrush::HIVE_SMALL: {
