@@ -21,6 +21,9 @@ namespace Inventory {
 		ITEM_NUCLEAR_HEART,
 		ITEM_URANIUM,
 		//ITEM_KITTY_CAT,
+		ITEM_POLLEN,
+		ITEM_HONEY,
+		ITEM_LEMON_JUICE,
 		ITEM_Count
 	};
 
@@ -48,6 +51,9 @@ namespace Inventory {
 		itemSprite[ITEM_GEAR] = &Resources::tile.item.gear;
 		itemSprite[ITEM_NUCLEAR_HEART] = &Resources::tile.item.nuclearHeart;
 		itemSprite[ITEM_URANIUM] = &Resources::tile.item.uranium;
+		itemSprite[ITEM_POLLEN] = &Resources::tile.item.pollen;
+		itemSprite[ITEM_HONEY] = &Resources::tile.item.honey;
+		itemSprite[ITEM_LEMON_JUICE] = &Resources::tile.item.lemonJuice;
 	}
 
 	void draw_inv() {

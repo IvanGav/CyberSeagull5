@@ -1,5 +1,7 @@
 #pragma once
 
+#include "SelectUI.h"
+
 namespace Cyber5eagull {
 extern F64 lastFrameTime;
 extern F32 dt;
@@ -217,6 +219,11 @@ void keyboard_callback(Win32::Key key, Win32::ButtonState state) {
 		return;
 	}
 
+	if (key == Win32::KEY_I) {
+		SelectUI::open = !SelectUI::open;
+		return;
+	}
+
 	if (key == Win32::KEY_BACKTICK) {
 		tilesheetVisible = !tilesheetVisible;
 		hasLastDraggedTile = B32_FALSE;
@@ -246,6 +253,10 @@ void mouse_callback(Win32::MouseButton button, Win32::MouseValue state) {
 	}
 
 	if (button == Win32::MOUSE_BUTTON_LEFT && state.state == Win32::BUTTON_STATE_DOWN) {
+		// if clicking over the SelectUI, ignore everything else
+		if (SelectUI::click_callback(Win32::get_mouse())) {
+			return;
+		}
 		if (Win32::keyboardState[Win32::KEY_CTRL]) {
 			V2U32 clickedTile{};
 			if (mouse_to_tile(&clickedTile)) {

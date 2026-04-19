@@ -172,6 +172,7 @@
     <ClInclude Include="src\Factory.h" />
     <ClInclude Include="src\Graphics.h" />
     <ClInclude Include="src\Resources.h" />
+    <ClInclude Include="src\SelectUI.h" />
     <ClInclude Include="src\TerrainGen.h" />
     <ClInclude Include="src\TileSpace.h" />
     <ClInclude Include="src\Win32.h" />
