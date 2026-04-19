@@ -6,6 +6,7 @@
 #include "Bee.h"
 #include "BeeTasks.h"
 #include "TileSpace.h"
+#include "Inventory.h"
 
 namespace Cyber5eagull {
 
@@ -154,6 +155,7 @@ void render() {
 		render_tile_marker(selectedTile);
 	}
 	render_bee(currentFrameTime);
+  Inventory::draw_inv();
 	lastFrameTime = currentFrameTime;
 }
 
@@ -171,8 +173,13 @@ U32 run_cyber5eagull() {
 	demoBee = Bee::Bee{ hiveTile, DEMO_BEE_SPEED };
 	center_camera_on_tile(hiveTile);
 	Win32::show_window();
+	Inventory::init_inv(4);
+	Inventory::inv[3] = 1969;
 
 	while (!Win32::windowShouldClose) {
+		Inventory::inv[0] = (U32)(camera.x * 10);
+		Inventory::inv[1] = (U32)(camera.y * 10);
+		Inventory::inv[2] = (U32)(dt * 10000);
 		swap(&frameArena, &lastFrameArena);
 		frameArena.reset();
 		Win32::poll_events();

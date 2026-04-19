@@ -172,6 +172,7 @@
     <ClInclude Include="src\TileSpace.h" />
     <ClInclude Include="src\Win32.h" />
     <ClInclude Include="src\World.h" />
+    <ClInclude Include="src\Inventory.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="resources\textures\bee.gif" />
