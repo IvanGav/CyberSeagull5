@@ -21,11 +21,11 @@ enum MachineType : U32 {
 	MACHINE_SMELTER,
 	MACHINE_ASSEMBLER,
 	MACHINE_SPLITTER,
-	MACHINE_MERGER,
 	MACHINE_Count
 };
 
 const U32 MAX_IO_DEFS = 8;
+const U32 MAX_OUTPUTS = 4;
 
 struct IODef {
 	V2I pos;
@@ -53,7 +53,9 @@ struct Machine {
 	ItemStack outputBuf{};
 	U32 inventoryStackSizeLimit = 1;
 	U32 amountToProcess;
-	MachineHandle output;
+	MachineHandle outputs[MAX_OUTPUTS];
+	U32 outputCount;
+	U32 currentOutput;
 	IODef ioDefs[MAX_IO_DEFS];
 	Recipe::RecipeGroup* recipes = nullptr;
 	Recipe::RecipeRef selectedRecipe{};
@@ -232,31 +234,28 @@ void update_machine_connections(Machine* machine) {
 	if (!machine) {
 		return;
 	}
-	machine->output = MachineHandle{};
-	for (U32 i = 0; i < MAX_IO_DEFS; i++) {
+	memset(machine->outputs, 0, sizeof(machine->outputs));
+	machine->outputCount = 0;
+	for (U32 i = 0; i < MAX_IO_DEFS && machine->outputCount < MAX_OUTPUTS; i++) {
 		IODef io = machine->ioDefs[i];
 		if (io.ioDirections == 0) {
 			continue;
 		}
-		if (io.ioDirections & World::MACHINE_OUTPUT_DOWN && World::can_connect_input(V2U{ machine->pos.x + io.pos.x, machine->pos.y + io.pos.y + 1 }, DIRECTION2_FRONT)) {
+		if (machine->outputCount < MAX_OUTPUTS && io.ioDirections & World::MACHINE_OUTPUT_DOWN && World::can_connect_input(V2U{ machine->pos.x + io.pos.x, machine->pos.y + io.pos.y + 1 }, DIRECTION2_FRONT)) {
 			Machine* m = get_machine_from_tile(V2U{ machine->pos.x + io.pos.x, machine->pos.y + io.pos.y + 1 });;
-			machine->output = MachineHandle{ m, m->generation };
-			break;
+			machine->outputs[machine->outputCount++] = MachineHandle{m, m->generation};
 		}
-		if (io.ioDirections & World::MACHINE_OUTPUT_UP && World::can_connect_input(V2U{ machine->pos.x + io.pos.x, machine->pos.y + io.pos.y - 1 }, DIRECTION2_BACK)) {
+		if (machine->outputCount < MAX_OUTPUTS && io.ioDirections & World::MACHINE_OUTPUT_UP && World::can_connect_input(V2U{ machine->pos.x + io.pos.x, machine->pos.y + io.pos.y - 1 }, DIRECTION2_BACK)) {
 			Machine* m = get_machine_from_tile(V2U{ machine->pos.x + io.pos.x, machine->pos.y + io.pos.y - 1 });;
-			machine->output = MachineHandle{ m, m->generation };
-			break;
+			machine->outputs[machine->outputCount++] = MachineHandle{ m, m->generation };
 		}
-		if (io.ioDirections & World::MACHINE_OUTPUT_LEFT && World::can_connect_input(V2U{ machine->pos.x + io.pos.x - 1, machine->pos.y + io.pos.y }, DIRECTION2_RIGHT)) {
+		if (machine->outputCount < MAX_OUTPUTS && io.ioDirections & World::MACHINE_OUTPUT_LEFT && World::can_connect_input(V2U{ machine->pos.x + io.pos.x - 1, machine->pos.y + io.pos.y }, DIRECTION2_RIGHT)) {
 			Machine* m = get_machine_from_tile(V2U{ machine->pos.x + io.pos.x - 1, machine->pos.y + io.pos.y });;
-			machine->output = MachineHandle{ m, m->generation };
-			break;
+			machine->outputs[machine->outputCount++] = MachineHandle{ m, m->generation };
 		}
-		if (io.ioDirections & World::MACHINE_OUTPUT_RIGHT && World::can_connect_input(V2U{ machine->pos.x + io.pos.x + 1, machine->pos.y + io.pos.y }, DIRECTION2_LEFT)) {
+		if (machine->outputCount < MAX_OUTPUTS && io.ioDirections & World::MACHINE_OUTPUT_RIGHT && World::can_connect_input(V2U{ machine->pos.x + io.pos.x + 1, machine->pos.y + io.pos.y }, DIRECTION2_LEFT)) {
 			Machine* m = get_machine_from_tile(V2U{ machine->pos.x + io.pos.x + 1, machine->pos.y + io.pos.y });;
-			machine->output = MachineHandle{ m, m->generation };
-			break;
+			machine->outputs[machine->outputCount++] = MachineHandle{ m, m->generation };
 		}
 	}
 }
@@ -393,7 +392,6 @@ FINLINE V2U machine_footprint(MachineType type, Rotation2 orientation) {
 	case MACHINE_ASSEMBLER: return V2U{ 2, 2 };
 	case MACHINE_SMELTER:
 	case MACHINE_SPLITTER:
-	case MACHINE_MERGER:
 	case MACHINE_BELT:
 	default: return V2U{ 1, 1 };
 	}
@@ -458,10 +456,9 @@ MachineDef get_static_machine(MachineType type, Rotation2 orientation) {
 	case MACHINE_SPLITTER:
 		result.size = V2U{ 1, 1 };
 		result.sprite = &Resources::tile.splitter;
-		break;
-	case MACHINE_MERGER:
-		result.size = V2U{ 1, 1 };
-		result.sprite = &Resources::tile.merger;
+		result.inventoryStackSize = 1;
+		result.recipes = &Recipe::recipeGroups.belt;
+		result.ioDefs[0] = IODef{ V2I{ 0, 0 }, 0xFF };
 		break;
 	default:
 		break;
@@ -528,7 +525,8 @@ void apply_machine_def(Machine* machine, const MachineDef& def) {
 		machine->selectedRecipe = Recipe::RecipeRef::from(machine->recipes->options[nextRecipeIndex]);
 	}
 	else {
-		machine->selectedRecipe = Recipe::RecipeRef{};
+		//machine->selectedRecipe = Recipe::RecipeRef{};
+    machine->selectedRecipe = Recipe::RecipeRef::from(machine->recipes->options[0]);
 	}
 }
 
@@ -701,6 +699,20 @@ void reset() {
 
 U32 animRawTime;
 
+Machine* get_compatible_output(Machine* machine) {
+	for (U32 i = 0; i < machine->outputCount; i++) {
+		U32 outputIdx = (i + machine->currentOutput) % machine->outputCount;
+		if (Machine* test = machine->outputs[outputIdx].get()) {
+			if (test->inventory[0].count == 0 || test->inventory[0].item == machine->inventory[0].item && test->inventory[0].count < test->inventoryStackSizeLimit) {
+				machine->currentOutput = outputIdx + 1;
+				return test;
+			}
+		}
+	}
+	machine->currentOutput++;
+	return nullptr;
+}
+
 void update(F32 dt) {
 	F64 time = current_time_seconds();
 	animRawTime = U32(fractf64(time) * 100.0);
@@ -711,7 +723,7 @@ void update(F32 dt) {
 			machine->finish_recipe();
 		}
 		if (machine->outputBuf.count > 0) {
-			if (Machine* output = machine->output.get()) {
+			if (Machine* output = get_compatible_output(machine)) {
 				output->transfer(machine->outputBuf);
 			}
 		}
