@@ -130,6 +130,7 @@ void render() {
 	BeeDemo::render_hives(camera, worldTileScale);
 	BeeDemo::render_bees(camera, worldTileScale, currentFrameTime);
 	Inventory::draw_inv();
+	EditorInteraction::render_item_build_menu();
 	CreativeToolkit::render_ui();
 	SelectUI::draw();
 	lastFrameTime = currentFrameTime;
@@ -149,7 +150,6 @@ U32 run_cyber5eagull() {
 	World::init(V2U{ WORLD_WIDTH, WORLD_HEIGHT });
 	Factory::init();
 	CreativeToolkit::init_ui();
-	SelectUI::debug_selections();
 	worldTileScale = DEFAULT_WORLD_TILE_SCALE;
 	U32 startHiveX = World::size.x > 2u ? min(START_HIVE_SHORE_OFFSET_X, World::size.x - 2u) : 0u;
 	hiveTile = V2U32{ startHiveX, World::size.y / 2u };

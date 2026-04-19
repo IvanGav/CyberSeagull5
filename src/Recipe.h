@@ -46,8 +46,8 @@ namespace Recipe {
 
 	struct {
 		RecipeGroup belt;
+		RecipeGroup smelter;
 		RecipeGroup assembler;
-		RecipeGroup furnace;
 		RecipeGroup bigAssembler;
 	} recipeGroups;
 
@@ -94,7 +94,7 @@ namespace Recipe {
 		};
 
 		recipeGroups.belt = RecipeGroup::make(make_arena_array_list(globalArena, &recipeList.unit));
-		recipeGroups.furnace = RecipeGroup::make(make_arena_array_list(globalArena, &recipeList.ironSmelt,&recipeList.copperCable));
+		recipeGroups.smelter = RecipeGroup::make(make_arena_array_list(globalArena, &recipeList.ironSmelt,&recipeList.copperCable));
 		recipeGroups.assembler = RecipeGroup::make(make_arena_array_list(globalArena, &recipeList.greenCircuit, &recipeList.ironGear));
 		recipeGroups.bigAssembler = RecipeGroup::make(make_arena_array_list(globalArena, &recipeList.nuclearHeart, &recipeList.camera, &recipeList.cyberSeagull));
 	}
@@ -105,18 +105,21 @@ namespace Recipe {
 		F32 progress;
 
 		static RecipeRef from(RecipeDef* def) {
-			return RecipeRef{ def, def->time };
+			return def ? RecipeRef{ def, def->time } : RecipeRef{};
 		}
 		void reset() {
-			if(def != nullptr) progress = def->time;
+			if (def != nullptr) progress = def->time;
 		}
 		// call every frame; return true if recipe has finished
 		bool tick(F32 dt) {
-			progress -= dt;
-			if (progress <= 0.0) {
-				progress = 0.0;
+			if (def == nullptr) {
+				return false;
 			}
-			return progress <= 0.0;
+			progress -= dt;
+			if (progress <= 0.0F) {
+				progress = 0.0F;
+			}
+			return progress <= 0.0F;
 		}
 	};
 
