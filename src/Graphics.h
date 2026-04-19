@@ -62,6 +62,11 @@ void blit_texture(Resources::Texture& tex, I32 x, I32 y, I32 scaleFactor) {
 	blit_sprite(s, x, y, scaleFactor, 0);
 }
 
+void blit_texture_cutout(Resources::Texture& tex, I32 x, I32 y, I32 scaleFactor) {
+	Resources::Sprite s{ &tex, 0, 0, tex.width, tex.height, 1 };
+	blit_sprite_cutout(s, x, y, scaleFactor, 0);
+}
+
 //template<typename... Values>
 //void display_text(I32 x, I32 y, I32 fontSize, StrA fmt, Values... fmt_args) {
 //	MemoryArena scratch = get_scratch_arena();

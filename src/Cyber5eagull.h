@@ -118,6 +118,9 @@ void update() {
 	clamp_camera();
 }
 
+U32 tutorialIndex = 0;
+I32 tutorialScale = 3;
+
 void render() {
 	F64 currentFrameTime = current_time_seconds();
 	memset(Win32::framebuffer, 0, Win32::framebufferWidth * Win32::framebufferHeight * sizeof(RGBA8));
@@ -135,7 +138,24 @@ void render() {
 	EditorInteraction::render_item_build_menu();
 	CreativeToolkit::render_ui();
 	SelectUI::draw();
+	if (tutorialIndex < ARRAY_COUNT(Resources::tutorial)) {
+		Resources::Texture& tut = Resources::tutorial[tutorialIndex];
+		Graphics::blit_texture_cutout(tut, max(0, (I32(Win32::framebufferWidth) - I32(tut.width) * tutorialScale) / 2), max(0, I32(Win32::framebufferHeight) - I32(tut.height) * tutorialScale), tutorialScale);
+	}
 	lastFrameTime = currentFrameTime;
+}
+
+void mouse_callback(Win32::MouseButton button, Win32::MouseValue state) {
+	if (tutorialIndex < ARRAY_COUNT(Resources::tutorial) && state.state == Win32::BUTTON_STATE_UP) {
+		Resources::Texture& tut = Resources::tutorial[tutorialIndex];
+		F32 x = F32(max(0, (I32(Win32::framebufferWidth) - I32(tut.width) * tutorialScale) / 2));
+		F32 y = F32(max(0, I32(Win32::framebufferHeight) - I32(tut.height) * tutorialScale));
+		Rng2F32 tutorialBox{ x, y, x + tut.width * tutorialScale, y + tut.height * tutorialScale };
+		if (tutorialBox.contains_point(Win32::get_mouse())) {
+			tutorialIndex++;
+		}
+	}
+	EditorInteraction::mouse_callback(button, state);
 }
 
 HANDLE audioThread;
@@ -156,7 +176,7 @@ DWORD WINAPI audio_thread_func(LPVOID) {
 
 U32 run_cyber5eagull() {
 	timeBeginPeriod(1);
-	if (!Win32::init(U32(1920 / 2), U32(1080 / 2), EditorInteraction::keyboard_callback, EditorInteraction::mouse_callback)) {
+	if (!Win32::init(U32(1920 / 2), U32(1080 / 2), EditorInteraction::keyboard_callback, mouse_callback)) {
 		abort("Window init failed"a);
 	}
 	lastFrameTime = current_time_seconds();
