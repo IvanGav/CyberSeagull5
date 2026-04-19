@@ -8,6 +8,7 @@
 #include "Factory.h"
 #include "BeeDemo.h"
 #include "CreativeToolkit.h"
+#include "EditorInteraction.h"
 
 namespace Cyber5eagull {
 
@@ -27,10 +28,6 @@ F32 dt = 0.0F;
 V2F camera{};
 I32 worldTileScale = DEFAULT_WORLD_TILE_SCALE;
 V2U32 hiveTile{};
-B32 placingConveyor = B32_FALSE;
-Direction2 lastConveyorInputSide;
-Direction2 lastConveyorOutputSide;
-Factory::MachineHandle lastConveyor;
 
 I32 world_tile_pixels() {
 	return 16 * worldTileScale;
@@ -94,45 +91,6 @@ B32 mouse_to_tile(V2U32* tileOut) {
 
 
 void update() {
-	if (Win32::keyboardState[Win32::KEY_CTRL] && Win32::mouseButtonState[Win32::MOUSE_BUTTON_RIGHT]) {
-		V2U clickedTile{};
-		if (mouse_to_tile(&clickedTile)) {
-			Factory::remove_machine(clickedTile);
-		}
-	}
-	if (placingConveyor) {
-		if (Win32::keyboardState[Win32::KEY_CTRL] && lastConveyor.get()) {
-			V2U clickedTile{};
-			if (mouse_to_tile(&clickedTile)) {
-				U32 prevId;
-				if (World::get_tile(&prevId, clickedTile.x, clickedTile.y) == World::TILE_GRASS && prevId == World::MACHINE_NULL_ID) {
-					Factory::Machine* mach = lastConveyor.machine;
-					V2U machPos = mach->pos;
-					Direction2 newDirection = DIRECTION2_INVALID;
-					if (clickedTile == V2U{ machPos.x + 1, machPos.y }) {
-						newDirection = DIRECTION2_RIGHT;
-					} else if (clickedTile == V2U{ machPos.x - 1, machPos.y }) {
-						newDirection = DIRECTION2_LEFT;
-					} else if (clickedTile == V2U{ machPos.x, machPos.y + 1 }) {
-						newDirection = DIRECTION2_BACK;
-					} else if (clickedTile == V2U{ machPos.x, machPos.y - 1 }) {
-						newDirection = DIRECTION2_FRONT;
-					}
-					if (newDirection != DIRECTION2_INVALID && newDirection != lastConveyorInputSide) {
-						Factory::remove_machine(mach);
-						Factory::MachineDef belt = Factory::get_belt(lastConveyorInputSide, newDirection);
-						Factory::try_place_machine(machPos, belt);
-						belt = Factory::get_belt(DIRECTION2_OPPOSITE[newDirection], newDirection);
-						lastConveyorInputSide = DIRECTION2_OPPOSITE[newDirection];
-						lastConveyorOutputSide = newDirection;
-						lastConveyor = Factory::try_place_machine(clickedTile, belt);
-					}
-				}
-			}
-		} else {
-			placingConveyor = false;
-		}
-	}
 	Factory::update();
 }
 
@@ -146,9 +104,9 @@ void update_debug_inventory() {
 void render() {
 	F64 currentFrameTime = current_time_seconds();
 	dt = min(F32(currentFrameTime - lastFrameTime), 0.1F);
-	CreativeToolkit::update_drag_interactions();
+	EditorInteraction::update_drag_interactions();
 	V2F mouse = Win32::get_mouse();
-	if (!CreativeToolkit::cameraDragActive) {
+	if (!EditorInteraction::cameraDragActive) {
 		if (mouse.x < CAMERA_EDGE_SCROLL_PIXELS) {
 			camera.x -= dt * CAMERA_SCROLL_SPEED;
 		}
@@ -183,7 +141,7 @@ void render() {
 
 U32 run_cyber5eagull() {
 	timeBeginPeriod(1);
-	if (!Win32::init(U32(1920 / 2), U32(1080 / 2), CreativeToolkit::keyboard_callback, CreativeToolkit::mouse_callback)) {
+	if (!Win32::init(U32(1920 / 2), U32(1080 / 2), EditorInteraction::keyboard_callback, EditorInteraction::mouse_callback)) {
 		abort("Window init failed"a);
 	}
 	lastFrameTime = current_time_seconds();

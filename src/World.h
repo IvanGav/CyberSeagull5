@@ -108,11 +108,12 @@ B32 can_connect_input(V2U pos, Direction2 fromDir) {
 	}
 	Flags8 connectFlags = canMachineConnect[pos.y * size.x + pos.x];
 	switch (fromDir) {
-	DIRECTION2_LEFT = 0,
-	DIRECTION2_RIGHT = 1,
-	DIRECTION2_FRONT = 2,
-	DIRECTION2_BACK = 3,
+	case DIRECTION2_LEFT: return connectFlags & MACHINE_INPUT_LEFT;
+	case DIRECTION2_RIGHT: return connectFlags & MACHINE_INPUT_RIGHT;
+	case DIRECTION2_FRONT: return connectFlags & MACHINE_INPUT_UP;
+	case DIRECTION2_BACK: return connectFlags & MACHINE_INPUT_DOWN;
 	}
+	return B32_FALSE;
 }
 
 void init(V2U extent) {
@@ -137,6 +138,13 @@ void init(V2U extent) {
 	tileSprite[TILE_SAND] = &Resources::tile.sand;
 	tileSprite[TILE_BEACH] = &Resources::tile.beach;
 	tileSprite[TILE_WATER] = &Resources::tile.water;
+}
+
+void reset_runtime_state() {
+	num_beach_tiles = 0;
+	for (U32 i = 0; i < size.x * size.y; i++) {
+		tileMachineIds[i] = MACHINE_NULL_ID;
+	}
 }
 
 void render_beach(V2F camera, I32 tileScale) {
