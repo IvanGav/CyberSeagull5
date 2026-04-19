@@ -1,6 +1,6 @@
 #pragma once
 
-#include "drillengine/DrillLib.h";
+#include "drillengine/DrillLib.h"
 #include "Graphics.h"
 #include "Win32.h"
 #include "Resources.h"
