@@ -206,7 +206,7 @@ void load() {
 	tile.assembler.rightOn = Sprite{ &tileset, 224, 144, 32, 32, 1 };
 
 	tile.bigAssembler = Sprite{ &tileset, 13 * 16, 7 * 16, 48, 32, 1 };
-	tile.furnace = Sprite{ &tileset, 15 * 16, 13 * 16, 16, 32, 1 };
+	tile.furnace = Sprite{ &tileset, 14 * 16, 11 * 16, 16, 32, 1 };
 }
 
 }

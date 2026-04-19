@@ -1294,7 +1294,7 @@ Resources::Sprite* creative_brush_sprite(CreativeBrush brush) {
 	case CreativeBrush::WATER: return &Resources::tile.water;
 	case CreativeBrush::MOUNTAIN: return &Resources::tile.mountain;
 	case CreativeBrush::CONVEYOR: return &Resources::tile.belt.leftToRight;
-	case CreativeBrush::ASSEMBLER_SMALL: return &Resources::tile.assemblerSmall;
+	case CreativeBrush::ASSEMBLER_SMALL: return &Resources::tile.furnace;
 	case CreativeBrush::ASSEMBLER_LARGE: return &Resources::tile.assemblerLarge;
 	case CreativeBrush::SPLITTER: return &Resources::tile.splitter;
 	case CreativeBrush::HIVE_SMALL: return &Resources::tile.hive;

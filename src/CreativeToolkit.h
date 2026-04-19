@@ -159,7 +159,7 @@ FINLINE Resources::Sprite* preview_sprite(CreativeBrush brush, Rotation2 orienta
 		}
 	case CreativeBrush::ASSEMBLER_SMALL:
 		switch (orientation) {
-		default: return &Resources::tile.assemblerSmall;
+		default: return &Resources::tile.furnace;
 		}
 	case CreativeBrush::ASSEMBLER_LARGE:
 		switch (orientation) {
@@ -396,7 +396,11 @@ void render_world_preview(V2F32 currentCamera, I32 currentWorldTileScale, F64 cu
 		if (sprite->animFrames > 1) {
 			animFrame = I32(currentFrameTime * 6.0) % I32(sprite->animFrames);
 		}
-		blit_sprite_cutout_blended(*sprite, screenX, screenY, currentWorldTileScale, animFrame, 140);
+		I32 spriteWidthPx = I32(sprite->width) * currentWorldTileScale;
+		I32 spriteHeightPx = I32(sprite->height) * currentWorldTileScale;
+		I32 drawX = screenX + (previewWidth - spriteWidthPx) / 2;
+		I32 drawY = screenY + previewHeight - spriteHeightPx;
+		blit_sprite_cutout_blended(*sprite, drawX, drawY, currentWorldTileScale, animFrame, 140);
 	}
 	draw_preview_border(screenX, screenY, previewWidth, previewHeight, borderTint);
 	if (brush_uses_rotation(selectedBrush)) {
