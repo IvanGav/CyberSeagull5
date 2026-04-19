@@ -40,7 +40,12 @@ enum class CreativeBrush : U8 {
     SAND,
     BEACH,
     WATER,
+    MOUNTAIN,
     CONVEYOR,
+    ASSEMBLER_SMALL,
+    ASSEMBLER_LARGE,
+    SPLITTER,
+    MERGER,
     HIVE_SMALL,
     HIVE_BIG,
     COUNT
@@ -111,7 +116,19 @@ BeeSystem::HomeAnchor home_anchor_for_hive(const HiveDesc& hive) {
     BeeSystem::HomeAnchor anchor{};
     anchor.tile = hive.tile;
     V2U32 footprint = TerrainGen::hive_footprint_size_tiles(hive);
-    anchor.offsetWorld = V2F32{ F32(footprint.x) * 0.5F, F32(footprint.y) * 0.5F };
+    F32 offsetX = F32(footprint.x) * 0.5F;
+    F32 offsetY = F32(footprint.y) * 0.5F;
+
+    // Do not place bees exactly on integer world coordinates for multi-tile hives.
+    // That puts them on tile boundaries and makes launch/collision checks act stupid.
+    if ((footprint.x & 1u) == 0u) {
+        offsetX -= 0.05F;
+    }
+    if ((footprint.y & 1u) == 0u) {
+        offsetY -= 0.05F;
+    }
+
+    anchor.offsetWorld = V2F32{ offsetX, offsetY };
     return anchor;
 }
 
@@ -161,6 +178,223 @@ void remove_conveyor_tile(V2U32 tile) {
 void add_conveyor_tile(V2U32 tile) {
     Factory::place_belt(V2U{ tile.x, tile.y });
 }
+void remove_machine_tile(V2U32 tile) {
+    if (Factory::has_machine(V2U{ tile.x, tile.y })) {
+        Factory::remove_machine(V2U{ tile.x, tile.y });
+    }
+}
+
+void sync_beach_runtime_tile(V2U32 tile) {
+    World::sync_beach_tile_with_world(V2U{ tile.x, tile.y });
+}
+
+static constexpr F32 BEE_PATH_CLEARANCE_RADIUS = 0.18F;
+static constexpr F32 BEE_SEGMENT_SAMPLE_STEP = 0.18F;
+
+B32 tile_blocks_bee_path(V2U32 tile, V2U32 startTile, V2U32 goalTile);
+
+FINLINE B32 bee_position_hits_blocker(V2F32 position, V2U32 startTile, V2U32 goalTile, void*) {
+    if (position.x < 0.0F || position.y < 0.0F || position.x >= F32(World::size.x) || position.y >= F32(World::size.y)) {
+        return B32_TRUE;
+    }
+
+    // Give bees clean launch/landing clearance inside their source/target hive footprint.
+    for (U32 i = 0; i < hives.size; i++) {
+        const HiveDesc& hive = hives[i];
+        if (!TerrainGen::tile_in_hive_footprint(startTile, hive) && !TerrainGen::tile_in_hive_footprint(goalTile, hive)) {
+            continue;
+        }
+
+        V2U32 footprint = TerrainGen::hive_footprint_size_tiles(hive);
+        F32 minX = F32(hive.tile.x) - BEE_PATH_CLEARANCE_RADIUS;
+        F32 minY = F32(hive.tile.y) - BEE_PATH_CLEARANCE_RADIUS;
+        F32 maxX = F32(hive.tile.x + footprint.x) + BEE_PATH_CLEARANCE_RADIUS;
+        F32 maxY = F32(hive.tile.y + footprint.y) + BEE_PATH_CLEARANCE_RADIUS;
+        if (position.x >= minX && position.x <= maxX && position.y >= minY && position.y <= maxY) {
+            return B32_FALSE;
+        }
+    }
+
+    V2U32 centerTile = TileSpace::world_to_tile(position);
+    for (I32 dy = -1; dy <= 1; dy++) {
+        for (I32 dx = -1; dx <= 1; dx++) {
+            I32 tx = I32(centerTile.x) + dx;
+            I32 ty = I32(centerTile.y) + dy;
+            if (tx < 0 || ty < 0 || tx >= I32(World::size.x) || ty >= I32(World::size.y)) {
+                continue;
+            }
+
+            V2U32 tile{ U32(tx), U32(ty) };
+            if (!tile_blocks_bee_path(tile, startTile, goalTile)) {
+                continue;
+            }
+
+            F32 minX = F32(tx);
+            F32 minY = F32(ty);
+            F32 maxX = minX + 1.0F;
+            F32 maxY = minY + 1.0F;
+            F32 closestX = clamp(position.x, minX, maxX);
+            F32 closestY = clamp(position.y, minY, maxY);
+            V2F32 delta = position - V2F32{ closestX, closestY };
+            if (length_sq(delta) < BEE_PATH_CLEARANCE_RADIUS * BEE_PATH_CLEARANCE_RADIUS) {
+                return B32_TRUE;
+            }
+        }
+    }
+
+    return B32_FALSE;
+}
+
+B32 tile_blocks_bee_path(V2U32 tile, V2U32 startTile, V2U32 goalTile) {
+    if (!tile_in_bounds(tile)) {
+        return B32_TRUE;
+    }
+    if (TileSpace::same_tile(tile, startTile) || TileSpace::same_tile(tile, goalTile)) {
+        return B32_FALSE;
+    }
+
+    World::TileType tileType = TerrainGen::get_world_tile(tile);
+    if (tileType == World::TILE_WATER || tileType == World::TILE_MOUNTAIN) {
+        return B32_TRUE;
+    }
+
+    Factory::Machine* machine = Factory::get_machine_from_tile(V2U{ tile.x, tile.y });
+    if (machine && !Factory::machine_is_belt(machine)) {
+        return B32_TRUE;
+    }
+
+    for (U32 i = 0; i < hives.size; i++) {
+        if (TerrainGen::tile_in_hive_footprint(tile, hives[i])) {
+            if (TerrainGen::tile_in_hive_footprint(startTile, hives[i]) || TerrainGen::tile_in_hive_footprint(goalTile, hives[i])) {
+                return B32_FALSE;
+            }
+            return B32_TRUE;
+        }
+    }
+
+    return B32_FALSE;
+}
+
+void append_preferred_directions(V2U32 current, V2U32 goalTile, TileSpace::NeighborDirection* directionsOut) {
+    I32 dx = I32(goalTile.x) - I32(current.x);
+    I32 dy = I32(goalTile.y) - I32(current.y);
+    TileSpace::NeighborDirection xToward = dx >= 0 ? TileSpace::NeighborDirection::EAST : TileSpace::NeighborDirection::WEST;
+    TileSpace::NeighborDirection xAway = dx >= 0 ? TileSpace::NeighborDirection::WEST : TileSpace::NeighborDirection::EAST;
+    TileSpace::NeighborDirection yToward = dy >= 0 ? TileSpace::NeighborDirection::SOUTH : TileSpace::NeighborDirection::NORTH;
+    TileSpace::NeighborDirection yAway = dy >= 0 ? TileSpace::NeighborDirection::NORTH : TileSpace::NeighborDirection::SOUTH;
+
+    if (abs(dx) >= abs(dy)) {
+        directionsOut[0] = xToward;
+        directionsOut[1] = yToward;
+        directionsOut[2] = yAway;
+        directionsOut[3] = xAway;
+    }
+    else {
+        directionsOut[0] = yToward;
+        directionsOut[1] = xToward;
+        directionsOut[2] = xAway;
+        directionsOut[3] = yAway;
+    }
+}
+
+B32 find_bee_path(V2U32 startTile, V2U32 goalTile, V2U32* pathTilesOut, U32* pathCountOut, U32 maxPathTiles, void*) {
+    *pathCountOut = 0;
+    if (!tile_in_bounds(startTile) || !tile_in_bounds(goalTile) || maxPathTiles == 0) {
+        return B32_FALSE;
+    }
+    if (TileSpace::same_tile(startTile, goalTile)) {
+        pathTilesOut[0] = startTile;
+        *pathCountOut = 1;
+        return B32_TRUE;
+    }
+
+    U32 tileCount = World::size.x * World::size.y;
+    static I32 parents[TerrainGen::MAX_WORLD_MAP_TILES];
+    static U8 visited[TerrainGen::MAX_WORLD_MAP_TILES];
+    static V2U32 queue[TerrainGen::MAX_WORLD_MAP_TILES];
+    memset(visited, 0, tileCount * sizeof(visited[0]));
+    for (U32 i = 0; i < tileCount; i++) {
+        parents[i] = -1;
+    }
+
+    U32 queueRead = 0;
+    U32 queueWrite = 0;
+    U32 startIndex = tile_resource_index(startTile);
+    U32 goalIndex = tile_resource_index(goalTile);
+    visited[startIndex] = 1u;
+    queue[queueWrite++] = startTile;
+
+    while (queueRead < queueWrite) {
+        V2U32 current = queue[queueRead++];
+        if (TileSpace::same_tile(current, goalTile)) {
+            break;
+        }
+
+        TileSpace::NeighborDirection directions[4]{};
+        append_preferred_directions(current, goalTile, directions);
+        for (U32 i = 0; i < 4; i++) {
+            V2U32 next = TileSpace::neighbor_tile(current, directions[i]);
+            if (!tile_in_bounds(next)) {
+                continue;
+            }
+            U32 nextIndex = tile_resource_index(next);
+            if (visited[nextIndex] || tile_blocks_bee_path(next, startTile, goalTile)) {
+                continue;
+            }
+            visited[nextIndex] = 1u;
+            parents[nextIndex] = I32(tile_resource_index(current));
+            queue[queueWrite++] = next;
+        }
+    }
+
+    if (!visited[goalIndex]) {
+        return B32_FALSE;
+    }
+
+    V2U32 fullPath[Bee::Bee::MAX_PATH_TILES]{};
+    U32 fullCount = 0;
+    for (I32 cursor = I32(goalIndex); cursor >= 0; cursor = parents[cursor]) {
+        if (fullCount >= Bee::Bee::MAX_PATH_TILES) {
+            return B32_FALSE;
+        }
+        fullPath[fullCount++] = V2U32{ U32(cursor % World::size.x), U32(cursor / World::size.x) };
+    }
+    if (fullCount == 0) {
+        return B32_FALSE;
+    }
+
+    static V2U32 orderedPath[Bee::Bee::MAX_PATH_TILES];
+    for (U32 i = 0; i < fullCount; i++) {
+        orderedPath[i] = fullPath[fullCount - 1u - i];
+    }
+
+    U32 outCount = 0;
+    pathTilesOut[outCount++] = orderedPath[0];
+    if (fullCount > 1) {
+        I32 prevDx = I32(orderedPath[1].x) - I32(orderedPath[0].x);
+        I32 prevDy = I32(orderedPath[1].y) - I32(orderedPath[0].y);
+        for (U32 i = 1; i + 1 < fullCount; i++) {
+            I32 dx = I32(orderedPath[i + 1].x) - I32(orderedPath[i].x);
+            I32 dy = I32(orderedPath[i + 1].y) - I32(orderedPath[i].y);
+            if (dx != prevDx || dy != prevDy) {
+                if (outCount >= maxPathTiles) {
+                    return B32_FALSE;
+                }
+                pathTilesOut[outCount++] = orderedPath[i];
+                prevDx = dx;
+                prevDy = dy;
+            }
+        }
+        if (outCount >= maxPathTiles) {
+            return B32_FALSE;
+        }
+        pathTilesOut[outCount++] = orderedPath[fullCount - 1];
+    }
+
+    *pathCountOut = outCount;
+    return B32_TRUE;
+}
+
 
 B32 has_adjacent_conveyor(V2U32 tile) {
     using namespace TileSpace;
@@ -227,11 +461,11 @@ void clear_tasks_in_footprint(V2U32 topLeft, V2U32 footprint) {
     }
 }
 
-void clear_conveyors_in_footprint(V2U32 topLeft, V2U32 footprint) {
+void clear_machines_in_footprint(V2U32 topLeft, V2U32 footprint) {
     for (U32 y = 0; y < footprint.y; y++) {
         for (U32 x = 0; x < footprint.x; x++) {
             V2U32 tile{ topLeft.x + x, topLeft.y + y };
-            remove_conveyor_tile(tile);
+            remove_machine_tile(tile);
         }
     }
 }
@@ -254,7 +488,11 @@ B32 can_place_hive_footprint(V2U32 topLeft, V2U32 footprint) {
             if (!tile_in_bounds(tile)) {
                 return B32_FALSE;
             }
-            if (TerrainGen::get_world_tile(tile) == World::TILE_WATER) {
+            World::TileType tileType = TerrainGen::get_world_tile(tile);
+            if (tileType == World::TILE_WATER || tileType == World::TILE_MOUNTAIN) {
+                return B32_FALSE;
+            }
+            if (Factory::has_machine(V2U{ tile.x, tile.y })) {
                 return B32_FALSE;
             }
         }
@@ -377,8 +615,27 @@ B32 consume_resource_from_tile(V2U32 tile, Inventory::Item* itemOut) {
     }
 }
 
+B32 tile_has_accessible_hive_path(V2U32 tile) {
+    if (hives.size == 0) {
+        return B32_FALSE;
+    }
+
+    V2U32 scratchPath[Bee::Bee::MAX_PATH_TILES]{};
+    U32 scratchCount = 0;
+    for (U32 i = 0; i < hives.size; i++) {
+        if (!TerrainGen::tile_in_hive_radius(tile, hives[i], hive_task_radius(hives[i]))) {
+            continue;
+        }
+        BeeSystem::HomeAnchor anchor = home_anchor_for_hive(hives[i]);
+        if (find_bee_path(anchor.tile, tile, scratchPath, &scratchCount, Bee::Bee::MAX_PATH_TILES, nullptr)) {
+            return B32_TRUE;
+        }
+    }
+    return B32_FALSE;
+}
+
 B32 tile_is_selectable_task(V2U32 tile) {
-    if (!tile_in_bounds(tile) || has_conveyor(tile) || !tile_in_any_hive_radius(tile) || find_hive_covering_tile(tile) >= 0) {
+    if (!tile_in_bounds(tile) || Factory::has_machine(V2U{ tile.x, tile.y }) || !tile_in_any_hive_radius(tile) || find_hive_covering_tile(tile) >= 0) {
         return B32_FALSE;
     }
     switch (TerrainGen::get_world_tile(tile)) {
@@ -386,7 +643,7 @@ B32 tile_is_selectable_task(V2U32 tile) {
     case World::TILE_GRASS_IRON:
     case World::TILE_GRASS_COPPER:
     case World::TILE_GRASS_FLOWERS:
-        return tile_has_harvestable_resource(tile);
+        return tile_has_harvestable_resource(tile) && tile_has_accessible_hive_path(tile);
     default:
         return B32_FALSE;
     }
@@ -418,6 +675,8 @@ void init(V2U32 hiveTile) {
     World::reset_runtime_state();
     seed_conveyors(hiveTile);
     TerrainGen::generate(&worldGeneration, &hives, hiveTile);
+    Bee::set_path_finder(find_bee_path);
+    Bee::set_position_collider(bee_position_hits_blocker);
     rebuild_resource_runtime();
     mainHiveHoneyProgress = 0.0F;
     colony.init(BEE_COUNT, hiveTile, SPEED);
@@ -425,6 +684,10 @@ void init(V2U32 hiveTile) {
     if (hives.size != 0) {
         BeeSystem::HomeAnchor mainAnchor = home_anchor_for_hive(hives[0]);
         colony.set_default_home(mainAnchor.tile, mainAnchor.offsetWorld);
+        for (U32 i = 0; i < colony.bees.size; i++) {
+            colony.bees[i].set_home_anchor(mainAnchor.tile, mainAnchor.offsetWorld);
+            colony.bees[i].snap_to_home();
+        }
     }
 }
 
@@ -549,7 +812,12 @@ Resources::Sprite* creative_brush_sprite(CreativeBrush brush) {
     case CreativeBrush::SAND: return &Resources::tile.sand;
     case CreativeBrush::BEACH: return &Resources::tile.beach;
     case CreativeBrush::WATER: return &Resources::tile.water;
+    case CreativeBrush::MOUNTAIN: return &Resources::tile.mountain;
     case CreativeBrush::CONVEYOR: return &Resources::tile.belt.leftToRight;
+    case CreativeBrush::ASSEMBLER_SMALL: return &Resources::tile.assemblerSmall;
+    case CreativeBrush::ASSEMBLER_LARGE: return &Resources::tile.assemblerLarge;
+    case CreativeBrush::SPLITTER: return &Resources::tile.splitter;
+    case CreativeBrush::MERGER: return &Resources::tile.merger;
     case CreativeBrush::HIVE_SMALL: return &Resources::tile.hive;
     case CreativeBrush::HIVE_BIG: return &Resources::tile.hiveLarge;
     default: return nullptr;
@@ -564,9 +832,14 @@ CreativeBrush creative_brush_from_tileset_cell(I32 cellX, I32 cellY, CreativeBru
     if (cellX == 0 && cellY == 1) return CreativeBrush::SAND;
     if (cellX == 1 && cellY == 1) return CreativeBrush::BEACH;
     if (cellX == 0 && cellY == 2) return CreativeBrush::WATER;
+    if (cellX == 11 && cellY == 13) return CreativeBrush::MOUNTAIN;
     if (cellX == 4 && cellY == 0) return CreativeBrush::CONVEYOR;
+    if (cellX == 1 && cellY == 3) return CreativeBrush::ASSEMBLER_SMALL;
+    if ((cellX == 0 || cellX == 1) && (cellY == 6 || cellY == 7)) return CreativeBrush::ASSEMBLER_LARGE;
+    if (cellX == 2 && cellY == 3) return CreativeBrush::SPLITTER;
+    if (cellX == 2 && cellY == 4) return CreativeBrush::MERGER;
     if (cellX == 1 && cellY == 2) return CreativeBrush::HIVE_SMALL;
-    if (cellX == 0 && cellY == 4) return CreativeBrush::HIVE_BIG;
+    if ((cellX == 0 || cellX == 1) && (cellY == 4 || cellY == 5)) return CreativeBrush::HIVE_BIG;
     return fallback;
 }
 
@@ -579,9 +852,29 @@ void place_hive(V2U32 topLeft, B32 large) {
         return;
     }
     clear_tasks_in_footprint(topLeft, footprint);
-    clear_conveyors_in_footprint(topLeft, footprint);
+    clear_machines_in_footprint(topLeft, footprint);
     clear_hives_in_footprint(topLeft, footprint);
     hives.push_back(newHive);
+}
+
+void place_structure(V2U32 topLeft, Factory::MachineType type) {
+    V2U32 footprint = Factory::machine_footprint(type);
+    if (topLeft.x + footprint.x > World::size.x || topLeft.y + footprint.y > World::size.y) {
+        return;
+    }
+    for (U32 y = 0; y < footprint.y; y++) {
+        for (U32 x = 0; x < footprint.x; x++) {
+            V2U32 tile{ topLeft.x + x, topLeft.y + y };
+            World::TileType tileType = TerrainGen::get_world_tile(tile);
+            if (tileType == World::TILE_WATER || tileType == World::TILE_MOUNTAIN) {
+                return;
+            }
+        }
+    }
+    clear_tasks_in_footprint(topLeft, footprint);
+    clear_hives_in_footprint(topLeft, footprint);
+    clear_machines_in_footprint(topLeft, footprint);
+    Factory::place_machine_type(V2U{ topLeft.x, topLeft.y }, type);
 }
 
 void apply_creative_brush(CreativeBrush brush, V2U32 tile) {
@@ -596,9 +889,10 @@ void apply_creative_brush(CreativeBrush brush, V2U32 tile) {
 
     case CreativeBrush::ERASE: {
         unqueue_tile_task(tile);
-        remove_conveyor_tile(tile);
+        remove_machine_tile(tile);
         remove_hive_covering_tile(tile);
         TerrainGen::set_world_tile(tile, World::TILE_GRASS);
+        sync_beach_runtime_tile(tile);
         clear_tile_resource_runtime(tile);
     } break;
 
@@ -608,9 +902,10 @@ void apply_creative_brush(CreativeBrush brush, V2U32 tile) {
     case CreativeBrush::FLOWERS:
     case CreativeBrush::SAND:
     case CreativeBrush::BEACH:
-    case CreativeBrush::WATER: {
+    case CreativeBrush::WATER:
+    case CreativeBrush::MOUNTAIN: {
         unqueue_tile_task(tile);
-        remove_conveyor_tile(tile);
+        remove_machine_tile(tile);
         remove_hive_covering_tile(tile);
         World::TileType worldType = World::TILE_GRASS;
         switch (brush) {
@@ -621,18 +916,36 @@ void apply_creative_brush(CreativeBrush brush, V2U32 tile) {
         case CreativeBrush::SAND: worldType = World::TILE_SAND; break;
         case CreativeBrush::BEACH: worldType = World::TILE_BEACH; break;
         case CreativeBrush::WATER: worldType = World::TILE_WATER; break;
+        case CreativeBrush::MOUNTAIN: worldType = World::TILE_MOUNTAIN; break;
         default: break;
         }
         TerrainGen::set_world_tile(tile, worldType);
+        sync_beach_runtime_tile(tile);
         reset_tile_resource_runtime(tile);
     } break;
 
     case CreativeBrush::CONVEYOR: {
         unqueue_tile_task(tile);
         remove_hive_covering_tile(tile);
-        if (TerrainGen::get_world_tile(tile) != World::TILE_WATER) {
+        if (TerrainGen::get_world_tile(tile) != World::TILE_WATER && TerrainGen::get_world_tile(tile) != World::TILE_MOUNTAIN) {
             add_conveyor_tile(tile);
         }
+    } break;
+
+    case CreativeBrush::ASSEMBLER_SMALL: {
+        place_structure(tile, Factory::MACHINE_ASSEMBLER_SMALL);
+    } break;
+
+    case CreativeBrush::ASSEMBLER_LARGE: {
+        place_structure(tile, Factory::MACHINE_ASSEMBLER_LARGE);
+    } break;
+
+    case CreativeBrush::SPLITTER: {
+        place_structure(tile, Factory::MACHINE_SPLITTER);
+    } break;
+
+    case CreativeBrush::MERGER: {
+        place_structure(tile, Factory::MACHINE_MERGER);
     } break;
 
     case CreativeBrush::HIVE_SMALL: {

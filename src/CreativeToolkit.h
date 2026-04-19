@@ -104,9 +104,20 @@ void render_tilesheet_picker() {
 	highlight_tileset_cell(0, 1, RGBA8{ 120, 220, 120, 255 });
 	highlight_tileset_cell(1, 1, RGBA8{ 120, 220, 120, 255 });
 	highlight_tileset_cell(0, 2, RGBA8{ 120, 220, 120, 255 });
+	highlight_tileset_cell(11, 13, RGBA8{ 120, 220, 120, 255 });
 	highlight_tileset_cell(4, 0, RGBA8{ 120, 220, 120, 255 });
+	highlight_tileset_cell(1, 3, RGBA8{ 120, 220, 120, 255 });
+	highlight_tileset_cell(0, 6, RGBA8{ 120, 220, 120, 255 });
+	highlight_tileset_cell(1, 6, RGBA8{ 120, 220, 120, 255 });
+	highlight_tileset_cell(0, 7, RGBA8{ 120, 220, 120, 255 });
+	highlight_tileset_cell(1, 7, RGBA8{ 120, 220, 120, 255 });
+	highlight_tileset_cell(2, 3, RGBA8{ 120, 220, 120, 255 });
+	highlight_tileset_cell(2, 4, RGBA8{ 120, 220, 120, 255 });
 	highlight_tileset_cell(1, 2, RGBA8{ 120, 220, 120, 255 });
 	highlight_tileset_cell(0, 4, RGBA8{ 120, 220, 120, 255 });
+	highlight_tileset_cell(1, 4, RGBA8{ 120, 220, 120, 255 });
+	highlight_tileset_cell(0, 5, RGBA8{ 120, 220, 120, 255 });
+	highlight_tileset_cell(1, 5, RGBA8{ 120, 220, 120, 255 });
 
 	Resources::Sprite* selectedSprite = BeeDemo::creative_brush_sprite(selectedBrush);
 	if (selectedBrush == CreativeBrush::TASK_SELECT) highlight_tileset_cell(0, 10, RGBA8{ 255, 255, 80, 255 });
@@ -117,9 +128,14 @@ void render_tilesheet_picker() {
 	if (selectedSprite == &Resources::tile.sand) highlight_tileset_cell(0, 1, RGBA8{ 255, 255, 80, 255 });
 	if (selectedSprite == &Resources::tile.beach) highlight_tileset_cell(1, 1, RGBA8{ 255, 255, 80, 255 });
 	if (selectedSprite == &Resources::tile.water) highlight_tileset_cell(0, 2, RGBA8{ 255, 255, 80, 255 });
+	if (selectedSprite == &Resources::tile.mountain) highlight_tileset_cell(11, 13, RGBA8{ 255, 255, 80, 255 });
 	if (selectedSprite == &Resources::tile.belt.leftToRight) highlight_tileset_cell(4, 0, RGBA8{ 255, 255, 80, 255 });
+	if (selectedBrush == CreativeBrush::ASSEMBLER_SMALL) highlight_tileset_cell(1, 3, RGBA8{ 255, 255, 80, 255 });
+	if (selectedBrush == CreativeBrush::ASSEMBLER_LARGE) { highlight_tileset_cell(0, 6, RGBA8{ 255, 255, 80, 255 }); highlight_tileset_cell(1, 6, RGBA8{ 255, 255, 80, 255 }); highlight_tileset_cell(0, 7, RGBA8{ 255, 255, 80, 255 }); highlight_tileset_cell(1, 7, RGBA8{ 255, 255, 80, 255 }); }
+	if (selectedBrush == CreativeBrush::SPLITTER) highlight_tileset_cell(2, 3, RGBA8{ 255, 255, 80, 255 });
+	if (selectedBrush == CreativeBrush::MERGER) highlight_tileset_cell(2, 4, RGBA8{ 255, 255, 80, 255 });
 	if (selectedBrush == CreativeBrush::HIVE_SMALL) highlight_tileset_cell(1, 2, RGBA8{ 255, 255, 80, 255 });
-	if (selectedBrush == CreativeBrush::HIVE_BIG) highlight_tileset_cell(0, 4, RGBA8{ 255, 255, 80, 255 });
+	if (selectedBrush == CreativeBrush::HIVE_BIG) { highlight_tileset_cell(0, 4, RGBA8{ 255, 255, 80, 255 }); highlight_tileset_cell(1, 4, RGBA8{ 255, 255, 80, 255 }); highlight_tileset_cell(0, 5, RGBA8{ 255, 255, 80, 255 }); highlight_tileset_cell(1, 5, RGBA8{ 255, 255, 80, 255 }); }
 }
 
 void render_ui() {

@@ -18,6 +18,7 @@ enum TileType : U8 {
 	TILE_SAND,
 	TILE_BEACH,
 	TILE_WATER,
+	TILE_MOUNTAIN,
 	TILE_Count
 };
 
@@ -40,8 +41,8 @@ TileType get_tile(U32* machineId, I32 x, I32 y) {
 
 Xoshiro256 rng;
 constexpr U32 MAX_JUNK_PER_BEACH_TILE = 5;
-constexpr U32 MAX_JUNK_DELAY = 40;
-constexpr U32 MIN_JUNK_DELAY = 8;
+constexpr U32 MAX_JUNK_DELAY = 500;
+constexpr U32 MIN_JUNK_DELAY = 60;
 
 // list of floating items to render
 struct JunkInfo {
@@ -56,8 +57,8 @@ struct BeachTileInfo {
 	U32 junkNum;
 	JunkInfo junkList[MAX_JUNK_PER_BEACH_TILE];
 	void empty() {
-		junkNum = 0;
 		add_junk();
+		junkNum = 0;
 	}
 	void add_junk() {
 		DEBUG_ASSERT(Inventory::inv.size != 0, "Inventory must be initialized before the world lol");
@@ -100,7 +101,7 @@ void init(V2U extent) {
 	size = extent;
 	tiles = globalArena.alloc<TileType>(extent.x * extent.y);
 	num_beach_tiles = 0;
-	beach_tiles = globalArena.alloc<BeachTileInfo>(extent.y); // the entire left side of the map is a beach
+	beach_tiles = globalArena.alloc<BeachTileInfo>(extent.x * extent.y);
 	rng.seed_rand();
 	tileMachineIds = globalArena.alloc<U32>(extent.x * extent.y);
 	for (U32 i = 0; i < extent.x * extent.y; i++) {
@@ -116,6 +117,7 @@ void init(V2U extent) {
 	tileSprite[TILE_SAND] = &Resources::tile.sand;
 	tileSprite[TILE_BEACH] = &Resources::tile.beach;
 	tileSprite[TILE_WATER] = &Resources::tile.water;
+	tileSprite[TILE_MOUNTAIN] = &Resources::tile.mountain;
 }
 
 void reset_runtime_state() {
@@ -173,19 +175,49 @@ void beach_update(F32 dt) {
 	}
 }
 
+I32 find_beach_tile_index(V2U tile) {
+	for (U32 i = 0; i < num_beach_tiles; i++) {
+		if (beach_tiles[i].coord.x == tile.x && beach_tiles[i].coord.y == tile.y) {
+			return I32(i);
+		}
+	}
+	return -1;
+}
+
 void push_beach_tile(V2U pos) {
+	if (find_beach_tile_index(pos) >= 0) {
+		return;
+	}
 	beach_tiles[num_beach_tiles] = BeachTileInfo{ pos };
 	beach_tiles[num_beach_tiles].empty();
 	num_beach_tiles++;
 }
 
-BeachTileInfo* find_beach_tile(V2U tile) {
-	for (U32 i = 0; i < num_beach_tiles; i++) {
-		if (beach_tiles[i].coord.x == tile.x && beach_tiles[i].coord.y == tile.y) {
-			return &beach_tiles[i];
-		}
+void remove_beach_tile(V2U pos) {
+	I32 beachIndex = find_beach_tile_index(pos);
+	if (beachIndex < 0) {
+		return;
 	}
-	return nullptr;
+	beach_tiles[U32(beachIndex)] = beach_tiles[num_beach_tiles - 1];
+	num_beach_tiles--;
+}
+
+void sync_beach_tile_with_world(V2U pos) {
+	if (pos.x >= size.x || pos.y >= size.y) {
+		remove_beach_tile(pos);
+		return;
+	}
+	if (tiles[pos.y * size.x + pos.x] == TILE_BEACH) {
+		push_beach_tile(pos);
+	}
+	else {
+		remove_beach_tile(pos);
+	}
+}
+
+BeachTileInfo* find_beach_tile(V2U tile) {
+	I32 beachIndex = find_beach_tile_index(tile);
+	return beachIndex >= 0 ? &beach_tiles[U32(beachIndex)] : nullptr;
 }
 
 B32 beach_has_junk(V2U tile) {

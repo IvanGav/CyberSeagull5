@@ -56,6 +56,11 @@ public:
 		beeSpeed = beeMoveSpeed;
 		for (U32 i = 0; i < beeCount; i++) {
 			bees.push_back(Bee::Bee{ hiveTile, defaultHome.offsetWorld, beeSpeed });
+			Bee::Bee& bee = bees.back();
+			F32 phaseOffset = F32((i * 173u) & 1023u) * (1.0F / 1024.0F);
+			bee.flightPhaseTurns += phaseOffset;
+			bee.chaosSeed = Bee::hash01((i + 1u) * 0x9E3779B9u ^ hiveTile.x * 0x85EBCA6Bu ^ hiveTile.y * 0xC2B2AE35u);
+			bee.speedJitterSeed = Bee::hash01((i + 1u) * 0x27D4EB2Fu ^ hiveTile.x * 0x165667B1u ^ hiveTile.y * 0xD3A2646Cu);
 		}
 	}
 
@@ -95,11 +100,21 @@ public:
 
 	void add_bee() {
 		bees.push_back(Bee::Bee{ defaultHome.tile, defaultHome.offsetWorld, beeSpeed });
+			Bee::Bee& bee = bees.back();
+		U32 i = bees.size - 1;
+		bee.flightPhaseTurns += F32((i * 173u) & 1023u) * (1.0F / 1024.0F);
+		bee.chaosSeed = Bee::hash01((i + 1u) * 0x9E3779B9u ^ defaultHome.tile.x * 0x85EBCA6Bu ^ defaultHome.tile.y * 0xC2B2AE35u);
+		bee.speedJitterSeed = Bee::hash01((i + 1u) * 0x27D4EB2Fu ^ defaultHome.tile.x * 0x165667B1u ^ defaultHome.tile.y * 0xD3A2646Cu);
 		assign_waiting_tasks();
 	}
 
 	void add_bee(HomeAnchor home) {
 		bees.push_back(Bee::Bee{ home.tile, home.offsetWorld, beeSpeed });
+			Bee::Bee& bee = bees.back();
+		U32 i = bees.size - 1;
+		bee.flightPhaseTurns += F32((i * 173u) & 1023u) * (1.0F / 1024.0F);
+		bee.chaosSeed = Bee::hash01((i + 1u) * 0x9E3779B9u ^ home.tile.x * 0x85EBCA6Bu ^ home.tile.y * 0xC2B2AE35u);
+		bee.speedJitterSeed = Bee::hash01((i + 1u) * 0x27D4EB2Fu ^ home.tile.x * 0x165667B1u ^ home.tile.y * 0xD3A2646Cu);
 		assign_waiting_tasks();
 	}
 
@@ -265,6 +280,7 @@ private:
 			return;
 		}
 	}
+
 };
 
 }
