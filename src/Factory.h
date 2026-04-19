@@ -173,14 +173,29 @@ void recipe_menu_select_callback(U32 optionIndex) {
 	Machine* machine = recipeMenuMachine.get();
 	if (!machine || !machine->recipes || optionIndex >= machine->recipes->options.size) {
 		SelectUI::open = B32_FALSE;
+		SelectUI::clear_popup_anchor();
 		return;
 	}
 	machine->selectedRecipe = Recipe::RecipeRef::from(machine->recipes->options[optionIndex]);
+	SelectUI::set_selected_index(I32(optionIndex));
 	SelectUI::open = B32_FALSE;
+	SelectUI::clear_popup_anchor();
 }
 
 FINLINE B32 machine_supports_recipe_menu(const Machine* machine) {
 	return machine && machine->generation != 0 && machine->recipes && machine->recipes->options.size > 0 ? B32_TRUE : B32_FALSE;
+}
+
+I32 selected_recipe_option_index(const Machine* machine) {
+	if (!machine_supports_recipe_menu(machine) || machine->selectedRecipe.def == nullptr) {
+		return -1;
+	}
+	for (U32 i = 0; i < machine->recipes->options.size; i++) {
+		if (machine->recipes->options[i] == machine->selectedRecipe.def) {
+			return I32(i);
+		}
+	}
+	return -1;
 }
 
 struct MachineDef {
@@ -525,8 +540,7 @@ void apply_machine_def(Machine* machine, const MachineDef& def) {
 		machine->selectedRecipe = Recipe::RecipeRef::from(machine->recipes->options[nextRecipeIndex]);
 	}
 	else {
-		//machine->selectedRecipe = Recipe::RecipeRef{};
-		machine->selectedRecipe = Recipe::RecipeRef::from(machine->recipes->options[0]);
+		machine->selectedRecipe = Recipe::RecipeRef{};
 	}
 }
 
@@ -550,10 +564,15 @@ B32 has_machine(V2U pos) {
 void open_recipe_menu_for_machine(Machine* machine) {
 	if (!machine_supports_recipe_menu(machine)) {
 		SelectUI::open = B32_FALSE;
+		SelectUI::clear_popup_anchor();
 		return;
 	}
 	recipeMenuMachine = MachineHandle{ machine, machine->generation };
 	Recipe::set_select_ui_recipes(*machine->recipes, recipe_menu_select_callback);
+	SelectUI::set_selected_index(selected_recipe_option_index(machine));
+	V2F32 mouse = Win32::get_mouse();
+	SelectUI::set_popup_anchor(V2I{ I32(mouse.x), I32(mouse.y) });
+	SelectUI::open = B32_TRUE;
 }
 
 void open_recipe_menu_for_machine(V2U pos) {
@@ -732,7 +751,63 @@ void update(F32 dt) {
 	tickCount++;
 }
 
+void render_machine_recipe_badge(Machine* machine, I32 tileScale) {
+	if (!machine || !machine->selectedRecipe.def || !machine->selectedRecipe.def->recipeSprite || machine->type == MACHINE_BELT) {
+		return;
+	}
+	V2I screenPos = Cyber5eagull::tile_to_screen_px(machine->pos);
+	I32 machineWidthPx = I32(machine->size.x) * 16 * tileScale;
+	I32 iconScale = max(tileScale, 1);
+	I32 iconSize = 16 * iconScale;
+	I32 pad = max(tileScale / 2, 2);
+	I32 badgeW = iconSize + pad * 2;
+	I32 badgeH = iconSize + pad * 2;
+	I32 badgeX = screenPos.x + (machineWidthPx - badgeW) / 2;
+	I32 badgeY = screenPos.y - badgeH - 6;
+	Graphics::box(badgeX, badgeY, badgeW, badgeH, 2, RGBA8{ 0, 0, 0, 255 }, RGBA8{ 72, 92, 72, 255 });
+	Graphics::blit_sprite_cutout(*machine->selectedRecipe.def->recipeSprite, badgeX + pad, badgeY + pad, iconScale, 0);
+}
+
+void render_machine_progress_bar(Machine* machine, I32 tileScale) {
+	if (!machine || !machine->selectedRecipe.def || machine->type == MACHINE_BELT) {
+		return;
+	}
+	F32 maxTime = machine->max_process_time();
+	if (maxTime <= 0.0F) {
+		return;
+	}
+	if (!machine->enough_inputs() || machine->process_time() >= maxTime) {
+		return;
+	}
+	F32 progress01 = 1.0F - clamp01(machine->process_time() / maxTime);
+	V2I screenPos = Cyber5eagull::tile_to_screen_px(machine->pos);
+	I32 machineWidthPx = I32(machine->size.x) * 16 * tileScale;
+	I32 barW = max(machineWidthPx, 20);
+	I32 barH = max(tileScale + 4, 6);
+	I32 barX = screenPos.x + (machineWidthPx - barW) / 2;
+	I32 badgeHeight = 16 * max(tileScale, 1) + max(tileScale / 2, 2) * 2;
+	I32 barY = screenPos.y - badgeHeight - barH - 10;
+	Graphics::box(barX, barY, barW, barH, 1, RGBA8{ 0, 0, 0, 255 }, RGBA8{ 40, 40, 40, 255 });
+	I32 innerW = max(barW - 2, 0);
+	I32 fillW = I32(roundf32(progress01 * F32(innerW)));
+	if (fillW > 0) {
+		Graphics::box(barX + 1, barY + 1, fillW, max(barH - 2, 1), 0, RGBA8{ 255, 210, 90, 255 }, RGBA8{ 255, 210, 90, 255 });
+	}
+}
+
 void render(I32 tileScale) {
+	if (SelectUI::open) {
+		if (Machine* popupMachine = recipeMenuMachine.get()) {
+			V2I popupScreenPos = Cyber5eagull::tile_to_screen_px(popupMachine->pos);
+			I32 popupMachineWidthPx = I32(popupMachine->size.x) * 16 * tileScale;
+			SelectUI::set_popup_anchor(V2I{ popupScreenPos.x + popupMachineWidthPx / 2, popupScreenPos.y - 6 });
+			SelectUI::set_selected_index(selected_recipe_option_index(popupMachine));
+		}
+		else {
+			SelectUI::open = B32_FALSE;
+			SelectUI::clear_popup_anchor();
+		}
+	}
 	for (Machine* machine : machineTiles) {
 		if (!machine || !machine->sprite) {
 			continue;
@@ -755,6 +830,8 @@ void render(I32 tileScale) {
 			}
 		}
 		Graphics::blit_sprite_cutout(machine->spriteProcessingAlt && machine->enough_inputs() ? *machine->spriteProcessingAlt : *machine->sprite, screenPos.x, screenPos.y, tileScale, machine->animFrame);
+		render_machine_recipe_badge(machine, tileScale);
+		render_machine_progress_bar(machine, tileScale);
 	}
 	for (Machine* machine : machineTiles) {
 		if (machine && machine->type == MACHINE_BELT && (machine->inventory[0].count > 0 || machine->outputBuf.count > 0)) {

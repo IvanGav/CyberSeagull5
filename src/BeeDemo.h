@@ -62,6 +62,15 @@ U8 flowerRemaining[TerrainGen::MAX_WORLD_MAP_TILES]{};
 B32 machineRefundableFlags[TerrainGen::MAX_WORLD_MAP_TILES]{};
 ArenaArrayList<B32> hiveRefundable{};
 
+struct ConveyorDeliveryRequest {
+    V2U32 targetTile{};
+    Inventory::ItemType item = Inventory::ITEM_HONEY;
+    U32 count = 0u;
+    I32 assignedBee = -1;
+};
+
+ArenaArrayList<ConveyorDeliveryRequest> conveyorDeliveryRequests{};
+
 FINLINE I32 world_tile_pixels(I32 worldTileScale) {
 	return 16 * worldTileScale;
 }
@@ -763,6 +772,92 @@ B32 try_insert_adjacent_belt_item(V2U32 tile, Inventory::ItemType item, U32 coun
 	return B32_FALSE;
 }
 
+B32 try_insert_belt_item(V2U32 tile, Inventory::ItemType item, U32 count = 1) {
+    Factory::Machine* belt = Factory::get_machine_from_tile(V2U{ tile.x, tile.y });
+    if (!Factory::machine_is_belt(belt) || count == 0u) {
+        return B32_FALSE;
+    }
+    Inventory::ItemStack& stack = belt->get_item_stack();
+    if (stack.count != 0 && U32(stack.item) != item) {
+        return B32_FALSE;
+    }
+    U32 freeSpace = belt->inventoryStackSizeLimit > stack.count ? (belt->inventoryStackSizeLimit - stack.count) : 0u;
+    if (freeSpace < count) {
+        return B32_FALSE;
+    }
+    if (stack.count == 0) {
+        stack.item = Inventory::ItemType(item);
+    }
+    stack.count += count;
+    return B32_TRUE;
+}
+
+I32 find_conveyor_delivery_request(V2U32 tile) {
+    for (U32 i = 0; i < conveyorDeliveryRequests.size; i++) {
+        const ConveyorDeliveryRequest& request = conveyorDeliveryRequests[i];
+        if (request.targetTile.x == tile.x && request.targetTile.y == tile.y) {
+            return I32(i);
+        }
+    }
+    return -1;
+}
+
+void remove_conveyor_delivery_request(U32 index) {
+    if (index < conveyorDeliveryRequests.size) {
+        conveyorDeliveryRequests.remove_ordered(index);
+    }
+}
+
+B32 queue_inventory_delivery(V2U32 tile, Inventory::ItemType item, U32 count = 1u) {
+    if (!tile_in_bounds(tile) || count == 0u) {
+        return B32_FALSE;
+    }
+
+    Factory::Machine* belt = Factory::get_machine_from_tile(V2U{ tile.x, tile.y });
+    if (!Factory::machine_is_belt(belt)) {
+        return B32_FALSE;
+    }
+
+    if (find_conveyor_delivery_request(tile) >= 0 || colony.is_tile_selected(tile)) {
+        return B32_FALSE;
+    }
+
+    if (!Inventory::try_take_item(item, count)) {
+        return B32_FALSE;
+    }
+
+    BeeTasks::Task task = BeeTasks::make_generic_task(tile, 0.15F, B32_FALSE, B32_TRUE);
+    if (colony.queue_task(task) < 0) {
+        Inventory::add_item(item, count);
+        return B32_FALSE;
+    }
+
+    ConveyorDeliveryRequest& request = conveyorDeliveryRequests.push_back_zeroed();
+    request.targetTile = tile;
+    request.item = item;
+    request.count = count;
+    request.assignedBee = -1;
+    return B32_TRUE;
+}
+
+void cleanup_invalid_conveyor_deliveries() {
+    for (U32 i = conveyorDeliveryRequests.size; i-- > 0;) {
+        const ConveyorDeliveryRequest& request = conveyorDeliveryRequests[i];
+        if (request.assignedBee >= 0) {
+            continue;
+        }
+
+        Factory::Machine* belt = Factory::get_machine_from_tile(V2U{ request.targetTile.x, request.targetTile.y });
+        if (Factory::machine_is_belt(belt)) {
+            continue;
+        }
+
+        Inventory::add_item(request.item, request.count);
+        colony.unqueue_task_for_tile(request.targetTile);
+        remove_conveyor_delivery_request(i);
+    }
+}
+
 I32 find_hive_covering_tile(V2U32 tile) {
 	for (U32 i = 0; i < hives.size; i++) {
 		if (TerrainGen::tile_in_hive_footprint(tile, hives[i])) {
@@ -1009,31 +1104,33 @@ BeeTasks::Task make_task_for_tile(V2U32 tile) {
 }
 
 void init(V2U32 hiveTile) {
-	World::reset_runtime_state();
-	seed_conveyors(hiveTile);
-	TerrainGen::generate(&worldGeneration, &hives, hiveTile);
-	Bee::set_path_finder(find_bee_path);
-	Bee::set_position_collider(bee_position_hits_blocker);
-	rebuild_resource_runtime();
-	mainHiveHoneyProgress = 0.0F;
-	init_build_definitions();
-	memset(machineRefundableFlags, 0, sizeof(machineRefundableFlags));
-	hiveRefundable.allocator = &globalArena;
-	hiveRefundable.clear();
-	hiveRefundable.resize(hives.size);
-	for (U32 i = 0; i < hiveRefundable.size; i++) {
-		hiveRefundable[i] = B32_FALSE;
-	}
-	colony.init(BEE_COUNT, hiveTile, SPEED);
-	colony.set_home_selector(select_nearest_hive_anchor);
-	if (hives.size != 0) {
-		BeeSystem::HomeAnchor mainAnchor = home_anchor_for_hive(hives[0]);
-		colony.set_default_home(mainAnchor.tile, mainAnchor.offsetWorld);
-		for (U32 i = 0; i < colony.bees.size; i++) {
-			colony.bees[i].set_home_anchor(mainAnchor.tile, mainAnchor.offsetWorld);
-			colony.bees[i].snap_to_home();
-		}
-	}
+    World::reset_runtime_state();
+    seed_conveyors(hiveTile);
+    TerrainGen::generate(&worldGeneration, &hives, hiveTile);
+    Bee::set_path_finder(find_bee_path);
+    Bee::set_position_collider(bee_position_hits_blocker);
+    rebuild_resource_runtime();
+    mainHiveHoneyProgress = 0.0F;
+    init_build_definitions();
+    memset(machineRefundableFlags, 0, sizeof(machineRefundableFlags));
+    hiveRefundable.allocator = &globalArena;
+    hiveRefundable.clear();
+    conveyorDeliveryRequests.allocator = &globalArena;
+    conveyorDeliveryRequests.clear();
+    hiveRefundable.resize(hives.size);
+    for (U32 i = 0; i < hiveRefundable.size; i++) {
+        hiveRefundable[i] = B32_FALSE;
+    }
+    colony.init(BEE_COUNT, hiveTile, SPEED);
+    colony.set_home_selector(select_nearest_hive_anchor);
+    if (hives.size != 0) {
+        BeeSystem::HomeAnchor mainAnchor = home_anchor_for_hive(hives[0]);
+        colony.set_default_home(mainAnchor.tile, mainAnchor.offsetWorld);
+        for (U32 i = 0; i < colony.bees.size; i++) {
+            colony.bees[i].set_home_anchor(mainAnchor.tile, mainAnchor.offsetWorld);
+            colony.bees[i].snap_to_home();
+        }
+    }
 }
 
 void queue_tile_task(V2U32 tile) {
@@ -1080,44 +1177,77 @@ void update_main_hive_honey_conversion(F32 dt) {
 }
 
 void handle_work_cycle_finished(const BeeSystem::Event& event) {
-	if (event.beeIndex >= colony.bees.size) {
-		return;
-	}
+    if (event.beeIndex >= colony.bees.size) {
+        return;
+    }
 
-	Bee::Bee& bee = colony.bees[event.beeIndex];
-	Inventory::ItemType item{};
-	if (!consume_resource_from_tile(event.task.targetTile, &item)) {
-		colony.unqueue_task_for_tile(event.task.targetTile);
-		bee.clear_cargo();
-		return;
-	}
+    Bee::Bee& bee = colony.bees[event.beeIndex];
+    I32 deliveryIndex = find_conveyor_delivery_request(event.task.targetTile);
+    if (deliveryIndex >= 0) {
+        ConveyorDeliveryRequest request = conveyorDeliveryRequests[U32(deliveryIndex)];
+        BeeSystem::HomeAnchor depositHome = nearest_hive_anchor_for_tile(event.task.targetTile);
+        bee.set_home_anchor(depositHome.tile, depositHome.offsetWorld);
+        if (!bee.carrying()) {
+            bee.set_cargo(request.item, request.count);
+        }
+        if (try_insert_belt_item(event.task.targetTile, request.item, request.count)) {
+            bee.clear_cargo();
+        }
+        else {
+            bee.state = BeeTasks::State::STATE_TRAVEL_HOME;
+            bee.velocity = V2F32{};
+        }
+        remove_conveyor_delivery_request(U32(deliveryIndex));
+        return;
+    }
 
-	B32 resourceRemaining = tile_has_harvestable_resource(event.task.targetTile);
-	BeeSystem::HomeAnchor depositHome = nearest_hive_anchor_for_tile(event.task.targetTile);
+    Inventory::ItemType item{};
+    if (!consume_resource_from_tile(event.task.targetTile, &item)) {
+        colony.unqueue_task_for_tile(event.task.targetTile);
+        bee.clear_cargo();
+        return;
+    }
 
-	if ((event.task.type == BeeTasks::TaskType::TASK_ORE || event.task.type == BeeTasks::TaskType::TASK_FLOWER) && bee.activeTask.returnHomeAfterWork == B32_FALSE) {
-		if (try_insert_adjacent_belt_item(event.task.targetTile, item, 1)) {
-			bee.clear_cargo();
-			if (!resourceRemaining) {
-				colony.unqueue_task_for_tile(event.task.targetTile);
-			}
-			return;
-		}
+    B32 resourceRemaining = tile_has_harvestable_resource(event.task.targetTile);
+    BeeSystem::HomeAnchor depositHome = nearest_hive_anchor_for_tile(event.task.targetTile);
 
-		Sounds::play_sound(Sounds::bees);
-		bee.set_home_anchor(depositHome.tile, depositHome.offsetWorld);
-		bee.set_cargo(item, 1);
-		bee.state = BeeTasks::State::STATE_TRAVEL_HOME;
-		bee.velocity = V2F32{};
-	} else {
-		Sounds::play_sound(Sounds::bees);
-		bee.set_home_anchor(depositHome.tile, depositHome.offsetWorld);
-		bee.set_cargo(item, 1);
-	}
+    if ((event.task.type == BeeTasks::TaskType::TASK_ORE || event.task.type == BeeTasks::TaskType::TASK_FLOWER) && bee.activeTask.returnHomeAfterWork == B32_FALSE) {
+        if (try_insert_adjacent_belt_item(event.task.targetTile, item, 1)) {
+            bee.clear_cargo();
+            if (!resourceRemaining) {
+                colony.unqueue_task_for_tile(event.task.targetTile);
+            }
+            return;
+        }
 
-	if (!resourceRemaining) {
-		colony.unqueue_task_for_tile(event.task.targetTile);
-	}
+        bee.set_home_anchor(depositHome.tile, depositHome.offsetWorld);
+        bee.set_cargo(item, 1);
+        bee.state = BeeTasks::State::STATE_TRAVEL_HOME;
+        bee.velocity = V2F32{};
+    }
+    else {
+        bee.set_home_anchor(depositHome.tile, depositHome.offsetWorld);
+        bee.set_cargo(item, 1);
+    }
+
+    if (!resourceRemaining) {
+        colony.unqueue_task_for_tile(event.task.targetTile);
+    }
+}
+
+void handle_task_assigned(const BeeSystem::Event& event) {
+    if (event.beeIndex >= colony.bees.size) {
+        return;
+    }
+
+    I32 deliveryIndex = find_conveyor_delivery_request(event.task.targetTile);
+    if (deliveryIndex < 0) {
+        return;
+    }
+
+    ConveyorDeliveryRequest& request = conveyorDeliveryRequests[U32(deliveryIndex)];
+    request.assignedBee = I32(event.beeIndex);
+    colony.bees[event.beeIndex].set_cargo(request.item, request.count);
 }
 
 void handle_bee_reached_home(const BeeSystem::Event& event) {
@@ -1128,21 +1258,25 @@ void handle_bee_reached_home(const BeeSystem::Event& event) {
 }
 
 void update(F32 dt) {
-	colony.update(dt);
+    cleanup_invalid_conveyor_deliveries();
+    colony.update(dt);
 
-	for (U32 i = 0; i < colony.events.size; i++) {
-		const BeeSystem::Event& event = colony.events[i];
-		switch (event.type) {
-		case BeeSystem::EventType::EVENT_WORK_CYCLE_FINISHED:
-			handle_work_cycle_finished(event);
-			break;
-		case BeeSystem::EventType::EVENT_BEE_REACHED_HOME:
-			handle_bee_reached_home(event);
-			break;
-		default:
-			break;
-		}
-	}
+    for (U32 i = 0; i < colony.events.size; i++) {
+        const BeeSystem::Event& event = colony.events[i];
+        switch (event.type) {
+        case BeeSystem::EventType::EVENT_TASK_ASSIGNED:
+            handle_task_assigned(event);
+            break;
+        case BeeSystem::EventType::EVENT_WORK_CYCLE_FINISHED:
+            handle_work_cycle_finished(event);
+            break;
+        case BeeSystem::EventType::EVENT_BEE_REACHED_HOME:
+            handle_bee_reached_home(event);
+            break;
+        default:
+            break;
+        }
+    }
 
 	update_main_hive_honey_conversion(dt);
 }
