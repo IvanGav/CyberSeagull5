@@ -43,6 +43,7 @@ CreativeBrush brushOrder[BRUSH_COUNT] = {
 	CreativeBrush::CONVEYOR,
 	CreativeBrush::ASSEMBLER_SMALL,
 	CreativeBrush::ASSEMBLER_LARGE,
+	CreativeBrush::ASSEMBLER_VERY_LARGE,
 	CreativeBrush::SPLITTER,
 	CreativeBrush::HIVE_SMALL,
 	CreativeBrush::HIVE_BIG,
@@ -184,6 +185,8 @@ FINLINE V2U preview_footprint_tiles(CreativeBrush brush) {
 	case CreativeBrush::ASSEMBLER_LARGE:
 	case CreativeBrush::HIVE_BIG:
 		return V2U{ 2, 2 };
+	case CreativeBrush::ASSEMBLER_VERY_LARGE:
+		return V2U{ 3,2 };
 	default:
 		return V2U{ 1, 1 };
 	}

@@ -80,21 +80,21 @@ namespace Recipe {
 		recipeList.nuclearHeart = RecipeDef{
 			3, {{ITEM_IRON_PLATE, 5}, {ITEM_URANIUM, 3}, {ITEM_GREEN_CIRCUIT, 1}},
 			{ITEM_NUCLEAR_HEART, 1 },
-			20.0,&Resources::tile.item.greenCircuit
+			20.0,&Resources::tile.item.nuclearHeart
 		};
 		recipeList.camera = RecipeDef{
 			3, {{ITEM_IRON_PLATE, 2}, {ITEM_GEAR, 8}, {ITEM_GREEN_CIRCUIT, 2}},
 			{ITEM_CAMERA, 1 },
-			15.0,&Resources::tile.item.greenCircuit
+			15.0,&Resources::tile.item.camera
 		};
 		recipeList.cyberSeagull = RecipeDef{
 			3, {{ITEM_NUCLEAR_HEART, 1}, {ITEM_CAMERA, 2}, {ITEM_GULL, 1}},
 			{ITEM_LEMON_JUICE, 1 },
-			15.0,&Resources::tile.item.greenCircuit
+			15.0,&Resources::tile.item.gull
 		};
 
 		recipeGroups.belt = RecipeGroup::make(make_arena_array_list(globalArena, &recipeList.unit));
-		recipeGroups.smelter = RecipeGroup::make(make_arena_array_list(globalArena, &recipeList.ironSmelt,&recipeList.copperCable));
+		recipeGroups.smelter = RecipeGroup::make(make_arena_array_list(globalArena, &recipeList.ironSmelt, &recipeList.copperCable));
 		recipeGroups.assembler = RecipeGroup::make(make_arena_array_list(globalArena, &recipeList.ironGear, &recipeList.greenCircuit));
 		recipeGroups.bigAssembler = RecipeGroup::make(make_arena_array_list(globalArena, &recipeList.nuclearHeart, &recipeList.camera, &recipeList.cyberSeagull));
 	}
@@ -109,6 +109,7 @@ namespace Recipe {
 		}
 		void reset() {
 			if (def != nullptr) progress = def->time;
+			else __debugbreak();
 		}
 		// call every frame; return true if recipe has finished
 		bool tick(F32 dt) {
