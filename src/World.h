@@ -106,6 +106,13 @@ void init(V2U extent) {
 	tileSprite[TILE_WATER] = &Resources::tile.water;
 }
 
+void reset_runtime_state() {
+	num_beach_tiles = 0;
+	for (U32 i = 0; i < size.x * size.y; i++) {
+		tileMachineIds[i] = MACHINE_NULL_ID;
+	}
+}
+
 void render_beach(V2F camera, I32 tileScale) {
 	I32 tileSize = (F32)tileScale * 16;
 	I32 camStartX = I32(floorf32(camera.x));
