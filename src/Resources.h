@@ -83,12 +83,13 @@ struct {
 		Sprite upToLeft;
 		Sprite upToRight;
 	} belt;
+	Sprite num[10];
 } tile;
 
 void load() {
 	scrung = load_texture("scrung.png"a);
 	scrungPart = Sprite{ &scrung, 128, 128, 128, 128, 1 };
-	tileset = load_texture("tileset_v2.png"a);
+	tileset = load_texture("tileset_v3.png"a);
 	tile.undef = Sprite{ &tileset, 0, 0, 16, 16, 1 };
 	tile.grass = Sprite{ &tileset, 16, 0, 16, 16, 1 };
 	tile.grassIron = Sprite{ &tileset, 32, 0, 16, 16, 1 };
@@ -117,6 +118,9 @@ void load() {
 	tile.belt.rightToDown = Sprite{ &tileset, 64, 128, 16, 16, 3 };
 	tile.belt.upToLeft = Sprite{ &tileset, 64, 112, 16, 16, 3 };
 	tile.belt.upToRight = Sprite{ &tileset, 64, 144, 16, 16, 3 };
+	for (U32 i = 0; i < 10; i++) {
+		tile.num[i] = Sprite{&tileset, 16*i, 12*16, 16, 16, 1};
+	}
 }
 
 }

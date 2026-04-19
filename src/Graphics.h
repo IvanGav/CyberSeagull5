@@ -62,4 +62,27 @@ void blit_texture(Resources::Texture& tex, I32 x, I32 y, I32 scaleFactor) {
 	blit_sprite(s, x, y, scaleFactor, 0);
 }
 
+//template<typename... Values>
+//void display_text(I32 x, I32 y, I32 fontSize, StrA fmt, Values... fmt_args) {
+//	MemoryArena scratch = get_scratch_arena();
+//	MEMORY_ARENA_FRAME(scratch) {
+//		StrA = strafmt(scratch, fmt, fmt_args...);
+//		// TODO
+//		abort();
+//	}
+//}
+
+void display_num(U32 text, I32 x, I32 y, I32 fontSize) {
+	DEBUG_ASSERT(fontSize % 16 == 0, "fontSize must be multiple of 16");
+	if (text == 0) {
+		blit_sprite_cutout(Resources::tile.num[0], x, y, fontSize / 16, 0);
+		return;
+	}
+	U32 decimal_digits = (U32)floorf32(log10f32((F32)text)); // i don't like this, but... yeah
+	for (U32 i = decimal_digits; text > 0; i--) {
+		blit_sprite_cutout(Resources::tile.num[text%10], x + i * fontSize, y, fontSize/16, 0);
+		text /= 10;
+	}
+}
+
 }
