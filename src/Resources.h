@@ -103,6 +103,7 @@ struct {
 		Sprite pollen;
 		Sprite honey;
 		Sprite lemonJuice;
+		Sprite cyberGull;
 	} item;
 	struct {
 		Sprite downOff;
@@ -186,6 +187,7 @@ void load() {
 	tile.item.pollen = Sprite{ &tileset, 12 * 16, 13 * 16, 16, 16, 1 };
 	tile.item.honey = Sprite{ &tileset, 13 * 16, 13 * 16, 16, 16, 1 };
 	tile.item.lemonJuice = Sprite{ &tileset, 14 * 16, 13 * 16, 16, 16, 1 };
+	tile.item.cyberGull = Sprite{ &tileset, 15 * 16, 13 * 16, 16, 16, 1 };
 
 	tile.icon.belt = Sprite{ &tileset, 0 * 16, 14 * 16, 16, 16, 1 };
 	tile.icon.assembler = Sprite{ &tileset, 1 * 16, 14 * 16, 16, 16, 1 };
