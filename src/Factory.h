@@ -25,6 +25,10 @@ struct ItemStack {
 enum MachineType : U32 {
 	MACHINE_NONE,
 	MACHINE_BELT,
+	MACHINE_ASSEMBLER_SMALL,
+	MACHINE_ASSEMBLER_LARGE,
+	MACHINE_SPLITTER,
+	MACHINE_MERGER,
 	MACHINE_Count
 };
 
@@ -99,6 +103,21 @@ FINLINE B32 machine_is_belt(const Machine* machine) {
 	return machine && machine->generation != 0 && machine->type == MACHINE_BELT ? B32_TRUE : B32_FALSE;
 }
 
+FINLINE B32 machine_is_static_structure(const Machine* machine) {
+	return machine && machine->generation != 0 && machine->type != MACHINE_NONE && machine->type != MACHINE_BELT ? B32_TRUE : B32_FALSE;
+}
+
+FINLINE V2U machine_footprint(MachineType type) {
+	switch (type) {
+	case MACHINE_ASSEMBLER_LARGE: return V2U{ 2, 2 };
+	case MACHINE_ASSEMBLER_SMALL:
+	case MACHINE_SPLITTER:
+	case MACHINE_MERGER:
+	case MACHINE_BELT:
+	default: return V2U{ 1, 1 };
+	}
+}
+
 MachineDef get_belt(Direction2 src, Direction2 dst) {
 	DEBUG_ASSERT(src != DIRECTION2_INVALID && dst != DIRECTION2_INVALID, "Belt direction cannot be invalid"a);
 	DEBUG_ASSERT(src != dst, "Belt cannot do a U turn"a);
@@ -145,6 +164,34 @@ MachineDef get_belt(Direction2 src, Direction2 dst) {
 		}
 	} break;
 	default: break;
+	}
+	return result;
+}
+
+MachineDef get_static_machine(MachineType type) {
+	MachineDef result{};
+	result.type = type;
+	result.inputSide = DIRECTION2_INVALID;
+	result.outputSide = DIRECTION2_INVALID;
+	switch (type) {
+	case MACHINE_ASSEMBLER_SMALL:
+		result.size = V2U{ 1, 1 };
+		result.sprite = &Resources::tile.assemblerSmall;
+		break;
+	case MACHINE_ASSEMBLER_LARGE:
+		result.size = V2U{ 2, 2 };
+		result.sprite = &Resources::tile.assemblerLarge;
+		break;
+	case MACHINE_SPLITTER:
+		result.size = V2U{ 1, 1 };
+		result.sprite = &Resources::tile.splitter;
+		break;
+	case MACHINE_MERGER:
+		result.size = V2U{ 1, 1 };
+		result.sprite = &Resources::tile.merger;
+		break;
+	default:
+		break;
 	}
 	return result;
 }
@@ -267,6 +314,24 @@ B32 place_belt(V2U pos) {
 		return machine_is_belt(existing);
 	}
 	return set_belt_shape(pos, DIRECTION2_LEFT, DIRECTION2_RIGHT);
+}
+
+B32 place_machine_type(V2U pos, MachineType type) {
+	if (type == MACHINE_BELT) {
+		return place_belt(pos);
+	}
+	MachineDef def = get_static_machine(type);
+	if (!def.sprite) {
+		return B32_FALSE;
+	}
+	Machine* existing = get_machine_from_tile(pos);
+	if (existing) {
+		if (existing->type == type) {
+			return B32_TRUE;
+		}
+		return B32_FALSE;
+	}
+	return try_place_machine(pos, def).get() ? B32_TRUE : B32_FALSE;
 }
 
 void remove_machine(Machine* machine) {

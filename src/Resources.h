@@ -61,6 +61,7 @@ struct {
 	Sprite sand;
 	Sprite beach;
 	Sprite water;
+	Sprite mountain;
 	Sprite oil;
 	Sprite assemblerSmall;
 	Sprite assemblerLarge;
@@ -117,6 +118,7 @@ void load() {
 	tile.sand = Sprite{ &tileset, 0, 16, 16, 16, 1 };
 	tile.beach = Sprite{ &tileset, 16, 16, 16, 16, 1 };
 	tile.water = Sprite{ &tileset, 0, 8 * 16, 16, 16, 2 };
+	tile.mountain = Sprite{ &tileset, 11 * 16, 13 * 16, 16, 16, 1 };
 	tile.oil = Sprite{ &tileset,3 * 16, 5 * 16, 16, 16, 2 };
 	tile.assemblerSmall = Sprite{ &tileset, 16, 48, 16, 16, 1 };
 	tile.assemblerLarge = Sprite{ &tileset, 0, 96, 32, 32, 1 };
