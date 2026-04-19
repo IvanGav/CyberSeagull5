@@ -22,9 +22,9 @@ enum ItemType : U8 {
     ITEM_NUCLEAR_HEART,
     ITEM_URANIUM,
    	ITEM_POLLEN,
-		ITEM_HONEY,
-		ITEM_LEMON_JUICE,
-		ITEM_Count
+	ITEM_HONEY,
+	ITEM_LEMON_JUICE,
+	ITEM_Count
 };
 
 Resources::Sprite* itemSprite[ITEM_Count];
@@ -81,7 +81,7 @@ void init() {
     itemSprite[ITEM_NUCLEAR_HEART] = &Resources::tile.item.nuclearHeart;
     itemSprite[ITEM_URANIUM] = &Resources::tile.item.uranium;
   	itemSprite[ITEM_POLLEN] = &Resources::tile.item.pollen;
-		itemSprite[ITEM_HONEY] = &Resources::tile.item.honey;
+	itemSprite[ITEM_HONEY] = &Resources::tile.item.honey;
   	itemSprite[ITEM_LEMON_JUICE] = &Resources::tile.item.lemonJuice;
 
 }

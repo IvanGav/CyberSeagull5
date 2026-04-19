@@ -93,11 +93,9 @@ B32 mouse_to_tile(V2U32* tileOut) {
 
 void update() {
 	Factory::update();
+	World::beach_update(dt);
 }
 
-void update_debug_inventory() {
-	// Stop writing debug counters into the actual resource inventory.
-}
 
 void render() {
 	F64 currentFrameTime = current_time_seconds();
@@ -120,7 +118,6 @@ void render() {
 	}
 	clamp_camera();
 	BeeDemo::update(dt);
-	update_debug_inventory();
 
 	memset(Win32::framebuffer, 0, Win32::framebufferWidth * Win32::framebufferHeight * sizeof(RGBA8));
 	World::render(camera, worldTileScale);
@@ -156,10 +153,8 @@ U32 run_cyber5eagull() {
 	BeeDemo::init(hiveTile);
 	center_camera_on_tile(hiveTile);
 	Win32::show_window();
-	update_debug_inventory();
 
 	while (!Win32::windowShouldClose) {
-		World::beach_update(dt);
 		swap(&frameArena, &lastFrameArena);
 		frameArena.reset();
 		Win32::poll_events();
