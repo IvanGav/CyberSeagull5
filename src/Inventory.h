@@ -10,18 +10,18 @@ namespace Inventory {
 
 
 enum ItemType : U8 {
-    ITEM_IRON_ORE,
-    ITEM_COPPER_ORE,
-    ITEM_GULL,
-    ITEM_COPPER_CABLE,
-    ITEM_IRON_PLATE,
-    ITEM_GREEN_CIRCUIT,
-    ITEM_CAMERA,
-    ITEM_FEATHER,
-    ITEM_GEAR,
-    ITEM_NUCLEAR_HEART,
-    ITEM_URANIUM,
-   	ITEM_POLLEN,
+	ITEM_IRON_ORE,
+	ITEM_COPPER_ORE,
+	ITEM_GULL,
+	ITEM_COPPER_CABLE,
+	ITEM_IRON_PLATE,
+	ITEM_GREEN_CIRCUIT,
+	ITEM_CAMERA,
+	ITEM_FEATHER,
+	ITEM_GEAR,
+	ITEM_NUCLEAR_HEART,
+	ITEM_URANIUM,
+	ITEM_POLLEN,
 	ITEM_HONEY,
 	ITEM_LEMON_JUICE,
 	ITEM_CONVEYOR,
@@ -29,8 +29,8 @@ enum ItemType : U8 {
 };
 
 struct ItemStack {
-    Inventory::ItemType item;
-    U32 count;
+	Inventory::ItemType item;
+	U32 count;
 };
 
 Resources::Sprite* itemSprite[ITEM_Count];
@@ -115,13 +115,13 @@ I32 item_index_at_screen(V2F32 mouse) {
     return index;
 }
 FINLINE B32 item_valid(ItemType item) {
-    return item < inv.size ? B32_TRUE : B32_FALSE;
+	return item < inv.size ? B32_TRUE : B32_FALSE;
 }
 
 FINLINE void clear_counts() {
-    for (U32 i = 0; i < inv.size; i++) {
-        inv[i] = 0;
-    }
+	for (U32 i = 0; i < inv.size; i++) {
+		inv[i] = 0;
+	}
 }
 
 FINLINE U32 count(ItemType item) {
@@ -155,18 +155,18 @@ B32 click_callback(V2F32 mouse) {
 
 
 FINLINE void add_item(ItemType item, U32 amount = 1) {
-    if (!item_valid(item) || amount == 0) {
-        return;
-    }
-    inv[item] += amount;
+	if (!item_valid(item) || amount == 0) {
+		return;
+	}
+	inv[item] += amount;
 }
 
 FINLINE B32 try_take_item(ItemType item, U32 amount = 1) {
-    if (!item_valid(item) || amount == 0 || inv[item] < amount) {
-        return B32_FALSE;
-    }
-    inv[item] -= amount;
-    return B32_TRUE;
+	if (!item_valid(item) || amount == 0 || inv[item] < amount) {
+		return B32_FALSE;
+	}
+	inv[item] -= amount;
+	return B32_TRUE;
 }
 
 void init() {
@@ -188,7 +188,7 @@ void init() {
     itemSprite[ITEM_URANIUM] = &Resources::tile.item.uranium;
   	itemSprite[ITEM_POLLEN] = &Resources::tile.item.pollen;
 	itemSprite[ITEM_HONEY] = &Resources::tile.item.honey;
-  	itemSprite[ITEM_LEMON_JUICE] = &Resources::tile.item.lemonJuice;
+	itemSprite[ITEM_LEMON_JUICE] = &Resources::tile.item.lemonJuice;
 	itemSprite[ITEM_CONVEYOR] = &Resources::tile.icon.belt;
 
 }

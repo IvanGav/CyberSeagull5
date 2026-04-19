@@ -329,7 +329,7 @@ MachineDef get_assembler(Rotation2 orientation) {
 	case ROTATION2_180: result.sprite = &Resources::tile.assembler.upOff; result.spriteProcessingAlt = &Resources::tile.assembler.upOn; break;
 	case ROTATION2_270: result.sprite = &Resources::tile.assembler.rightOff; result.spriteProcessingAlt = &Resources::tile.assembler.rightOn; break;
 	}
-	result.inventoryStackSize = 4;
+	result.inventoryStackSize = 5;
 	result.ioDefs[0] = rotate_iodef(IODef{ V2I{ 0, 1 }, World::MACHINE_INPUT_DOWN }, result.size, orientation);
 	result.ioDefs[1] = rotate_iodef(IODef{ V2I{ 1, 1 }, World::MACHINE_OUTPUT_DOWN }, result.size, orientation);
 	result.recipes = &Recipe::recipeGroups.assembler;
@@ -818,6 +818,15 @@ void render(I32 tileScale) {
 			if (machine->sprite == &Resources::tile.assembler.downOff) {
 				Graphics::blit_sprite_cutout(Resources::tile.belt.downToUp, screenPos.x, screenPos.y + 16 * tileScale, tileScale, beltAnimTime);
 				Graphics::blit_sprite_cutout(Resources::tile.belt.upToDown, screenPos.x + 16 * tileScale, screenPos.y + 16 * tileScale, tileScale, beltAnimTime);
+			} else if (machine->sprite == &Resources::tile.assembler.leftOff) {
+				Graphics::blit_sprite_cutout(Resources::tile.belt.leftToRight, screenPos.x, screenPos.y, tileScale, beltAnimTime);
+				Graphics::blit_sprite_cutout(Resources::tile.belt.rightToLeft, screenPos.x, screenPos.y + 16 * tileScale, tileScale, beltAnimTime);
+			} else if (machine->sprite == &Resources::tile.assembler.rightOff) {
+				Graphics::blit_sprite_cutout(Resources::tile.belt.rightToLeft, screenPos.x + 16 * tileScale, screenPos.y, tileScale, beltAnimTime);
+				Graphics::blit_sprite_cutout(Resources::tile.belt.leftToRight, screenPos.x + 16 * tileScale, screenPos.y + 16 * tileScale, tileScale, beltAnimTime);
+			} else if (machine->sprite == &Resources::tile.assembler.upOff) {
+				Graphics::blit_sprite_cutout(Resources::tile.belt.upToDown, screenPos.x + 16 * tileScale, screenPos.y, tileScale, beltAnimTime);
+				Graphics::blit_sprite_cutout(Resources::tile.belt.downToUp, screenPos.x, screenPos.y, tileScale, beltAnimTime);
 			}
 		}
 		Graphics::blit_sprite_cutout(machine->spriteProcessingAlt && machine->enough_inputs() ? *machine->spriteProcessingAlt : *machine->sprite, screenPos.x, screenPos.y, tileScale, machine->animFrame);
