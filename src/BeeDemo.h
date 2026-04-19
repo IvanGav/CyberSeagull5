@@ -63,11 +63,17 @@ U8 flowerRemaining[TerrainGen::MAX_WORLD_MAP_TILES]{};
 B32 machineRefundableFlags[TerrainGen::MAX_WORLD_MAP_TILES]{};
 ArenaArrayList<B32> hiveRefundable{};
 
+enum class ConveyorRequestMode : U8 {
+    DELIVER_TO_BELT = 0,
+    PICKUP_FROM_BELT,
+};
+
 struct ConveyorDeliveryRequest {
     V2U32 targetTile{};
     Inventory::ItemType item = Inventory::ITEM_HONEY;
     U32 count = 0u;
     I32 assignedBee = -1;
+    ConveyorRequestMode mode = ConveyorRequestMode::DELIVER_TO_BELT;
 };
 
 ArenaArrayList<ConveyorDeliveryRequest> conveyorDeliveryRequests{};
@@ -801,6 +807,63 @@ B32 try_insert_belt_item(V2U32 tile, Inventory::ItemType item, U32 count = 1) {
     return B32_TRUE;
 }
 
+B32 belt_has_item(V2U32 tile) {
+    Factory::Machine* belt = Factory::get_machine_from_tile(V2U{ tile.x, tile.y });
+    if (!Factory::machine_is_belt(belt)) {
+        return B32_FALSE;
+    }
+    return belt->get_item_stack().count > 0 ? B32_TRUE : B32_FALSE;
+}
+
+B32 belt_peek_item(V2U32 tile, Inventory::ItemType* itemOut, U32* countOut) {
+    Factory::Machine* belt = Factory::get_machine_from_tile(V2U{ tile.x, tile.y });
+    if (!Factory::machine_is_belt(belt)) {
+        return B32_FALSE;
+    }
+
+    Inventory::ItemStack& stack = belt->get_item_stack();
+    if (stack.count == 0u) {
+        return B32_FALSE;
+    }
+
+    if (itemOut) {
+        *itemOut = stack.item;
+    }
+    if (countOut) {
+        *countOut = stack.count;
+    }
+    return B32_TRUE;
+}
+
+B32 try_take_belt_item(V2U32 tile, Inventory::ItemType* itemOut, U32* countOut, U32 requestedCount = 1u) {
+    if (requestedCount == 0u) {
+        return B32_FALSE;
+    }
+
+    Factory::Machine* belt = Factory::get_machine_from_tile(V2U{ tile.x, tile.y });
+    if (!Factory::machine_is_belt(belt)) {
+        return B32_FALSE;
+    }
+
+    Inventory::ItemStack& stack = belt->get_item_stack();
+    if (stack.count == 0u) {
+        return B32_FALSE;
+    }
+
+    U32 taken = min(requestedCount, stack.count);
+    Inventory::ItemType item = stack.item;
+
+    stack.count -= taken;
+
+    if (itemOut) {
+        *itemOut = item;
+    }
+    if (countOut) {
+        *countOut = taken;
+    }
+    return B32_TRUE;
+}
+
 I32 find_conveyor_delivery_request(V2U32 tile) {
     for (U32 i = 0; i < conveyorDeliveryRequests.size; i++) {
         const ConveyorDeliveryRequest& request = conveyorDeliveryRequests[i];
@@ -846,24 +909,62 @@ B32 queue_inventory_delivery(V2U32 tile, Inventory::ItemType item, U32 count = 1
     request.item = item;
     request.count = count;
     request.assignedBee = -1;
+    request.mode = ConveyorRequestMode::DELIVER_TO_BELT;
+    return B32_TRUE;
+}
+
+B32 queue_conveyor_pickup(V2U32 tile, U32 count = 1u) {
+    if (!tile_in_bounds(tile) || count == 0u) {
+        return B32_FALSE;
+    }
+
+    if (find_conveyor_delivery_request(tile) >= 0 || colony.is_tile_selected(tile)) {
+        return B32_FALSE;
+    }
+
+    Inventory::ItemType item{};
+    U32 availableCount = 0u;
+    if (!belt_peek_item(tile, &item, &availableCount)) {
+        return B32_FALSE;
+    }
+
+    U32 pickupCount = min(count, availableCount);
+    BeeTasks::Task task = BeeTasks::make_generic_task(tile, 0.15F, B32_FALSE, B32_TRUE);
+    if (colony.queue_task(task) < 0) {
+        return B32_FALSE;
+    }
+
+    ConveyorDeliveryRequest& request = conveyorDeliveryRequests.push_back_zeroed();
+    request.targetTile = tile;
+    request.item = item;
+    request.count = pickupCount;
+    request.assignedBee = -1;
+    request.mode = ConveyorRequestMode::PICKUP_FROM_BELT;
     return B32_TRUE;
 }
 
 void cleanup_invalid_conveyor_deliveries() {
     for (U32 i = conveyorDeliveryRequests.size; i-- > 0;) {
         const ConveyorDeliveryRequest& request = conveyorDeliveryRequests[i];
+
         if (request.assignedBee >= 0) {
             continue;
         }
 
         Factory::Machine* belt = Factory::get_machine_from_tile(V2U{ request.targetTile.x, request.targetTile.y });
-        if (Factory::machine_is_belt(belt)) {
+        if (!Factory::machine_is_belt(belt)) {
+            if (request.mode == ConveyorRequestMode::DELIVER_TO_BELT) {
+                Inventory::add_item(request.item, request.count);
+            }
+            colony.unqueue_task_for_tile(request.targetTile);
+            remove_conveyor_delivery_request(i);
             continue;
         }
 
-        Inventory::add_item(request.item, request.count);
-        colony.unqueue_task_for_tile(request.targetTile);
-        remove_conveyor_delivery_request(i);
+        if (request.mode == ConveyorRequestMode::PICKUP_FROM_BELT && !belt_has_item(request.targetTile)) {
+            colony.unqueue_task_for_tile(request.targetTile);
+            remove_conveyor_delivery_request(i);
+        }
     }
 }
 
@@ -1196,6 +1297,21 @@ void handle_work_cycle_finished(const BeeSystem::Event& event) {
         ConveyorDeliveryRequest request = conveyorDeliveryRequests[U32(deliveryIndex)];
         BeeSystem::HomeAnchor depositHome = nearest_hive_anchor_for_tile(event.task.targetTile);
         bee.set_home_anchor(depositHome.tile, depositHome.offsetWorld);
+
+        if (request.mode == ConveyorRequestMode::PICKUP_FROM_BELT) {
+            Inventory::ItemType takenItem{};
+            U32 takenCount = 0u;
+            if (try_take_belt_item(event.task.targetTile, &takenItem, &takenCount, request.count)) {
+                bee.set_cargo(takenItem, takenCount);
+            }
+            else {
+                bee.clear_cargo();
+            }
+
+            remove_conveyor_delivery_request(U32(deliveryIndex));
+            return;
+        }
+
         if (!bee.carrying()) {
             bee.set_cargo(request.item, request.count);
         }
@@ -1206,6 +1322,7 @@ void handle_work_cycle_finished(const BeeSystem::Event& event) {
             bee.state = BeeTasks::State::STATE_TRAVEL_HOME;
             bee.velocity = V2F32{};
         }
+
         remove_conveyor_delivery_request(U32(deliveryIndex));
         return;
     }
@@ -1256,7 +1373,13 @@ void handle_task_assigned(const BeeSystem::Event& event) {
 
     ConveyorDeliveryRequest& request = conveyorDeliveryRequests[U32(deliveryIndex)];
     request.assignedBee = I32(event.beeIndex);
-    colony.bees[event.beeIndex].set_cargo(request.item, request.count);
+
+    if (request.mode == ConveyorRequestMode::DELIVER_TO_BELT) {
+        colony.bees[event.beeIndex].set_cargo(request.item, request.count);
+    }
+    else {
+        colony.bees[event.beeIndex].clear_cargo();
+    }
 }
 
 void handle_bee_reached_home(const BeeSystem::Event& event) {

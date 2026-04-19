@@ -46,6 +46,7 @@ B32 conveyorDragHasIncoming = B32_FALSE;
 V2U32 conveyorLastTile{};
 Direction2 conveyorLastInputSide = DIRECTION2_INVALID;
 B32 itemBuildMenuVisible = B32_FALSE;
+B32 suppressRightDragUntilRelease = B32_FALSE;
 
 enum class BuildMenuEntryType : U8 {
 	ENTRY_BRUSH = 0,
@@ -88,6 +89,7 @@ void reset_drag_state() {
 	conveyorDragActive = B32_FALSE;
 	conveyorDragHasIncoming = B32_FALSE;
 	conveyorLastInputSide = DIRECTION2_INVALID;
+	suppressRightDragUntilRelease = B32_FALSE;
 }
 
 FINLINE I32 build_menu_base_item_screen_size() {
@@ -469,6 +471,15 @@ void update_drag_interactions() {
 		uiLeftCapture = B32_FALSE;
 	}
 
+	if (suppressRightDragUntilRelease) {
+		if (!rightHeld) {
+			suppressRightDragUntilRelease = B32_FALSE;
+			hasLastDraggedTile = B32_FALSE;
+			conveyorDragActive = B32_FALSE;
+		}
+		return;
+	}
+
 	if (shiftHeld && leftHeld && !uiLeftCapture && !CreativeToolkit::tilesheetVisible && !SelectUI::open) {
 		cameraDragActive = B32_TRUE;
 		hasLastDraggedTile = B32_FALSE;
@@ -601,6 +612,17 @@ void mouse_callback(Win32::MouseButton button, Win32::MouseValue state) {
 		if (itemBuildMenuVisible && !build_menu_contains(mouse)) {
 			close_item_build_menu();
 		}
+
+		if (!CreativeToolkit::tilesheetVisible && !SelectUI::open && !Win32::keyboardState[Win32::KEY_SHIFT]) {
+			V2U32 tile{};
+			if (mouse_to_tile(&tile) && BeeDemoNS::queue_conveyor_pickup(tile, 1u)) {
+				suppressRightDragUntilRelease = B32_TRUE;
+				hasLastDraggedTile = B32_FALSE;
+				conveyorDragActive = B32_FALSE;
+				return;
+			}
+		}
+
 		if (!CreativeToolkit::tilesheetVisible && Win32::keyboardState[Win32::KEY_SHIFT]) {
 			V2U32 tile{};
 			if (mouse_to_tile(&tile)) {
@@ -610,6 +632,7 @@ void mouse_callback(Win32::MouseButton button, Win32::MouseValue state) {
 					CreativeToolkit::close_ui();
 					Inventory::clear_selected_item();
 					Factory::open_recipe_menu_for_machine(machine);
+					suppressRightDragUntilRelease = B32_TRUE;
 					uiLeftCapture = B32_TRUE;
 					hasLastDraggedTile = B32_FALSE;
 					conveyorDragActive = B32_FALSE;
@@ -658,6 +681,9 @@ void mouse_callback(Win32::MouseButton button, Win32::MouseValue state) {
 		if (button == Win32::MOUSE_BUTTON_LEFT) {
 			cameraDragActive = B32_FALSE;
 			uiLeftCapture = B32_FALSE;
+		}
+		else {
+			suppressRightDragUntilRelease = B32_FALSE;
 		}
 	}
 }
