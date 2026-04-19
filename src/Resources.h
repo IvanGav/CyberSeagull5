@@ -128,6 +128,7 @@ struct {
 		Sprite topRight;
 	} rock;
 	Sprite bigAssembler;
+	Sprite bigAssemblerOn;
 	Sprite furnace;
 } tile;
 
@@ -205,7 +206,8 @@ void load() {
 	tile.assembler.rightOff = Sprite{ &tileset, 192, 144, 32, 32, 1 };
 	tile.assembler.rightOn = Sprite{ &tileset, 224, 144, 32, 32, 1 };
 
-	tile.bigAssembler = Sprite{ &tileset, 13 * 16, 7 * 16, 48, 32, 1 };
+	tile.bigAssembler = Sprite{ &tileset, 12 * 16, 5 * 16, 48, 32, 1 };
+	tile.bigAssemblerOn = Sprite{ &tileset, 12 * 16, 6 * 16, 48, 32, 1 };
 	tile.furnace = Sprite{ &tileset, 15 * 16, 13 * 16, 16, 32, 1 };
 }
 

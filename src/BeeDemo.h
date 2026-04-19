@@ -44,6 +44,7 @@ enum class CreativeBrush : U8 {
     CONVEYOR,
     ASSEMBLER_SMALL,
     ASSEMBLER_LARGE,
+    ASSEMBLER_VERY_LARGE,
     SPLITTER,
     HIVE_SMALL,
     HIVE_BIG,
@@ -189,6 +190,13 @@ void init_build_definitions() {
         def->brush = CreativeBrush::ASSEMBLER_LARGE;
         add_build_cost(def, Inventory::ITEM_IRON_ORE, 12u);
         add_build_cost(def, Inventory::ITEM_COPPER_ORE, 6u);
+    }
+    {
+        BuildDefinition* def = &buildDefinitions[4];
+        def->brush = CreativeBrush::ASSEMBLER_VERY_LARGE;
+        add_build_cost(def, Inventory::ITEM_IRON_ORE, 20u);
+        add_build_cost(def, Inventory::ITEM_COPPER_ORE, 10u);
+        add_build_cost(def, Inventory::ITEM_URANIUM, 1u);
     }
     {
         BuildDefinition* def = &buildDefinitions[3];
@@ -380,6 +388,7 @@ FINLINE CreativeBrush brush_for_machine_type(const Factory::Machine* machine) {
     case Factory::MACHINE_BELT: return CreativeBrush::CONVEYOR;
     case Factory::MACHINE_SMELTER: return CreativeBrush::ASSEMBLER_SMALL;
     case Factory::MACHINE_ASSEMBLER: return CreativeBrush::ASSEMBLER_LARGE;
+    case Factory::MACHINE_BIG_ASSEMBLER: return CreativeBrush::ASSEMBLER_VERY_LARGE;
     case Factory::MACHINE_SPLITTER: return CreativeBrush::SPLITTER;
     default: return CreativeBrush::TASK_SELECT;
     }
@@ -1161,6 +1170,7 @@ Resources::Sprite* creative_brush_sprite(CreativeBrush brush) {
     case CreativeBrush::CONVEYOR: return &Resources::tile.belt.leftToRight;
     case CreativeBrush::ASSEMBLER_SMALL: return &Resources::tile.assemblerSmall;
     case CreativeBrush::ASSEMBLER_LARGE: return &Resources::tile.assemblerLarge;
+    case CreativeBrush::ASSEMBLER_VERY_LARGE: return &Resources::tile.bigAssembler;
     case CreativeBrush::SPLITTER: return &Resources::tile.splitter;
     case CreativeBrush::HIVE_SMALL: return &Resources::tile.hive;
     case CreativeBrush::HIVE_BIG: return &Resources::tile.hiveLarge;
@@ -1327,6 +1337,17 @@ void apply_creative_brush(CreativeBrush brush, V2U32 tile, Rotation2 orientation
             break;
         }
         if (!place_structure(tile, Factory::MACHINE_ASSEMBLER, orientation, freePlacement ? B32_FALSE : B32_TRUE)) {
+            if (!freePlacement) {
+                refund_build_cost(brush);
+            }
+        }
+    } break;
+
+    case CreativeBrush::ASSEMBLER_VERY_LARGE: {
+        if (!freePlacement && !spend_for_build(brush)) {
+            break;
+        }
+        if (!place_structure(tile, Factory::MACHINE_BIG_ASSEMBLER, orientation, freePlacement ? B32_FALSE : B32_TRUE)) {
             if (!freePlacement) {
                 refund_build_cost(brush);
             }
