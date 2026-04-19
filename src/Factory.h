@@ -695,6 +695,15 @@ void render(I32 tileScale) {
 			if (machine->sprite == &Resources::tile.assembler.downOff) {
 				Graphics::blit_sprite_cutout(Resources::tile.belt.downToUp, screenPos.x, screenPos.y + 16 * tileScale, tileScale, beltAnimTime);
 				Graphics::blit_sprite_cutout(Resources::tile.belt.upToDown, screenPos.x + 16 * tileScale, screenPos.y + 16 * tileScale, tileScale, beltAnimTime);
+			} else if (machine->sprite == &Resources::tile.assembler.leftOff) {
+				Graphics::blit_sprite_cutout(Resources::tile.belt.leftToRight, screenPos.x, screenPos.y, tileScale, beltAnimTime);
+				Graphics::blit_sprite_cutout(Resources::tile.belt.rightToLeft, screenPos.x, screenPos.y + 16 * tileScale, tileScale, beltAnimTime);
+			} else if (machine->sprite == &Resources::tile.assembler.rightOff) {
+				Graphics::blit_sprite_cutout(Resources::tile.belt.rightToLeft, screenPos.x + 16 * tileScale, screenPos.y, tileScale, beltAnimTime);
+				Graphics::blit_sprite_cutout(Resources::tile.belt.leftToRight, screenPos.x + 16 * tileScale, screenPos.y + 16 * tileScale, tileScale, beltAnimTime);
+			} else if (machine->sprite == &Resources::tile.assembler.upOff) {
+				Graphics::blit_sprite_cutout(Resources::tile.belt.upToDown, screenPos.x + 16 * tileScale, screenPos.y, tileScale, beltAnimTime);
+				Graphics::blit_sprite_cutout(Resources::tile.belt.downToUp, screenPos.x, screenPos.y, tileScale, beltAnimTime);
 			}
 		}
 		Graphics::blit_sprite_cutout(machine->spriteProcessingAlt && machine->enough_inputs() ? *machine->spriteProcessingAlt : *machine->sprite, screenPos.x, screenPos.y, tileScale, machine->animFrame);
