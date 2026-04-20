@@ -15,28 +15,6 @@ namespace Factory {
 
 using namespace Inventory;
 
-inline void fill_rect_blended(I32 x, I32 y, I32 width, I32 height, RGBA8 color) {
-	I32 startX = max(x, 0);
-	I32 startY = max(y, 0);
-	I32 endX = min(x + width, Win32::framebufferWidth);
-	I32 endY = min(y + height, Win32::framebufferHeight);
-	if (startX >= endX || startY >= endY || color.a == 0) {
-		return;
-	}
-	U32 srcA = color.a;
-	U32 invA = 255u - srcA;
-	for (I32 py = startY; py < endY; py++) {
-		RGBA8* row = Win32::framebuffer + py * Win32::framebufferWidth;
-		for (I32 px = startX; px < endX; px++) {
-			RGBA8 dst = row[px];
-			row[px].r = U8((U32(dst.r) * invA + U32(color.r) * srcA) / 255u);
-			row[px].g = U8((U32(dst.g) * invA + U32(color.g) * srcA) / 255u);
-			row[px].b = U8((U32(dst.b) * invA + U32(color.b) * srcA) / 255u);
-			row[px].a = 255;
-		}
-	}
-}
-
 enum MachineType : U32 {
 	MACHINE_NONE,
 	MACHINE_BELT,
@@ -74,8 +52,7 @@ struct Machine {
 	U32 animFrame = 0;
 	ItemStack inventory[Recipe::MAX_UNIQUE_INPUTS]{};
 	ItemStack outputBuf{};
-	U32 inventoryStackSizeLimit = 1;
-	U32 amountToProcess;
+	U32 inventoryStackSizeLimit = 1; // should be only for belts and outputs
 	MachineHandle outputs[MAX_OUTPUTS];
 	U32 outputCount;
 	U32 currentOutput;
@@ -83,7 +60,7 @@ struct Machine {
 	Recipe::RecipeGroup* recipes = nullptr;
 	Recipe::RecipeRef selectedRecipe{};
 
-	ItemStack& get_item_stack();
+	ItemStack& get_belt_item();
 	void transfer(ItemStack& incoming);
 	B32 enough_inputs() const;
 	void finish_recipe();
@@ -96,11 +73,12 @@ FINLINE Machine* MachineHandle::get() const {
 }
 
 // only valid for a belt; panic if not a belt
-ItemStack& Machine::get_item_stack() {
+ItemStack& Machine::get_belt_item() {
 	DEBUG_ASSERT(this->selectedRecipe.def->numInputs == 0, "get_item_stack called on non-belt");
 	return this->inventory[0].count > 0 ? this->inventory[0] : this->outputBuf;
 }
 
+// THESE 2 SHOULD RETURN THE CURRENT PROGRESS AND MAX TIME OF THE DEFINITION; THERE MAY BE MULTIPLE UNIT DEFINITIONS WITH DIFFERENT PROCESS TIMES EATHAN THERE'S A REASON I MADE A UNIT RECIPE AND NOT A NULLPTR DEF
 F32 Machine::process_time() {
 	return this->selectedRecipe.def ? this->selectedRecipe.progress : 0.0F;
 }
@@ -111,6 +89,7 @@ F32 Machine::max_process_time() {
 // return true if enough inputs to craft the selected recipe
 B32 Machine::enough_inputs() const {
 	if (this->selectedRecipe.def == nullptr) {
+		__debugbreak();
 		return B32_FALSE;
 	}
 	// if unit (belt), then say yes if have anything
@@ -138,12 +117,12 @@ void Machine::finish_recipe() {
 		return;
 	}
 	// else
-	// if not enough space in the outputBuf, wait
-	if (this->outputBuf.count + this->selectedRecipe.def->output.count > this->inventoryStackSizeLimit) {
-		return;
-	}
 	// if wrong type in output, wait
 	if (this->outputBuf.item != this->selectedRecipe.def->output.item && this->outputBuf.count != 0) {
+		return;
+	}
+	// if the outputBuf is already full, wait
+	if (this->outputBuf.count >= this->inventoryStackSizeLimit) {
 		return;
 	}
 	for (U32 i = 0; i < this->selectedRecipe.def->numInputs; i++) {
@@ -156,7 +135,8 @@ void Machine::finish_recipe() {
 
 // transfer from `incoming` to self; modifies `incoming`
 void Machine::transfer(ItemStack& incoming) {
-	if (incoming.count == 0 || this->selectedRecipe.def == nullptr) return;
+	if (incoming.count == 0) return;
+	if (this->selectedRecipe.def == nullptr) { __debugbreak(); return; }
 	// if unit, accept as long as has space and same item
 	if (this->selectedRecipe.def->numInputs == 0) {
 		if (this->outputBuf.count != 0 || this->inventory[0].count != 0) { return; } // Only allow for 1 item to be on a belt
@@ -174,7 +154,8 @@ void Machine::transfer(ItemStack& incoming) {
 		}
 	}
 	if (index == U32(-1)) return;
-	I32 canAccept = this->inventoryStackSizeLimit - this->inventory[index].count;
+	// force the machine to take as many items as the recipe requires
+	I32 canAccept = this->selectedRecipe.def->inputs[index].count - this->inventory[index].count;
 	if (canAccept == 0) return; // already full
 	if (incoming.count > canAccept) { this->inventory[index].item = incoming.item; incoming.count -= canAccept; this->inventory[index].count += canAccept; return; } // transfer up to full
 	// can transfer all
@@ -211,7 +192,11 @@ FINLINE B32 machine_supports_recipe_menu(const Machine* machine) {
 }
 
 I32 selected_recipe_option_index(const Machine* machine) {
-	if (!machine_supports_recipe_menu(machine) || machine->selectedRecipe.def == nullptr) {
+	if (machine->selectedRecipe.def == nullptr) {
+		__debugbreak();
+		return -1;
+	}
+	if (!machine_supports_recipe_menu(machine)) {
 		return -1;
 	}
 	for (U32 i = 0; i < machine->recipes->options.size; i++) {
@@ -353,7 +338,7 @@ MachineDef get_assembler(Rotation2 orientation) {
 	case ROTATION2_180: result.sprite = &Resources::tile.assembler.upOff; result.spriteProcessingAlt = &Resources::tile.assembler.upOn; break;
 	case ROTATION2_270: result.sprite = &Resources::tile.assembler.rightOff; result.spriteProcessingAlt = &Resources::tile.assembler.rightOn; break;
 	}
-	result.inventoryStackSize = 6;
+	result.inventoryStackSize = 8;
 	result.ioDefs[0] = rotate_iodef(IODef{ V2I{ 0, 1 }, World::MACHINE_INPUT_DOWN }, result.size, orientation);
 	result.ioDefs[1] = rotate_iodef(IODef{ V2I{ 1, 1 }, World::MACHINE_OUTPUT_DOWN }, result.size, orientation);
 	result.recipes = &Recipe::recipeGroups.assembler;
@@ -365,7 +350,7 @@ MachineDef get_smelter(Rotation2 orientation) {
 	result.type = MACHINE_SMELTER;
 	result.size = V2U{ 1, 1 };
 	result.sprite = &Resources::tile.furnace;
-	result.inventoryStackSize = 4;
+	result.inventoryStackSize = 6;
 	result.processAtOnce = 1;
 	result.recipes = &Recipe::recipeGroups.smelter;
 
@@ -555,7 +540,6 @@ void apply_machine_def(Machine* machine, const MachineDef& def) {
 	machine->sprite = def.sprite;
 	machine->spriteProcessingAlt = def.spriteProcessingAlt;
 	machine->animFrame = 0;
-	machine->amountToProcess = def.processAtOnce;
 	machine->inventoryStackSizeLimit = def.inventoryStackSize;
 	machine->recipes = def.recipes;
 	memcpy(machine->ioDefs, def.ioDefs, sizeof(machine->ioDefs));
@@ -588,8 +572,8 @@ void apply_machine_def(Machine* machine, const MachineDef& def) {
 		machine->selectedRecipe = Recipe::RecipeRef::from(machine->recipes->options[nextRecipeIndex]);
 	}
 	else {
-		machine->selectedRecipe = Recipe::RecipeRef{};
-		//machine->selectedRecipe = Recipe::RecipeRef::from(machine->recipes->options[0]);
+		//machine->selectedRecipe = Recipe::RecipeRef{};
+		machine->selectedRecipe = Recipe::RecipeRef::from(machine->recipes->options[0]);
 	}
 }
 
@@ -1027,7 +1011,7 @@ void render_machine_hover_tooltip(Machine* machine, I32 tileScale) {
 
 		U32 currentCount = machine->inventory[i].count;
 		if (currentCount > 0u) {
-			fill_rect_blended(iconX + iconSize - 18, iconY - 2, 18, 18, RGBA8{ 24, 24, 24, 190 });
+			Graphics::fill_rect_blended(iconX + iconSize - 18, iconY - 2, 18, 18, RGBA8{ 24, 24, 24, 190 });
 			Graphics::display_num(currentCount, iconX + iconSize - 17, iconY - 1, smallNumberSize);
 		}
 
@@ -1114,7 +1098,7 @@ void render(I32 tileScale) {
 	}
 	for (Machine* machine : machineTiles) {
 		if (machine && machine->type == MACHINE_BELT && (machine->inventory[0].count > 0 || machine->outputBuf.count > 0)) {
-			ItemStack stack = machine->get_item_stack();
+			ItemStack stack = machine->get_belt_item();
 			F32 t = clamp01(machine->process_time() / machine->max_process_time());
 			if (machine->outputBuf.count > 0) t = 0.0;
 			V2F renderStartPos = DIRECTION2_V2F[input_flag_to_direction(machine->ioDefs[0].ioDirections)] * 0.5F + 0.5F;

@@ -466,6 +466,7 @@ void update_drag_interactions() {
 	B32 shiftHeld = Win32::keyboardState[Win32::KEY_SHIFT] ? B32_TRUE : B32_FALSE;
 	B32 leftHeld = Win32::mouseButtonState[Win32::MOUSE_BUTTON_LEFT] ? B32_TRUE : B32_FALSE;
 	B32 rightHeld = Win32::mouseButtonState[Win32::MOUSE_BUTTON_RIGHT] ? B32_TRUE : B32_FALSE;
+	B32 middleHeld = Win32::mouseButtonState[Win32::MOUSE_BUTTON_MIDDLE] ? B32_TRUE : B32_FALSE;
 
 	if (!leftHeld) {
 		uiLeftCapture = B32_FALSE;
@@ -480,7 +481,7 @@ void update_drag_interactions() {
 		return;
 	}
 
-	if (shiftHeld && leftHeld && !uiLeftCapture && !CreativeToolkit::tilesheetVisible && !SelectUI::open) {
+	if (((shiftHeld && leftHeld) || middleHeld) && !uiLeftCapture && !CreativeToolkit::tilesheetVisible && !SelectUI::open) {
 		cameraDragActive = B32_TRUE;
 		hasLastDraggedTile = B32_FALSE;
 		conveyorDragActive = B32_FALSE;
