@@ -203,8 +203,8 @@ void init_build_definitions() {
 	{
 		BuildDefinition* def = &buildDefinitions[2];
 		def->brush = CreativeBrush::ASSEMBLER_LARGE;
-		add_build_cost(def, Inventory::ITEM_IRON_ORE, 8u); // 12
-		add_build_cost(def, Inventory::ITEM_COPPER_ORE, 4u); // 6
+		add_build_cost(def, Inventory::ITEM_IRON_ORE, 10u); // 12
+		add_build_cost(def, Inventory::ITEM_COPPER_ORE, 6u); // 6
 	}
 	{
 		BuildDefinition* def = &buildDefinitions[3];
@@ -757,6 +757,7 @@ B32 has_adjacent_conveyor(V2U32 tile) {
 
 B32 try_insert_adjacent_belt_item(V2U32 tile, Inventory::ItemType item, U32 count = 1) {
 	using namespace TileSpace;
+	if (count == 0) { return B32_FALSE; }
 	V2U32 neighbors[4]{
 		neighbor_tile(tile, NeighborDirection::NORTH),
 		neighbor_tile(tile, NeighborDirection::EAST),
@@ -767,21 +768,15 @@ B32 try_insert_adjacent_belt_item(V2U32 tile, Inventory::ItemType item, U32 coun
 	for (U32 i = 0; i < 4; i++) {
 		V2U32 beltTile = neighbors[i];
 		Factory::Machine* belt = Factory::get_machine_from_tile(V2U{ beltTile.x, beltTile.y });
-		if (!Factory::machine_is_belt(belt) || count == 0) {
+		if (!Factory::machine_is_belt(belt)) {
 			continue;
 		}
-		Inventory::ItemStack& stack = belt->get_belt_item();
-		if (stack.count != 0 && U32(stack.item) != item) {
+		Inventory::ItemStack mined{ item, 1 };
+		belt->transfer(mined);
+		if (mined.count == 1) {
+			// couldn't transfer == belt is full
 			continue;
 		}
-		U32 freeSpace = belt->inventoryStackSizeLimit > stack.count ? (belt->inventoryStackSizeLimit - stack.count) : 0;
-		if (freeSpace < count) {
-			continue;
-		}
-		if (stack.count == 0) {
-			stack.item = Inventory::ItemType(item);
-		}
-		stack.count += count;
 		return B32_TRUE;
 	}
 	return B32_FALSE;

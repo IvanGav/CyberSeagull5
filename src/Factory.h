@@ -76,7 +76,7 @@ FINLINE Machine* MachineHandle::get() const {
 // only valid for a belt; panic if not a belt
 ItemStack& Machine::get_belt_item() {
 	DEBUG_ASSERT(this->selectedRecipe.def->numInputs == 0, "get_item_stack called on non-belt");
-	return this->inventory[0].count > 0 ? this->inventory[0] : this->outputBuf;
+	return this->outputBuf.count > 0 ? this->outputBuf : this->inventory[0];
 }
 
 // THESE 2 SHOULD RETURN THE CURRENT PROGRESS AND MAX TIME OF THE DEFINITION; THERE MAY BE MULTIPLE UNIT DEFINITIONS WITH DIFFERENT PROCESS TIMES EATHAN THERE'S A REASON I MADE A UNIT RECIPE AND NOT A NULLPTR DEF
@@ -147,7 +147,7 @@ void Machine::transfer(ItemStack& incoming) {
 	if (this->selectedRecipe.def == nullptr) { __debugbreak(); return; }
 	// if unit, accept as long as has space and same item
 	if (this->selectedRecipe.def->numInputs == 0) {
-		if (this->outputBuf.count != 0 || this->inventory[0].count != 0) { return; } // Only allow for 1 item to be on a belt
+		if (this->outputBuf.count > 0 || this->inventory[0].count > 0) { return; } // Only allow for 1 item to be on a belt
 		this->inventory[0] = incoming;
 		incoming.count--;
 		this->inventory[0].count = 1;
