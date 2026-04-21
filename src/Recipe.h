@@ -95,7 +95,7 @@ namespace Recipe {
 
 		recipeGroups.belt = RecipeGroup::make(make_arena_array_list(globalArena, &recipeList.unit));
 		recipeGroups.smelter = RecipeGroup::make(make_arena_array_list(globalArena, &recipeList.ironSmelt, &recipeList.copperCable));
-		recipeGroups.assembler = RecipeGroup::make(make_arena_array_list(globalArena, &recipeList.ironGear, &recipeList.greenCircuit));
+		recipeGroups.assembler = RecipeGroup::make(make_arena_array_list(globalArena, &recipeList.ironSmelt, &recipeList.ironGear, &recipeList.greenCircuit));
 		recipeGroups.bigAssembler = RecipeGroup::make(make_arena_array_list(globalArena, &recipeList.nuclearHeart, &recipeList.camera, &recipeList.cyberSeagull));
 	}
 

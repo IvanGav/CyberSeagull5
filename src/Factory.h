@@ -66,6 +66,7 @@ struct Machine {
 	void finish_recipe();
 	F32 process_time();
 	F32 max_process_time();
+	void switch_recipe_to(Recipe::RecipeDef* def);
 };
 
 FINLINE Machine* MachineHandle::get() const {
@@ -84,6 +85,13 @@ F32 Machine::process_time() {
 }
 F32 Machine::max_process_time() {
 	return this->selectedRecipe.def ? this->selectedRecipe.def->time : 0.0F;
+}
+
+void Machine::switch_recipe_to(Recipe::RecipeDef* newRecipe) {
+	for (U32 i = 0; i < newRecipe->numInputs; i++) {
+		this->inventory[i] = ItemStack{ newRecipe->inputs->item, 0 };
+	}
+	this->selectedRecipe = Recipe::RecipeRef::from(newRecipe);
 }
 
 // return true if enough inputs to craft the selected recipe
@@ -176,12 +184,13 @@ MachineHandle recipeMenuMachine{};
 
 void recipe_menu_select_callback(U32 optionIndex) {
 	Machine* machine = recipeMenuMachine.get();
+	Factory::recipeMenuMachine.machine = nullptr; // also close the menu after choosing an item
 	if (!machine || !machine->recipes || optionIndex >= machine->recipes->options.size) {
 		SelectUI::open = B32_FALSE;
 		SelectUI::clear_popup_anchor();
 		return;
 	}
-	machine->selectedRecipe = Recipe::RecipeRef::from(machine->recipes->options[optionIndex]);
+	machine->switch_recipe_to(machine->recipes->options[optionIndex]);
 	SelectUI::set_selected_index(I32(optionIndex));
 	SelectUI::open = B32_FALSE;
 	SelectUI::clear_popup_anchor();
@@ -224,18 +233,19 @@ FINLINE V2I direction_offset(Direction2 direction) {
 	case DIRECTION2_RIGHT: return V2I{ 1, 0 };
 	case DIRECTION2_FRONT: return V2I{ 0, -1 };
 	case DIRECTION2_BACK: return V2I{ 0, 1 };
-	default: return V2I{ 0, 0 };
+	default: { __debugbreak(); return V2I{ 0, 0 }; }
 	}
 }
 
 FINLINE Direction2 opposite_direction(Direction2 direction) {
-	switch (direction) {
-	case DIRECTION2_LEFT: return DIRECTION2_RIGHT;
-	case DIRECTION2_RIGHT: return DIRECTION2_LEFT;
-	case DIRECTION2_FRONT: return DIRECTION2_BACK;
-	case DIRECTION2_BACK: return DIRECTION2_FRONT;
-	default: return DIRECTION2_INVALID;
-	}
+	return DIRECTION2_OPPOSITE[direction];
+	//switch (direction) {
+	//case DIRECTION2_LEFT: return DIRECTION2_RIGHT;
+	//case DIRECTION2_RIGHT: return DIRECTION2_LEFT;
+	//case DIRECTION2_FRONT: return DIRECTION2_BACK;
+	//case DIRECTION2_BACK: return DIRECTION2_FRONT;
+	//default: return DIRECTION2_INVALID;
+	//}
 }
 
 FINLINE B32 tile_in_bounds(V2U pos) {
@@ -572,7 +582,7 @@ void apply_machine_def(Machine* machine, const MachineDef& def) {
 		machine->selectedRecipe = Recipe::RecipeRef::from(machine->recipes->options[nextRecipeIndex]);
 	}
 	else {
-		//machine->selectedRecipe = Recipe::RecipeRef{};
+		//machine->selectedRecipe = Recipe::RecipeRef{}; // BAD
 		machine->selectedRecipe = Recipe::RecipeRef::from(machine->recipes->options[0]);
 	}
 }
@@ -595,6 +605,7 @@ B32 has_machine(V2U pos) {
 }
 
 void open_recipe_menu_for_machine(Machine* machine) {
+	Factory::recipeMenuMachine.machine = nullptr; // when trying to open a new menu, the last one should close
 	if (!machine_supports_recipe_menu(machine)) {
 		SelectUI::open = B32_FALSE;
 		SelectUI::clear_popup_anchor();
@@ -1076,8 +1087,8 @@ void render(I32 tileScale) {
 				Graphics::blit_sprite_cutout(Resources::tile.belt.leftToRight, screenPos.x, screenPos.y, tileScale, beltAnimTime);
 				Graphics::blit_sprite_cutout(Resources::tile.belt.rightToLeft, screenPos.x, screenPos.y + 16 * tileScale, tileScale, beltAnimTime);
 			} else if (machine->sprite == &Resources::tile.assembler.rightOff) {
-				Graphics::blit_sprite_cutout(Resources::tile.belt.rightToLeft, screenPos.x + 16 * tileScale, screenPos.y, tileScale, beltAnimTime);
-				Graphics::blit_sprite_cutout(Resources::tile.belt.leftToRight, screenPos.x + 16 * tileScale, screenPos.y + 16 * tileScale, tileScale, beltAnimTime);
+				Graphics::blit_sprite_cutout(Resources::tile.belt.leftToRight, screenPos.x + 16 * tileScale, screenPos.y, tileScale, beltAnimTime);
+				Graphics::blit_sprite_cutout(Resources::tile.belt.rightToLeft, screenPos.x + 16 * tileScale, screenPos.y + 16 * tileScale, tileScale, beltAnimTime);
 			} else if (machine->sprite == &Resources::tile.assembler.upOff) {
 				Graphics::blit_sprite_cutout(Resources::tile.belt.upToDown, screenPos.x + 16 * tileScale, screenPos.y, tileScale, beltAnimTime);
 				Graphics::blit_sprite_cutout(Resources::tile.belt.downToUp, screenPos.x, screenPos.y, tileScale, beltAnimTime);
