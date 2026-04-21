@@ -134,6 +134,7 @@ void render() {
 	BeeDemo::render_conveyors(camera, worldTileScale, currentFrameTime);
 	BeeDemo::render_hives(camera, worldTileScale);
 	BeeDemo::render_bees(camera, worldTileScale, currentFrameTime);
+	Factory::render_ui(worldTileScale);
 	Inventory::draw_inv();
 	EditorInteraction::render_item_build_menu();
 	CreativeToolkit::render_ui();

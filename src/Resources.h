@@ -120,6 +120,10 @@ struct {
 		Sprite assembler;
 		Sprite hive;
 		Sprite furnace;
+		Sprite bigAssembler;
+		Sprite bee;
+		Sprite bigHive;
+		Sprite splitter;
 	} icon;
 	struct {
 		Sprite full;
@@ -194,6 +198,10 @@ void load() {
 	tile.icon.assembler = Sprite{ &tileset, 1 * 16, 14 * 16, 16, 16, 1 };
 	tile.icon.hive = Sprite{ &tileset, 2 * 16, 14 * 16, 16, 16, 1 };
 	tile.icon.furnace = Sprite{ &tileset, 3 * 16, 14 * 16, 16, 16, 1 };
+	tile.icon.bigAssembler = Sprite{ &tileset, 4 * 16, 14 * 16, 16, 16, 1 };
+	tile.icon.bee = Sprite{ &tileset, 5 * 16, 14 * 16, 16, 16, 1 };
+	tile.icon.bigHive = Sprite{ &tileset, 6 * 16, 14 * 16, 16, 16, 1 };
+	tile.icon.splitter = Sprite{ &tileset, 7 * 16, 14 * 16, 16, 16, 1 };
 
 	tile.rock.topLeft = Sprite{ &tileset, 16 * 10, 11 * 16, 16, 16, 1 };
 	tile.rock.top = Sprite{ &tileset, 16 * 11, 11 * 16, 16, 16, 1 };

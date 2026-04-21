@@ -35,6 +35,7 @@ namespace Recipe {
 
 	struct {
 		RecipeDef unit;
+		RecipeDef debugThreeInput;
 		RecipeDef ironSmelt;
 		RecipeDef ironGear;
 		RecipeDef copperCable;
@@ -55,6 +56,11 @@ namespace Recipe {
 	void init() {
 		recipeList.unit = RecipeDef{
 			0, {}, {}, 0.8, nullptr // defines a 0.8 second crafting time with 0 inputs/outputs; special case for belts and such
+		};
+		recipeList.debugThreeInput = RecipeDef{
+			3, {{ITEM_IRON_ORE, 3}, {ITEM_COPPER_ORE, 3}, {ITEM_URANIUM, 1}},
+			{ITEM_LEMON_JUICE, 1 },
+			3.0,&Resources::tile.item.lemonJuice
 		};
 		recipeList.ironSmelt = RecipeDef{
 			1, {{ITEM_IRON_ORE, 3}},
@@ -95,8 +101,8 @@ namespace Recipe {
 
 		recipeGroups.belt = RecipeGroup::make(make_arena_array_list(globalArena, &recipeList.unit));
 		recipeGroups.smelter = RecipeGroup::make(make_arena_array_list(globalArena, &recipeList.ironSmelt, &recipeList.copperCable));
-		recipeGroups.assembler = RecipeGroup::make(make_arena_array_list(globalArena, &recipeList.ironSmelt, &recipeList.ironGear, &recipeList.greenCircuit));
-		recipeGroups.bigAssembler = RecipeGroup::make(make_arena_array_list(globalArena, &recipeList.nuclearHeart, &recipeList.camera, &recipeList.cyberSeagull));
+		recipeGroups.assembler = RecipeGroup::make(make_arena_array_list(globalArena, &recipeList.ironGear, &recipeList.greenCircuit));
+		recipeGroups.bigAssembler = RecipeGroup::make(make_arena_array_list(globalArena, /*&recipeList.debugThreeInput,*/ &recipeList.nuclearHeart, &recipeList.camera, &recipeList.cyberSeagull));
 	}
 
 	// This is the struct you want to put in the tiles with recipes

@@ -203,8 +203,8 @@ void init_build_definitions() {
 	{
 		BuildDefinition* def = &buildDefinitions[2];
 		def->brush = CreativeBrush::ASSEMBLER_LARGE;
-		add_build_cost(def, Inventory::ITEM_IRON_ORE, 10u); // 12
-		add_build_cost(def, Inventory::ITEM_COPPER_ORE, 6u); // 6
+		add_build_cost(def, Inventory::ITEM_IRON_ORE, 10u);
+		add_build_cost(def, Inventory::ITEM_COPPER_ORE, 6u);
 	}
 	{
 		BuildDefinition* def = &buildDefinitions[3];
@@ -1410,7 +1410,7 @@ void update(F32 dt) {
 
 Resources::Sprite* creative_brush_sprite(CreativeBrush brush) {
 	switch (brush) {
-	case CreativeBrush::TASK_SELECT: return &Resources::tile.beeFly;
+	case CreativeBrush::TASK_SELECT: return &Resources::tile.icon.bee;
 	case CreativeBrush::ERASE: return nullptr;
 	case CreativeBrush::GRASS: return &Resources::tile.grass;
 	case CreativeBrush::IRON: return &Resources::tile.grassIron;
@@ -1423,10 +1423,10 @@ Resources::Sprite* creative_brush_sprite(CreativeBrush brush) {
 	case CreativeBrush::CONVEYOR: return &Resources::tile.icon.belt;
 	case CreativeBrush::ASSEMBLER_SMALL: return &Resources::tile.icon.furnace;
 	case CreativeBrush::ASSEMBLER_LARGE: return &Resources::tile.icon.assembler;
-	case CreativeBrush::ASSEMBLER_VERY_LARGE: return &Resources::tile.bigAssembler;
-	case CreativeBrush::SPLITTER: return &Resources::tile.splitter;
+	case CreativeBrush::ASSEMBLER_VERY_LARGE: return &Resources::tile.icon.bigAssembler;
+	case CreativeBrush::SPLITTER: return &Resources::tile.icon.splitter;
 	case CreativeBrush::HIVE_SMALL: return &Resources::tile.icon.hive;
-	case CreativeBrush::HIVE_BIG: return &Resources::tile.hiveLarge;
+	case CreativeBrush::HIVE_BIG: return &Resources::tile.icon.bigHive;
 	default: return nullptr;
 	}
 }
@@ -1536,10 +1536,12 @@ void apply_creative_brush(CreativeBrush brush, V2U32 tile, Rotation2 orientation
 	case CreativeBrush::ERASE: {
 		unqueue_tile_task(tile);
 		remove_machine_tile(tile);
-		remove_hive_covering_tile(tile);
-		TerrainGen::set_world_tile(tile, World::TILE_GRASS);
-		sync_beach_runtime_tile(tile);
-		clear_tile_resource_runtime(tile);
+		if (freePlacement) {
+			remove_hive_covering_tile(tile);
+			TerrainGen::set_world_tile(tile, World::TILE_GRASS);
+			sync_beach_runtime_tile(tile);
+			clear_tile_resource_runtime(tile);
+		}
 	} break;
 
 	case CreativeBrush::GRASS:

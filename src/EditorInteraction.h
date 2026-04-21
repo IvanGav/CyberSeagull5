@@ -176,7 +176,7 @@ FINLINE void toggle_item_build_menu() {
 
 FINLINE Resources::Sprite* build_menu_sprite(const BuildMenuEntry& entry) {
 	if (entry.type == BuildMenuEntryType::ENTRY_BUY_BEE) {
-		return &Resources::tile.beeFly;
+		return &Resources::tile.icon.bee;
 	}
 	return CreativeToolkit::brush_icon(entry.brush);
 }
