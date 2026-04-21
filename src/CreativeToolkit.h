@@ -169,6 +169,10 @@ FINLINE Resources::Sprite* preview_sprite(CreativeBrush brush, Rotation2 orienta
 		case ROTATION2_270: return &Resources::tile.assembler.rightOff;
 		default: return &Resources::tile.assembler.downOff;
 		}
+	case CreativeBrush::ASSEMBLER_VERY_LARGE:
+		return &Resources::tile.bigAssembler;
+	case CreativeBrush::SPLITTER:
+		return &Resources::tile.splitter;
 	case CreativeBrush::HIVE_SMALL:
 		return &Resources::tile.hive;
 	case CreativeBrush::HIVE_BIG:

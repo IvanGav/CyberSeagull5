@@ -62,10 +62,11 @@ struct Machine {
 
 	ItemStack& get_belt_item();
 	void transfer(ItemStack& incoming);
+	B32 can_transfer(ItemStack const& incoming) const;
 	B32 enough_inputs() const;
 	void finish_recipe();
-	F32 process_time();
-	F32 max_process_time();
+	F32 process_time() const;
+	F32 max_process_time() const;
 	void switch_recipe_to(Recipe::RecipeDef* def);
 };
 
@@ -80,15 +81,16 @@ ItemStack& Machine::get_belt_item() {
 }
 
 // THESE 2 SHOULD RETURN THE CURRENT PROGRESS AND MAX TIME OF THE DEFINITION; THERE MAY BE MULTIPLE UNIT DEFINITIONS WITH DIFFERENT PROCESS TIMES EATHAN THERE'S A REASON I MADE A UNIT RECIPE AND NOT A NULLPTR DEF
-F32 Machine::process_time() {
+F32 Machine::process_time() const {
 	return this->selectedRecipe.def ? this->selectedRecipe.progress : 0.0F;
 }
-F32 Machine::max_process_time() {
+F32 Machine::max_process_time() const {
 	return this->selectedRecipe.def ? this->selectedRecipe.def->time : 0.0F;
 }
 
 void Machine::switch_recipe_to(Recipe::RecipeDef* newRecipe) {
 	for (U32 i = 0; i < newRecipe->numInputs; i++) {
+		if (this->inventory[i].count > 0) { Inventory::inv[this->inventory[i].item] += this->inventory[i].count; } // put the items into inventory
 		this->inventory[i] = ItemStack{ newRecipe->inputs->item, 0 };
 	}
 	this->selectedRecipe = Recipe::RecipeRef::from(newRecipe);
@@ -155,6 +157,7 @@ void Machine::transfer(ItemStack& incoming) {
 	}
 	// a real recipe; just do a normal lookup
 	U32 index = U32(-1);
+	//if (this->selectedRecipe.def->numInputs == 3) { __debugbreak(); } // TODO temporary
 	for (U32 i = 0; i < this->selectedRecipe.def->numInputs; i++) {
 		if (selectedRecipe.def->inputs[i].item == incoming.item) {
 			index = i;
@@ -171,6 +174,30 @@ void Machine::transfer(ItemStack& incoming) {
 	this->inventory[index].count += incoming.count;
 	incoming.count = 0;
 	return;
+}
+
+B32 Machine::can_transfer(ItemStack const& incoming) const {
+	if (incoming.count == 0) return B32_TRUE;
+	if (this->selectedRecipe.def == nullptr) { __debugbreak(); return B32_FALSE; }
+	// if unit, accept as long as has space and same item
+	if (this->selectedRecipe.def->numInputs == 0) {
+		if (this->outputBuf.count > 0 || this->inventory[0].count > 0) { return B32_FALSE; } // Only allow for 1 item to be on a belt
+		return B32_TRUE;
+	}
+	// a real recipe; just do a normal lookup
+	U32 index = U32(-1);
+	//if (this->selectedRecipe.def->numInputs == 3) { __debugbreak(); } // TODO temporary
+	for (U32 i = 0; i < this->selectedRecipe.def->numInputs; i++) {
+		if (selectedRecipe.def->inputs[i].item == incoming.item) {
+			index = i;
+			break;
+		}
+	}
+	if (index == U32(-1)) return B32_FALSE;
+	// force the machine to take as many items as the recipe requires
+	I32 canAccept = this->selectedRecipe.def->inputs[index].count - this->inventory[index].count;
+	if (canAccept == 0) return B32_FALSE; // already full
+	return B32_TRUE;
 }
 
 PoolAllocator<Machine> machineAllocator{};
@@ -367,13 +394,13 @@ MachineDef get_smelter(Rotation2 orientation) {
 	switch (orientation) {
 	case ROTATION2_0:
 	default:
-		result.ioDefs[0] = IODef{ V2I{ 0, 0 }, Flags8(World::MACHINE_INPUT_UP | World::MACHINE_OUTPUT_DOWN) };
+		result.ioDefs[0] = IODef{ V2I{ 0, 0 }, Flags8(World::MACHINE_INPUT_DOWN | World::MACHINE_OUTPUT_UP) };
 		break;
 	case ROTATION2_90:
 		result.ioDefs[0] = IODef{ V2I{ 0, 0 }, Flags8(World::MACHINE_INPUT_LEFT | World::MACHINE_OUTPUT_RIGHT) };
 		break;
 	case ROTATION2_180:
-		result.ioDefs[0] = IODef{ V2I{ 0, 0 }, Flags8(World::MACHINE_INPUT_DOWN | World::MACHINE_OUTPUT_UP) };
+		result.ioDefs[0] = IODef{ V2I{ 0, 0 }, Flags8(World::MACHINE_INPUT_UP | World::MACHINE_OUTPUT_DOWN) };
 		break;
 	case ROTATION2_270:
 		result.ioDefs[0] = IODef{ V2I{ 0, 0 }, Flags8(World::MACHINE_INPUT_RIGHT | World::MACHINE_OUTPUT_LEFT) };
@@ -766,7 +793,7 @@ Machine* get_compatible_output(Machine* machine) {
 	for (U32 i = 0; i < machine->outputCount; i++) {
 		U32 outputIdx = (i + machine->currentOutput) % machine->outputCount;
 		if (Machine* test = machine->outputs[outputIdx].get()) {
-			if (test->inventory[0].count == 0 || test->inventory[0].item == machine->inventory[0].item && test->inventory[0].count < test->inventoryStackSizeLimit) {
+			if (test->can_transfer(machine->outputBuf)) {
 				machine->currentOutput = outputIdx + 1;
 				return test;
 			}
