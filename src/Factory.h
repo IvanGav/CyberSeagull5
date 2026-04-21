@@ -1059,20 +1059,6 @@ void render_machine_hover_tooltip(Machine* machine, I32 tileScale) {
 }
 
 void render(I32 tileScale) {
-	I32 hoveredRecipeOption = -1;
-	if (SelectUI::open) {
-		if (Machine* popupMachine = recipeMenuMachine.get()) {
-			V2I popupScreenPos = Cyber5eagull::tile_to_screen_px(popupMachine->pos);
-			I32 popupMachineWidthPx = I32(popupMachine->size.x) * 16 * tileScale;
-			SelectUI::set_popup_anchor(V2I{ popupScreenPos.x + popupMachineWidthPx / 2, popupScreenPos.y - 6 });
-			SelectUI::set_selected_index(selected_recipe_option_index(popupMachine));
-			hoveredRecipeOption = hovered_recipe_option_index();
-		}
-		else {
-			SelectUI::open = B32_FALSE;
-			SelectUI::clear_popup_anchor();
-		}
-	}
 	for (Machine* machine : machineTiles) {
 		if (!machine || !machine->sprite) {
 			continue;
@@ -1100,12 +1086,9 @@ void render(I32 tileScale) {
 			Graphics::blit_sprite_cutout(Resources::tile.belt.downToUp, screenPos.x + 16 * tileScale, screenPos.y + 16 * tileScale, tileScale, beltAnimTime);
 			Graphics::blit_sprite_cutout(Resources::tile.belt.downToUp, screenPos.x + 32 * tileScale, screenPos.y + 16 * tileScale, tileScale, beltAnimTime);
 		}
-		//Graphics::blit_sprite_cutout(machine->spriteProcessingAlt && machine->enough_inputs() ? *machine->spriteProcessingAlt : *machine->sprite, screenPos.x, screenPos.y, tileScale, machine->animFrame);
 		Resources::Sprite* renderSprite = machine->spriteProcessingAlt && machine->enough_inputs() ? machine->spriteProcessingAlt : machine->sprite;
 		V2I drawPos = machine_sprite_draw_pos(machine, renderSprite, tileScale);
 		Graphics::blit_sprite_cutout(*renderSprite, drawPos.x, drawPos.y, tileScale, machine->animFrame);
-		render_machine_recipe_badge(machine, tileScale);
-		render_machine_progress_bar(machine, tileScale);
 	}
 	for (Machine* machine : machineTiles) {
 		if (machine && machine->type == MACHINE_BELT && (machine->inventory[0].count > 0 || machine->outputBuf.count > 0)) {
@@ -1119,6 +1102,31 @@ void render(I32 tileScale) {
 			Graphics::blit_sprite_cutout(*Inventory::itemSprite[stack.item], screenPos.x + I32(renderOffset.x), screenPos.y + I32(renderOffset.y), tileScale, 0);
 		}
 	}
+}
+
+void render_ui(I32 tileScale) {
+	I32 hoveredRecipeOption = -1;
+	if (SelectUI::open) {
+		if (Machine* popupMachine = recipeMenuMachine.get()) {
+			V2I popupScreenPos = Cyber5eagull::tile_to_screen_px(popupMachine->pos);
+			I32 popupMachineWidthPx = I32(popupMachine->size.x) * 16 * tileScale;
+			SelectUI::set_popup_anchor(V2I{ popupScreenPos.x + popupMachineWidthPx / 2, popupScreenPos.y - 6 });
+			SelectUI::set_selected_index(selected_recipe_option_index(popupMachine));
+			hoveredRecipeOption = hovered_recipe_option_index();
+		}
+		else {
+			SelectUI::open = B32_FALSE;
+			SelectUI::clear_popup_anchor();
+		}
+	}
+	for (Machine* machine : machineTiles) {
+		if (!machine || !machine->sprite) {
+			continue;
+		}
+		render_machine_recipe_badge(machine, tileScale);
+		render_machine_progress_bar(machine, tileScale);
+	}
+
 	if (SelectUI::open) {
 		if (Machine* popupMachine = recipeMenuMachine.get()) {
 			if (hoveredRecipeOption >= 0 && popupMachine->recipes && U32(hoveredRecipeOption) < popupMachine->recipes->options.size) {
