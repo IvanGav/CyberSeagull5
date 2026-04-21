@@ -1536,10 +1536,12 @@ void apply_creative_brush(CreativeBrush brush, V2U32 tile, Rotation2 orientation
 	case CreativeBrush::ERASE: {
 		unqueue_tile_task(tile);
 		remove_machine_tile(tile);
-		remove_hive_covering_tile(tile);
-		TerrainGen::set_world_tile(tile, World::TILE_GRASS);
-		sync_beach_runtime_tile(tile);
-		clear_tile_resource_runtime(tile);
+		if (freePlacement) {
+			remove_hive_covering_tile(tile);
+			TerrainGen::set_world_tile(tile, World::TILE_GRASS);
+			sync_beach_runtime_tile(tile);
+			clear_tile_resource_runtime(tile);
+		}
 	} break;
 
 	case CreativeBrush::GRASS:
