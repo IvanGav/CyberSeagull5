@@ -67,16 +67,6 @@ void blit_texture_cutout(Resources::Texture& tex, I32 x, I32 y, I32 scaleFactor)
 	blit_sprite_cutout(s, x, y, scaleFactor, 0);
 }
 
-//template<typename... Values>
-//void display_text(I32 x, I32 y, I32 fontSize, StrA fmt, Values... fmt_args) {
-//	MemoryArena scratch = get_scratch_arena();
-//	MEMORY_ARENA_FRAME(scratch) {
-//		StrA = strafmt(scratch, fmt, fmt_args...);
-//		// TODO
-//		abort();
-//	}
-//}
-
 void display_num(U32 text, I32 x, I32 y, I32 fontSize) {
 	DEBUG_ASSERT(fontSize % 16 == 0, "fontSize must be multiple of 16");
 	if (text == 0) {
@@ -185,6 +175,28 @@ void box(I32 x, I32 y, I32 sizeX, I32 sizeY, I32 borderSize, RGBA8 borderColor, 
 		RGBA8* row = &Win32::framebuffer[py * fbW];
 		for (I32 px = fillX0; px < fillX1; px++) {
 			row[px] = fillColor;
+		}
+	}
+}
+
+void fill_rect_blended(I32 x, I32 y, I32 width, I32 height, RGBA8 color) {
+	I32 startX = max(x, 0);
+	I32 startY = max(y, 0);
+	I32 endX = min(x + width, Win32::framebufferWidth);
+	I32 endY = min(y + height, Win32::framebufferHeight);
+	if (startX >= endX || startY >= endY || color.a == 0) {
+		return;
+	}
+	U32 srcA = color.a;
+	U32 invA = 255u - srcA;
+	for (I32 py = startY; py < endY; py++) {
+		RGBA8* row = Win32::framebuffer + py * Win32::framebufferWidth;
+		for (I32 px = startX; px < endX; px++) {
+			RGBA8 dst = row[px];
+			row[px].r = U8((U32(dst.r) * invA + U32(color.r) * srcA) / 255u);
+			row[px].g = U8((U32(dst.g) * invA + U32(color.g) * srcA) / 255u);
+			row[px].b = U8((U32(dst.b) * invA + U32(color.b) * srcA) / 255u);
+			row[px].a = 255;
 		}
 	}
 }

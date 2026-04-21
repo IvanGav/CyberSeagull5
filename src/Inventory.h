@@ -36,7 +36,7 @@ struct ItemStack {
 
 Resources::Sprite* itemSprite[ITEM_Count];
 
-U32 item_font_size = 32;
+U32 item_font_size = 48;
 U32 x_off = 10;
 U32 y_off = 20;
 
@@ -207,7 +207,7 @@ void draw_inv() {
         I32 rowY = row_y(i);
         I32 rowW = panelW - PANEL_BORDER * 2 - 8;
         I32 rowH = row_height();
-        RGBA8 fill = inv[i] > 0u ? RGBA8{ 96, 114, 146, 255 } : RGBA8{ 66, 70, 78, 255 };
+        RGBA8 fill = inv[i] > 0u ? RGBA8{ 150, 114, 146, 255 } : RGBA8{ 100, 70, 78, 255 };
         RGBA8 border = inv[i] > 0u ? RGBA8{ 28, 28, 28, 255 } : RGBA8{ 44, 44, 44, 255 };
         if (selectedItem == ItemType(i)) {
             fill = RGBA8{ 150, 168, 82, 255 };

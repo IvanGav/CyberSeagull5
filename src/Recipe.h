@@ -7,11 +7,11 @@
 namespace Recipe {
 	using namespace Inventory;
 
-	static constexpr U32 MAX_UNIQUE_INPUTS = 4;
+	static constexpr U32 MAX_UNIQUE_INPUTS = 3;
 
 	// singular recipe
 	struct RecipeDef {
-		U32 numInputs;
+		U32 numInputs; // If 0, it defines a "unit" recipe that does nothing to an item - normally used for belts/splitters/etc
 		ItemStack inputs[MAX_UNIQUE_INPUTS];
 
 		ItemStack output;
@@ -54,7 +54,7 @@ namespace Recipe {
 
 	void init() {
 		recipeList.unit = RecipeDef{
-			0, {}, {}, 1.0, nullptr // defines a 1 second crafting time with 0 inputs/outputs; special case for belts and such
+			0, {}, {}, 0.8, nullptr // defines a 0.8 second crafting time with 0 inputs/outputs; special case for belts and such
 		};
 		recipeList.ironSmelt = RecipeDef{
 			1, {{ITEM_IRON_ORE, 3}},
@@ -95,7 +95,7 @@ namespace Recipe {
 
 		recipeGroups.belt = RecipeGroup::make(make_arena_array_list(globalArena, &recipeList.unit));
 		recipeGroups.smelter = RecipeGroup::make(make_arena_array_list(globalArena, &recipeList.ironSmelt, &recipeList.copperCable));
-		recipeGroups.assembler = RecipeGroup::make(make_arena_array_list(globalArena, &recipeList.ironGear, &recipeList.greenCircuit));
+		recipeGroups.assembler = RecipeGroup::make(make_arena_array_list(globalArena, &recipeList.ironSmelt, &recipeList.ironGear, &recipeList.greenCircuit));
 		recipeGroups.bigAssembler = RecipeGroup::make(make_arena_array_list(globalArena, &recipeList.nuclearHeart, &recipeList.camera, &recipeList.cyberSeagull));
 	}
 
@@ -114,6 +114,7 @@ namespace Recipe {
 		// call every frame; return true if recipe has finished
 		bool tick(F32 dt) {
 			if (def == nullptr) {
+				__debugbreak();
 				return false;
 			}
 			progress -= dt;
