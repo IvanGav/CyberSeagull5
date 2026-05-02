@@ -73,7 +73,16 @@ void display_num(U32 text, I32 x, I32 y, I32 fontSize) {
 		blit_sprite_cutout(Resources::tile.num[0], x, y, fontSize / 16, 0);
 		return;
 	}
-	U32 decimal_digits = (U32)floorf32(log10f32((F32)text)); // i don't like this, but... yeah
+	U32 decimal_digits = 0;
+	if (text >= 1000) {
+		decimal_digits = (U32)floorf32(log10f32((F32)text)); // i don't like this, but... yeah
+	}
+	else if (text >= 100) {
+		decimal_digits = 2;
+	}
+	else if (text >= 10) {
+		decimal_digits = 1;
+	}
 	for (U32 i = decimal_digits; text > 0; i--) {
 		blit_sprite_cutout(Resources::tile.num[text%10], x + i * fontSize, y, fontSize/16, 0);
 		text /= 10;

@@ -60,11 +60,11 @@ struct BuildMenuEntry {
 
 BuildMenuEntry buildMenuEntries[] = {
 	{ BuildMenuEntryType::ENTRY_BRUSH, CreativeBrush::CONVEYOR },
-	{ BuildMenuEntryType::ENTRY_BUY_BEE, CreativeBrush::TASK_SELECT },
+	{ BuildMenuEntryType::ENTRY_BRUSH, CreativeBrush::SPLITTER },
 	{ BuildMenuEntryType::ENTRY_BRUSH, CreativeBrush::ASSEMBLER_SMALL },
 	{ BuildMenuEntryType::ENTRY_BRUSH, CreativeBrush::ASSEMBLER_LARGE },
 	{ BuildMenuEntryType::ENTRY_BRUSH, CreativeBrush::ASSEMBLER_VERY_LARGE },
-	{ BuildMenuEntryType::ENTRY_BRUSH, CreativeBrush::SPLITTER },
+	{ BuildMenuEntryType::ENTRY_BUY_BEE, CreativeBrush::TASK_SELECT },
 	{ BuildMenuEntryType::ENTRY_BRUSH, CreativeBrush::HIVE_SMALL },
 	{ BuildMenuEntryType::ENTRY_BRUSH, CreativeBrush::HIVE_BIG },
 };

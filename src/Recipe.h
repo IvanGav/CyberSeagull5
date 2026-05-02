@@ -63,12 +63,12 @@ namespace Recipe {
 			3.0,&Resources::tile.item.lemonJuice
 		};
 		recipeList.ironSmelt = RecipeDef{
-			1, {{ITEM_IRON_ORE, 3}},
+			1, {{ITEM_IRON_ORE, 2}},
 			{ITEM_IRON_PLATE, 1 },
 			7.0, &Resources::tile.item.ironPlate
 		};
 		recipeList.copperCable = RecipeDef{
-			1, {{ITEM_COPPER_ORE, 4}},
+			1, {{ITEM_COPPER_ORE, 3}},
 			{ITEM_COPPER_CABLE, 1 },
 			4.0, &Resources::tile.item.copperCable
 		};
@@ -78,8 +78,7 @@ namespace Recipe {
 			2.0,& Resources::tile.item.gear
 		};
 		recipeList.greenCircuit = RecipeDef{
-			//3, {{ITEM_IRON_PLATE, 2}, {ITEM_COPPER_CABLE, 4}, {ITEM_FEATHER, 1}},
-			1, {{ITEM_COPPER_CABLE, 8}},
+			1, {{ITEM_COPPER_CABLE, 4}},
 			{ITEM_GREEN_CIRCUIT, 2 },
 			8.0,&Resources::tile.item.greenCircuit
 		};
