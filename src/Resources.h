@@ -136,6 +136,7 @@ struct {
 	Sprite bigAssembler;
 	Sprite bigAssemblerOn;
 	Sprite furnace;
+	Sprite furnaceOn;
 } tile;
 Texture tutorial[7];
 
@@ -222,6 +223,7 @@ void load() {
 	tile.bigAssembler = Sprite{ &tileset, 192, 80, 48, 32, 1 };
 	tile.bigAssemblerOn = Sprite{ &tileset, 240, 80, 48, 32, 1 };
 	tile.furnace = Sprite{ &tileset, 15 * 16, 11 * 16, 16, 32, 1 };
+	tile.furnaceOn = Sprite{ &tileset, 16 * 16, 11 * 16, 16, 32, 1 };
 	for (U32 i = 0; i < ARRAY_COUNT(tutorial); i++) {
 		tutorial[i] = load_texture(strafmt(globalArena, "tutorial_%.png"a, i));
 	}

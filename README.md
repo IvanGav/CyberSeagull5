@@ -1,1 +1,44 @@
 # Cyber5eagull
+
+Made for Chico ACM-W Hackathon Spring 2026.
+
+## How to run?
+
+It only runs on Windows since we directly use Win32 api. Open the solution in VS and click "run".
+- If you see an error on first launch, check a box to ignore it; it's all good and not a real error.
+
+You can also download the release from github (whenever it's posted).
+
+## How to play?
+
+Goal:
+- Assemble a cyber seagull
+- **Expand**
+
+Controls:
+- Left Click on a resource to start harvesting it (they're finite!)
+	- Also works on Beach and Belt tiles!
+- Left Click to cancel a command
+- Shift + Left Drag OR Middle Drag to pan camera (or just move the mouse close to the edge of the screen)
+- Scroll Wheel to zoom in/out
+- B/I for build menu
+	- With a selected building, Left Click/Drag to build
+	- With a selected building, Right Drag to remove (gets refunded) (if doesn't work, select a different building)
+	- With a selected building, Escape to deselect
+- Right Click on an assembler to change recipes (Left Click to confirm)
+- Left Click on an Inventory Resource (to the left) to select it. After that, Left Click on a Belt to order a bee to place it down.
+- Tilde for creative menu (debug/creative)
+- Shift + R to regenerate the world (debug/creative)
+
+## TODO
+- Make beach tiles auto-renew (collect again after it's just collected, just like ore)
+- Fix the bug where you put a bee on an ore, then place a belt next
+- Add junctions
+- Make first hive unkillable (can be killed by placing belts/etc over it)
+- Make ores away from spawn be more rich
+- Make beehives only placeable within current beehive range
+- Make belts free
+- Camera can go to the left of ocean
+- Fix furnace rendering
+
+When all of that's done, we will do a `Hackathon+` release.

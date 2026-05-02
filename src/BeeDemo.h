@@ -192,44 +192,44 @@ void init_build_definitions() {
 		def->brush = CreativeBrush::CONVEYOR;
 		def->stockItem = Inventory::ITEM_CONVEYOR;
 		def->stockItemCount = 1u;
-		add_build_cost(def, Inventory::ITEM_IRON_ORE, 2u);
+		add_build_cost(def, Inventory::ITEM_IRON_ORE, 1u);
 	}
 	{
 		BuildDefinition* def = &buildDefinitions[1];
 		def->brush = CreativeBrush::ASSEMBLER_SMALL;
-		add_build_cost(def, Inventory::ITEM_IRON_ORE, 6u);
+		add_build_cost(def, Inventory::ITEM_IRON_ORE, 4u);
 		add_build_cost(def, Inventory::ITEM_COPPER_ORE, 2u);
 	}
 	{
 		BuildDefinition* def = &buildDefinitions[2];
 		def->brush = CreativeBrush::ASSEMBLER_LARGE;
-		add_build_cost(def, Inventory::ITEM_IRON_ORE, 10u);
-		add_build_cost(def, Inventory::ITEM_COPPER_ORE, 6u);
+		add_build_cost(def, Inventory::ITEM_IRON_PLATE, 2u);
+		add_build_cost(def, Inventory::ITEM_COPPER_CABLE, 1u);
 	}
 	{
 		BuildDefinition* def = &buildDefinitions[3];
 		def->brush = CreativeBrush::SPLITTER;
-		add_build_cost(def, Inventory::ITEM_IRON_ORE, 8u);
-		add_build_cost(def, Inventory::ITEM_COPPER_ORE, 4u);
+		add_build_cost(def, Inventory::ITEM_IRON_ORE, 3u);
+		add_build_cost(def, Inventory::ITEM_COPPER_ORE, 1u);
 	}
 	{
 		BuildDefinition* def = &buildDefinitions[4];
 		def->brush = CreativeBrush::ASSEMBLER_VERY_LARGE;
-		add_build_cost(def, Inventory::ITEM_IRON_ORE, 20u);
-		add_build_cost(def, Inventory::ITEM_COPPER_ORE, 11u);
+		add_build_cost(def, Inventory::ITEM_IRON_PLATE, 2u);
+		add_build_cost(def, Inventory::ITEM_GREEN_CIRCUIT, 1u);
 		add_build_cost(def, Inventory::ITEM_URANIUM, 1u);
 	}
 	{
 		BuildDefinition* def = &buildDefinitions[5];
 		def->brush = CreativeBrush::HIVE_SMALL;
 		add_build_cost(def, Inventory::ITEM_HONEY, 12u);
-		add_build_cost(def, Inventory::ITEM_IRON_ORE, 4u);
+		add_build_cost(def, Inventory::ITEM_COPPER_ORE, 3u);
 	}
 	{
 		BuildDefinition* def = &buildDefinitions[6];
 		def->brush = CreativeBrush::HIVE_BIG;
-		add_build_cost(def, Inventory::ITEM_HONEY, 28u);
-		add_build_cost(def, Inventory::ITEM_IRON_ORE, 12u);
+		add_build_cost(def, Inventory::ITEM_HONEY, 24u);
+		add_build_cost(def, Inventory::ITEM_IRON_PLATE, 2u);
 		add_build_cost(def, Inventory::ITEM_COPPER_ORE, 6u);
 	}
 	beePurchaseDefinition.entries[beePurchaseDefinition.numEntries++] = make_build_cost_entry(Inventory::ITEM_HONEY, 4u);
