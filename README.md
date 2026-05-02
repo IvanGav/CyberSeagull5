@@ -13,7 +13,7 @@ You can also download the release from github (whenever it's posted).
 
 Goal:
 - Assemble a cyber seagull
-- **Expand**
+- **The factory must grow**
 
 Controls:
 - Left Click on a resource to start harvesting it (they're finite!)
