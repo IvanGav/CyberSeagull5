@@ -25,6 +25,7 @@ static constexpr I32 MAX_WORLD_TILE_SCALE = 200;
 static constexpr F32 CAMERA_EDGE_SCROLL_PIXELS = 20.0F;
 static constexpr F32 CAMERA_SCROLL_SPEED = 500.0F;
 static constexpr F32 SHIFT_SCROLL_PAN_TILES = 2.5F;
+static constexpr F32 MAX_OUT_OF_BOUNDS_VIEW = 250.0F;
 
 F64 lastFrameTime = 0.0;
 F32 dt = 0.0F;
@@ -42,10 +43,10 @@ F32 world_tile_pixels_f32() {
 }
 
 void clamp_camera() {
-	F32 maxCameraX = max(F32(I32(World::size.x) * world_tile_pixels() - Win32::framebufferWidth), 0.0F);
-	F32 maxCameraY = max(F32(I32(World::size.y) * world_tile_pixels() - Win32::framebufferHeight), 0.0F);
-	camera.x = clamp(camera.x, 0.0F, maxCameraX);
-	camera.y = clamp(camera.y, 0.0F, maxCameraY);
+	F32 maxCameraX = max(F32(I32(World::size.x) * world_tile_pixels() - Win32::framebufferWidth) + MAX_OUT_OF_BOUNDS_VIEW, -MAX_OUT_OF_BOUNDS_VIEW);
+	F32 maxCameraY = max(F32(I32(World::size.y) * world_tile_pixels() - Win32::framebufferHeight) + MAX_OUT_OF_BOUNDS_VIEW, -MAX_OUT_OF_BOUNDS_VIEW);
+	camera.x = clamp(camera.x, -MAX_OUT_OF_BOUNDS_VIEW, maxCameraX);
+	camera.y = clamp(camera.y, -MAX_OUT_OF_BOUNDS_VIEW, maxCameraY);
 }
 
 V2F32 screen_to_world(V2F32 screenPosition) {

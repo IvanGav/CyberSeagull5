@@ -1,6 +1,6 @@
 # Cyber5eagull
 
-Made for Chico ACM-W Hackathon Spring 2026.
+Made for Chico ACM-W Hackathon Spring 2026. By team GULLGAME.
 
 ## How to run?
 
@@ -38,7 +38,14 @@ Controls:
 - Make ores away from spawn be more rich
 - Make beehives only placeable within current beehive range
 - Make belts free
-- Camera can go to the left of ocean
 - Fix furnace rendering
 
 When all of that's done, we will do a `Hackathon+` release.
+
+## Other
+
+Locations of specific things in the source code:
+- Item recipes in `Recipe.h`
+- Textures in `Resources.h`
+- Build costs in `BeeDemo.h` at line 200-ish
+- Build menu items in `EditorInteractions.h` - `BuildMenuEntry buildMenuEntries[]`
