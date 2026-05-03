@@ -1194,7 +1194,7 @@ BeeTasks::Task make_task_for_tile(V2U32 tile) {
 	if (!tile_is_selectable_task(tile)) {
 		return BeeTasks::Task{};
 	}
-	B32 hasNearbyConveyor = has_adjacent_conveyor(tile);
+	B32 hasNearbyConveyor = B32_TRUE; // has_adjacent_conveyor(tile); // just try putting on the belt no matter if it's actually there
 	switch (TerrainGen::get_world_tile(tile)) {
 	case World::TILE_BEACH:
 		return BeeTasks::make_shore_task(tile, SHORE_WORK_SECONDS);

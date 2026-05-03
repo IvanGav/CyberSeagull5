@@ -31,8 +31,8 @@ Controls:
 - Shift + R to regenerate the world (debug/creative)
 
 ## TODO
-- Make beach tiles auto-renew (collect again after it's just collected, just like ore)
-- Fix the bug where you put a bee on an ore, then place a belt next
+- ~~Make beach tiles auto-renew (collect again after it's just collected, just like ore)~~
+- ~~Fix the bug where you put a bee on an ore, then place a belt next~~
 - Add junctions
 - Make first hive unkillable (can be killed by placing belts/etc over it)
 - Make ores away from spawn be more rich
@@ -49,3 +49,4 @@ Locations of specific things in the source code:
 - Textures in `Resources.h`
 - Build costs in `BeeDemo.h` at line 200-ish
 - Build menu items in `EditorInteractions.h` - `BuildMenuEntry buildMenuEntries[]`
+- Creating tile tasks in `BeeDemo.h` - `make_task_for_tile`
