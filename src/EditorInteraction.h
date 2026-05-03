@@ -61,6 +61,7 @@ struct BuildMenuEntry {
 BuildMenuEntry buildMenuEntries[] = {
 	{ BuildMenuEntryType::ENTRY_BRUSH, CreativeBrush::CONVEYOR },
 	{ BuildMenuEntryType::ENTRY_BRUSH, CreativeBrush::SPLITTER },
+	{ BuildMenuEntryType::ENTRY_BRUSH, CreativeBrush::JUNCTION },
 	{ BuildMenuEntryType::ENTRY_BRUSH, CreativeBrush::ASSEMBLER_SMALL },
 	{ BuildMenuEntryType::ENTRY_BRUSH, CreativeBrush::ASSEMBLER_LARGE },
 	{ BuildMenuEntryType::ENTRY_BRUSH, CreativeBrush::ASSEMBLER_VERY_LARGE },
@@ -200,7 +201,7 @@ FINLINE U32 build_menu_badge_count(const BuildMenuEntry& entry) {
 		return BeeDemoNS::total_bee_count();
 	}
 	if (entry.brush == CreativeBrush::CONVEYOR) {
-		return Inventory::count(Inventory::ITEM_CONVEYOR);
+		//return Inventory::count(Inventory::ITEM_CONVEYOR);
 	}
 	return BeeDemoNS::build_available_count(entry.brush);
 }
@@ -567,6 +568,12 @@ void keyboard_callback(Win32::Key key, Win32::ButtonState state) {
 		uiLeftCapture = B32_FALSE;
 		conveyorDragActive = B32_FALSE;
 		return;
+	}
+
+	if (key == Win32::KEY_BACKSLASH) {
+		for (U32& item_count : Inventory::inv) {
+			item_count = 50;
+		}
 	}
 
 	if (key == Win32::KEY_R && !Win32::keyboardState[Win32::KEY_CTRL]) {
