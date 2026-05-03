@@ -386,6 +386,7 @@ MachineDef get_smelter(Rotation2 orientation) {
 	result.type = MACHINE_SMELTER;
 	result.size = V2U{ 1, 1 };
 	result.sprite = &Resources::tile.furnace;
+	result.spriteProcessingAlt = &Resources::tile.furnaceOn;
 	result.inventoryStackSize = 6;
 	result.processAtOnce = 1;
 	result.recipes = &Recipe::recipeGroups.smelter;
@@ -1110,12 +1111,25 @@ void render(I32 tileScale) {
 				Graphics::blit_sprite_cutout(Resources::tile.belt.upToDown, screenPos.x + 16 * tileScale, screenPos.y, tileScale, beltAnimTime);
 				Graphics::blit_sprite_cutout(Resources::tile.belt.downToUp, screenPos.x, screenPos.y, tileScale, beltAnimTime);
 			}
-		}
-		if (machine->type == MACHINE_BIG_ASSEMBLER) {
+		} else if (machine->type == MACHINE_BIG_ASSEMBLER) {
 			U32 beltAnimTime = animRawTime / 8 % Resources::tile.belt.downToUp.animFrames;
 			Graphics::blit_sprite_cutout(Resources::tile.belt.downToUp, screenPos.x, screenPos.y + 16 * tileScale, tileScale, beltAnimTime);
 			Graphics::blit_sprite_cutout(Resources::tile.belt.downToUp, screenPos.x + 16 * tileScale, screenPos.y + 16 * tileScale, tileScale, beltAnimTime);
 			Graphics::blit_sprite_cutout(Resources::tile.belt.downToUp, screenPos.x + 32 * tileScale, screenPos.y + 16 * tileScale, tileScale, beltAnimTime);
+		} else if (machine->type == MACHINE_SMELTER) {
+			U32 beltAnimTime = animRawTime / 8 % Resources::tile.belt.downToUp.animFrames;
+			if (machine->ioDefs[0].ioDirections & World::MACHINE_INPUT_DOWN) {
+				Graphics::blit_sprite_cutout(Resources::tile.belt.downToUp, screenPos.x, screenPos.y, tileScale, beltAnimTime);
+			}
+			else if (machine->ioDefs[0].ioDirections & World::MACHINE_INPUT_LEFT) {
+				Graphics::blit_sprite_cutout(Resources::tile.belt.leftToRight, screenPos.x, screenPos.y, tileScale, beltAnimTime);
+			}
+			else if (machine->ioDefs[0].ioDirections & World::MACHINE_INPUT_UP) {
+				Graphics::blit_sprite_cutout(Resources::tile.belt.upToDown, screenPos.x, screenPos.y, tileScale, beltAnimTime);
+			}
+			else if (machine->ioDefs[0].ioDirections & World::MACHINE_INPUT_RIGHT) {
+				Graphics::blit_sprite_cutout(Resources::tile.belt.rightToLeft, screenPos.x, screenPos.y, tileScale, beltAnimTime);
+			}
 		}
 		Resources::Sprite* renderSprite = machine->spriteProcessingAlt && machine->enough_inputs() ? machine->spriteProcessingAlt : machine->sprite;
 		V2I drawPos = machine_sprite_draw_pos(machine, renderSprite, tileScale);

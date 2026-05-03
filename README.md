@@ -42,7 +42,7 @@ Controls:
 - ~~Make ores away from spawn be more rich~~
 - ~~Make beehives only placeable within current beehive range~~
 - ~~Make belts free~~
-- Fix furnace rendering
+- Fix furnace rendering (new texture is not so egregious, so probably fine for the release)
 - ~~When deconstructing machines, refund items in them~~
 
 When all of that's done, we will do a `Hackathon+` release.
