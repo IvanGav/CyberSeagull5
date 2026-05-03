@@ -39,7 +39,7 @@ Controls:
 - ~~Fix the bug where you put a bee on an ore, then place a belt next~~
 - Add junctions (Everything is hooked up, just make them unique in Factory.h search for `// TODO add junctions`)
 - ~~Make all hives unkillable in survival~~ (maybe shouldn't make *all* unkillable? idk)
-- Make ores away from spawn be more rich
+- ~~Make ores away from spawn be more rich~~
 - ~~Make beehives only placeable within current beehive range~~
 - ~~Make belts free~~
 - Fix furnace rendering

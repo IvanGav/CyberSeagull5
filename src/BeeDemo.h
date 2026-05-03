@@ -15,17 +15,18 @@ namespace Cyber5eagull::BeeDemo {
 
 static constexpr F32 SPEED = 6.0F;
 static constexpr U32 BEE_COUNT = 5;
-static constexpr F32 ORE_WORK_SECONDS = 10.0F;
-static constexpr F32 FLOWER_WORK_SECONDS = 10.0F;
+static constexpr F32 ORE_WORK_SECONDS = 8.0F;
+static constexpr F32 FLOWER_WORK_SECONDS = 6.0F;
 static constexpr F32 SHORE_WORK_SECONDS = 1.5F;
 static constexpr U32 BIG_HIVE_TASK_RADIUS = 15u;
 static constexpr U32 SMALL_HIVE_TASK_RADIUS = 9u;
 static constexpr U32 POLLEN_PER_HONEY = 3u;
 static constexpr F32 HONEY_CONVERSION_SECONDS = 10.0F;
 
-static constexpr U8 STARTING_IRON_PER_TILE = 8;
-static constexpr U8 STARTING_COPPER_PER_TILE = 8;
-static constexpr U8 STARTING_FLOWER_PER_TILE = 12;
+static constexpr U16 STARTING_IRON_PER_TILE = 10;
+static constexpr U16 STARTING_COPPER_PER_TILE = 10;
+static constexpr U16 STARTING_FLOWER_PER_TILE = 16;
+static constexpr F32 ADDED_RICHNESS_PER_TILE = 1.5;
 
 using TerrainGen::HiveDesc;
 using TerrainGen::WorldGenerationState;
@@ -58,9 +59,9 @@ WorldGenerationState worldGeneration{};
 F32 mainHiveHoneyProgress = 0.0F;
 
 // Runtime resource counts per tile.
-U8 ironRemaining[TerrainGen::MAX_WORLD_MAP_TILES]{};
-U8 copperRemaining[TerrainGen::MAX_WORLD_MAP_TILES]{};
-U8 flowerRemaining[TerrainGen::MAX_WORLD_MAP_TILES]{};
+U16 ironRemaining[TerrainGen::MAX_WORLD_MAP_TILES]{};
+U16 copperRemaining[TerrainGen::MAX_WORLD_MAP_TILES]{};
+U16 flowerRemaining[TerrainGen::MAX_WORLD_MAP_TILES]{};
 B32 machineRefundableFlags[TerrainGen::MAX_WORLD_MAP_TILES]{};
 ArenaArrayList<B32> hiveRefundable{};
 
@@ -1049,6 +1050,13 @@ B32 can_place_hive_footprint(V2U32 topLeft, V2U32 footprint) {
 	return B32_TRUE;
 }
 
+F32 additional_richness(V2U32 tile) {
+	DEBUG_ASSERT(hives.size > 0);
+	V2U hive = hives[0].tile;
+	F32 dist_from_main_hive = sqrtf32((F32(tile.x)-F32(hive.x)) * (F32(tile.x)-F32(hive.x)) + (F32(tile.y)-F32(hive.y)) * (F32(tile.y)-F32(hive.y)));
+	return U16(dist_from_main_hive * ADDED_RICHNESS_PER_TILE);
+}
+
 void clear_tile_resource_runtime(V2U32 tile) {
 	U32 index = tile_resource_index(tile);
 	ironRemaining[index] = 0;
@@ -1059,9 +1067,9 @@ void clear_tile_resource_runtime(V2U32 tile) {
 void reset_tile_resource_runtime(V2U32 tile) {
 	clear_tile_resource_runtime(tile);
 	switch (TerrainGen::get_world_tile(tile)) {
-	case World::TILE_GRASS_IRON:   ironRemaining[tile_resource_index(tile)] = STARTING_IRON_PER_TILE; break;
-	case World::TILE_GRASS_COPPER: copperRemaining[tile_resource_index(tile)] = STARTING_COPPER_PER_TILE; break;
-	case World::TILE_GRASS_FLOWERS: flowerRemaining[tile_resource_index(tile)] = STARTING_FLOWER_PER_TILE; break;
+	case World::TILE_GRASS_IRON:   ironRemaining[tile_resource_index(tile)] = STARTING_IRON_PER_TILE + additional_richness(tile); break;
+	case World::TILE_GRASS_COPPER: copperRemaining[tile_resource_index(tile)] = STARTING_COPPER_PER_TILE + additional_richness(tile); break;
+	case World::TILE_GRASS_FLOWERS: flowerRemaining[tile_resource_index(tile)] = STARTING_FLOWER_PER_TILE + additional_richness(tile); break;
 	default: break;
 	}
 }
