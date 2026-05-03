@@ -68,6 +68,7 @@ struct {
 	Sprite hive;
 	Sprite hiveLarge;
 	Sprite splitter;
+	Sprite junction;
 	Sprite merger;
 	Sprite beeFly;
 	Sprite beeMine;
@@ -124,6 +125,7 @@ struct {
 		Sprite bee;
 		Sprite bigHive;
 		Sprite splitter;
+		Sprite junction;
 	} icon;
 	struct {
 		Sprite full;
@@ -159,6 +161,7 @@ void load() {
 	tile.hive = Sprite{ &tileset, 16, 32, 16, 16, 1 };
 	tile.hiveLarge = Sprite{ &tileset, 0, 64, 32, 32, 1 };
 	tile.splitter = Sprite{ &tileset, 3 * 16, 6 * 16, 16, 16, 1 };
+	tile.junction = Sprite{ &tileset, 3 * 16, 7 * 16, 16, 16, 1 };
 	tile.merger = Sprite{ &tileset, 32, 64, 16, 16, 1 };
 	tile.beeFly = Sprite{ &tileset, 0, 160, 16, 16, 4 };
 	tile.beeMine = Sprite{ &tileset, 0, 144, 16, 16, 4 };
@@ -203,6 +206,7 @@ void load() {
 	tile.icon.bee = Sprite{ &tileset, 5 * 16, 14 * 16, 16, 16, 1 };
 	tile.icon.bigHive = Sprite{ &tileset, 6 * 16, 14 * 16, 16, 16, 1 };
 	tile.icon.splitter = Sprite{ &tileset, 7 * 16, 14 * 16, 16, 16, 1 };
+	tile.icon.junction = Sprite{ &tileset, 8 * 16, 14 * 16, 16, 16, 1 };
 
 	tile.rock.topLeft = Sprite{ &tileset, 16 * 10, 11 * 16, 16, 16, 1 };
 	tile.rock.top = Sprite{ &tileset, 16 * 11, 11 * 16, 16, 16, 1 };
@@ -224,6 +228,7 @@ void load() {
 	tile.bigAssemblerOn = Sprite{ &tileset, 240, 80, 48, 32, 1 };
 	tile.furnace = Sprite{ &tileset, 15 * 16, 11 * 16, 16, 32, 1 };
 	tile.furnaceOn = Sprite{ &tileset, 16 * 16, 11 * 16, 16, 32, 1 };
+
 	for (U32 i = 0; i < ARRAY_COUNT(tutorial); i++) {
 		tutorial[i] = load_texture(strafmt(globalArena, "tutorial_%.png"a, i));
 	}

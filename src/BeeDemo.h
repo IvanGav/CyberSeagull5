@@ -46,6 +46,7 @@ enum class CreativeBrush : U8 {
 	ASSEMBLER_LARGE,
 	ASSEMBLER_VERY_LARGE,
 	SPLITTER,
+	JUNCTION,
 	HIVE_SMALL,
 	HIVE_BIG,
 	COUNT
@@ -134,7 +135,7 @@ FINLINE B32 try_spend_honey(U32 amount) {
 }
 
 static constexpr U32 MAX_BUILD_COST_ENTRIES = 4u;
-static constexpr U32 BUILD_DEFINITION_COUNT = 7u;
+static constexpr U32 BUILD_DEFINITION_COUNT = 8u;
 
 struct BuildCostEntry {
 	Inventory::ItemType item = Inventory::ITEM_HONEY;
@@ -231,6 +232,12 @@ void init_build_definitions() {
 		add_build_cost(def, Inventory::ITEM_HONEY, 24u);
 		add_build_cost(def, Inventory::ITEM_IRON_PLATE, 2u);
 		add_build_cost(def, Inventory::ITEM_COPPER_ORE, 6u);
+	}
+	{
+		BuildDefinition* def = &buildDefinitions[7];
+		def->brush = CreativeBrush::JUNCTION;
+		add_build_cost(def, Inventory::ITEM_IRON_ORE, 2u);
+		add_build_cost(def, Inventory::ITEM_COPPER_CABLE, 1u);
 	}
 	beePurchaseDefinition.entries[beePurchaseDefinition.numEntries++] = make_build_cost_entry(Inventory::ITEM_HONEY, 4u);
 
@@ -409,6 +416,7 @@ FINLINE CreativeBrush brush_for_machine_type(const Factory::Machine* machine) {
 	case Factory::MACHINE_ASSEMBLER: return CreativeBrush::ASSEMBLER_LARGE;
 	case Factory::MACHINE_BIG_ASSEMBLER: return CreativeBrush::ASSEMBLER_VERY_LARGE;
 	case Factory::MACHINE_SPLITTER: return CreativeBrush::SPLITTER;
+	case Factory::MACHINE_JUNCTION: return CreativeBrush::JUNCTION;
 	default: return CreativeBrush::TASK_SELECT;
 	}
 }
@@ -1429,6 +1437,7 @@ Resources::Sprite* creative_brush_sprite(CreativeBrush brush) {
 	case CreativeBrush::ASSEMBLER_LARGE: return &Resources::tile.icon.assembler;
 	case CreativeBrush::ASSEMBLER_VERY_LARGE: return &Resources::tile.icon.bigAssembler;
 	case CreativeBrush::SPLITTER: return &Resources::tile.icon.splitter;
+	case CreativeBrush::JUNCTION: return &Resources::tile.icon.junction;
 	case CreativeBrush::HIVE_SMALL: return &Resources::tile.icon.hive;
 	case CreativeBrush::HIVE_BIG: return &Resources::tile.icon.bigHive;
 	default: return nullptr;
@@ -1638,6 +1647,16 @@ void apply_creative_brush(CreativeBrush brush, V2U32 tile, Rotation2 orientation
 			break;
 		}
 		if (!place_structure(tile, Factory::MACHINE_SPLITTER, orientation, freePlacement ? B32_FALSE : B32_TRUE)) {
+			if (!freePlacement) {
+				refund_build_cost(brush);
+			}
+		}
+	} break;
+	case CreativeBrush::JUNCTION: {
+		if (!freePlacement && !spend_for_build(brush)) {
+			break;
+		}
+		if (!place_structure(tile, Factory::MACHINE_JUNCTION, orientation, freePlacement ? B32_FALSE : B32_TRUE)) {
 			if (!freePlacement) {
 				refund_build_cost(brush);
 			}

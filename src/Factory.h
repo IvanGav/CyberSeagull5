@@ -22,6 +22,7 @@ enum MachineType : U32 {
 	MACHINE_ASSEMBLER,
 	MACHINE_BIG_ASSEMBLER,
 	MACHINE_SPLITTER,
+	MACHINE_JUNCTION,
 	MACHINE_Count
 };
 
@@ -157,7 +158,6 @@ void Machine::transfer(ItemStack& incoming) {
 	}
 	// a real recipe; just do a normal lookup
 	U32 index = U32(-1);
-	//if (this->selectedRecipe.def->numInputs == 3) { __debugbreak(); } // TODO temporary
 	for (U32 i = 0; i < this->selectedRecipe.def->numInputs; i++) {
 		if (selectedRecipe.def->inputs[i].item == incoming.item) {
 			index = i;
@@ -186,7 +186,6 @@ B32 Machine::can_transfer(ItemStack const& incoming) const {
 	}
 	// a real recipe; just do a normal lookup
 	U32 index = U32(-1);
-	//if (this->selectedRecipe.def->numInputs == 3) { __debugbreak(); } // TODO temporary
 	for (U32 i = 0; i < this->selectedRecipe.def->numInputs; i++) {
 		if (selectedRecipe.def->inputs[i].item == incoming.item) {
 			index = i;
@@ -538,6 +537,7 @@ MachineDef get_static_machine(MachineType type, Rotation2 orientation) {
 	case MACHINE_BIG_ASSEMBLER:
 		result = get_big_assembler(orientation);
 		break;
+	case MACHINE_JUNCTION: // TODO add junctions
 	case MACHINE_SPLITTER:
 		result.size = V2U{ 1, 1 };
 		result.sprite = &Resources::tile.splitter;
@@ -962,7 +962,7 @@ void render_recipe_option_tooltip(const Recipe::RecipeDef& recipe) {
 }
 
 void render_machine_progress_bar(Machine* machine, I32 tileScale) {
-	if (!machine || !machine->selectedRecipe.def || machine->type == MACHINE_BELT || machine->type == MACHINE_SPLITTER) {
+	if (!machine || !machine->selectedRecipe.def || machine->type == MACHINE_BELT || machine->type == MACHINE_SPLITTER || machine->type == MACHINE_JUNCTION) {
 		return;
 	}
 	F32 maxTime = machine->max_process_time();
@@ -1015,7 +1015,7 @@ void render_machine_hover_tooltip(Machine* machine, I32 tileScale) {
 	I32 smallNumberSize = 16;
 	I32 rowHeight = max(iconSize + 10, bigNumberSize + 4);
 	I32 pad = 8;
-	B32 showProgress = machine->type != MACHINE_SPLITTER && machine->type != MACHINE_BELT && machine->max_process_time() > 0.0F ? B32_TRUE : B32_FALSE;
+	B32 showProgress = machine->type != MACHINE_SPLITTER && machine->type != MACHINE_BELT && machine->type != MACHINE_JUNCTION && machine->max_process_time() > 0.0F ? B32_TRUE : B32_FALSE;
 	I32 progressHeight = showProgress ? 16 : 0;
 	I32 tipW = 136;
 	I32 tipH = pad * 2 + rowHeight + I32(recipe.numInputs) * rowHeight + progressHeight;

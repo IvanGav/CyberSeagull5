@@ -28,7 +28,7 @@ namespace Cyber5eagull::CreativeToolkit {
 using BeeDemo::CreativeBrush;
 
 ArenaArrayList<Resources::Sprite*> selections;
-static constexpr U32 BRUSH_COUNT = 17u;
+static constexpr U32 BRUSH_COUNT = 18u;
 CreativeBrush brushOrder[BRUSH_COUNT] = {
 	CreativeBrush::TASK_SELECT,
 	CreativeBrush::ERASE,
@@ -45,6 +45,7 @@ CreativeBrush brushOrder[BRUSH_COUNT] = {
 	CreativeBrush::ASSEMBLER_LARGE,
 	CreativeBrush::ASSEMBLER_VERY_LARGE,
 	CreativeBrush::SPLITTER,
+	CreativeBrush::JUNCTION,
 	CreativeBrush::HIVE_SMALL,
 	CreativeBrush::HIVE_BIG,
 };
@@ -77,7 +78,6 @@ FINLINE B32 brush_uses_rotation(CreativeBrush brush) {
 	switch (brush) {
 	case CreativeBrush::ASSEMBLER_SMALL:
 	case CreativeBrush::ASSEMBLER_LARGE:
-	case CreativeBrush::SPLITTER:
 		return B32_TRUE;
 	default:
 		return B32_FALSE;
@@ -173,6 +173,8 @@ FINLINE Resources::Sprite* preview_sprite(CreativeBrush brush, Rotation2 orienta
 		return &Resources::tile.bigAssembler;
 	case CreativeBrush::SPLITTER:
 		return &Resources::tile.splitter;
+	case CreativeBrush::JUNCTION:
+		return &Resources::tile.junction;
 	case CreativeBrush::HIVE_SMALL:
 		return &Resources::tile.hive;
 	case CreativeBrush::HIVE_BIG:
