@@ -73,7 +73,7 @@ struct BeachTileInfo {
 	}
 	void add_junk() {
 		DEBUG_ASSERT(Inventory::inv.size != 0, "Inventory must be initialized before the world lol");
-		delay = F32((rng.next() % MAX_JUNK_DELAY) + MIN_JUNK_DELAY);
+		delay = F32((rng.next() % (MAX_JUNK_DELAY-MIN_JUNK_DELAY)) + MIN_JUNK_DELAY);
 		if (junkNum == MAX_JUNK_PER_BEACH_TILE) { return; }
 
 		static const Inventory::ItemType allowedShoreItems[] = {
