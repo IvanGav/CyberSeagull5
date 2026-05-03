@@ -742,6 +742,10 @@ void remove_machine(Machine* machine) {
 	if (!machine || machine->generation == 0) {
 		return;
 	}
+	for (U32 i = 0; i < machine->selectedRecipe.def->numInputs; i++) {
+		Inventory::inv[machine->inventory[i].item] += machine->inventory[i].count;
+	}
+	Inventory::inv[machine->outputBuf.item] += machine->outputBuf.count;
 	machineIdToMachine[machine->id] = nullptr;
 	freeMachineIds.push_back(machine->id);
 	World::set_machine(Rng2I32{ I32(machine->pos.x), I32(machine->pos.y), I32(machine->pos.x + machine->size.x - 1), I32(machine->pos.y + machine->size.y - 1) }, World::MACHINE_NULL_ID);

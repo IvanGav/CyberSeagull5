@@ -190,9 +190,9 @@ void init_build_definitions() {
 	{
 		BuildDefinition* def = &buildDefinitions[0];
 		def->brush = CreativeBrush::CONVEYOR;
-		def->stockItem = Inventory::ITEM_CONVEYOR;
-		def->stockItemCount = 1u;
-		add_build_cost(def, Inventory::ITEM_IRON_ORE, 1u);
+		//def->stockItem = Inventory::ITEM_CONVEYOR;
+		//def->stockItemCount = 1u;
+		//add_build_cost(def, Inventory::ITEM_IRON_ORE, 1u);
 	}
 	{
 		BuildDefinition* def = &buildDefinitions[1];
@@ -272,6 +272,7 @@ BuildCostDef bee_purchase_cost_def() {
 }
 
 FINLINE U32 available_count_for_cost_entries(const BuildCostEntry* entries, U32 numEntries) {
+	if (numEntries == 0) return 1;
 	U32 available = U32_MAX;
 	for (U32 i = 0; i < numEntries; i++) {
 		const BuildCostEntry& entry = entries[i];
@@ -307,27 +308,28 @@ FINLINE B32 spend_cost_entries(const BuildCostEntry* entries, U32 numEntries) {
 }
 
 B32 craft_conveyors(U32 craftCount = 1u) {
-	const BuildDefinition* def = get_build_definition(CreativeBrush::CONVEYOR);
-	if (!def || craftCount == 0u || def->stockItem != Inventory::ITEM_CONVEYOR || def->stockItemCount == 0u) {
-		return B32_FALSE;
-	}
-
-	for (U32 i = 0; i < def->numEntries; i++) {
-		const BuildCostEntry& entry = def->entries[i];
-		U32 totalCost = entry.count * craftCount;
-		if (entry.count != 0u && Inventory::count(entry.item) < totalCost) {
-			return B32_FALSE;
-		}
-	}
-	for (U32 i = 0; i < def->numEntries; i++) {
-		const BuildCostEntry& entry = def->entries[i];
-		U32 totalCost = entry.count * craftCount;
-		if (totalCost != 0u) {
-			Inventory::try_take_item(entry.item, totalCost);
-		}
-	}
-	Inventory::add_item(def->stockItem, def->stockItemCount * craftCount);
 	return B32_TRUE;
+	//const BuildDefinition* def = get_build_definition(CreativeBrush::CONVEYOR);
+	//if (!def || craftCount == 0u || def->stockItem != Inventory::ITEM_CONVEYOR || def->stockItemCount == 0u) {
+	//	return B32_FALSE;
+	//}
+
+	//for (U32 i = 0; i < def->numEntries; i++) {
+	//	const BuildCostEntry& entry = def->entries[i];
+	//	U32 totalCost = entry.count * craftCount;
+	//	if (entry.count != 0u && Inventory::count(entry.item) < totalCost) {
+	//		return B32_FALSE;
+	//	}
+	//}
+	//for (U32 i = 0; i < def->numEntries; i++) {
+	//	const BuildCostEntry& entry = def->entries[i];
+	//	U32 totalCost = entry.count * craftCount;
+	//	if (totalCost != 0u) {
+	//		Inventory::try_take_item(entry.item, totalCost);
+	//	}
+	//}
+	//Inventory::add_item(def->stockItem, def->stockItemCount * craftCount);
+	//return B32_TRUE;
 }
 
 U32 bee_purchase_available_count() {
@@ -341,21 +343,23 @@ U32 total_bee_count() {
 
 
 B32 consume_conveyor_item(U32 amount = 1u) {
-	if (amount == 0u) {
-		return B32_TRUE;
-	}
-	const BuildDefinition* def = get_build_definition(CreativeBrush::CONVEYOR);
-	if (!def || def->stockItem != Inventory::ITEM_CONVEYOR || def->stockItemCount == 0u) {
-		return B32_FALSE;
-	}
-	U32 currentStock = Inventory::count(def->stockItem);
-	if (currentStock < amount) {
-		U32 missing = amount - currentStock;
-		if (!craft_conveyors(missing)) {
-			return B32_FALSE;
-		}
-	}
-	return Inventory::try_take_item(def->stockItem, amount);
+	return B32_TRUE; // allow free belts
+	// I'm leaving it here in case we want to return to the previous (and quite nice) way of handling belts from inventory
+	//if (amount == 0u) {
+	//	return B32_TRUE;
+	//}
+	//const BuildDefinition* def = get_build_definition(CreativeBrush::CONVEYOR);
+	//if (!def || def->stockItem != Inventory::ITEM_CONVEYOR || def->stockItemCount == 0u) {
+	//	return B32_FALSE;
+	//}
+	//U32 currentStock = Inventory::count(def->stockItem);
+	//if (currentStock < amount) {
+	//	U32 missing = amount - currentStock;
+	//	if (!craft_conveyors(missing)) {
+	//		return B32_FALSE;
+	//	}
+	//}
+	//return Inventory::try_take_item(def->stockItem, amount);
 }
 
 U32 build_available_count(CreativeBrush brush) {
@@ -1194,15 +1198,15 @@ BeeTasks::Task make_task_for_tile(V2U32 tile) {
 	if (!tile_is_selectable_task(tile)) {
 		return BeeTasks::Task{};
 	}
-	B32 hasNearbyConveyor = B32_TRUE; // has_adjacent_conveyor(tile); // just try putting on the belt no matter if it's actually there
+	// B32 hasNearbyConveyor = has_adjacent_conveyor(tile);
 	switch (TerrainGen::get_world_tile(tile)) {
 	case World::TILE_BEACH:
 		return BeeTasks::make_shore_task(tile, SHORE_WORK_SECONDS);
 	case World::TILE_GRASS_IRON:
 	case World::TILE_GRASS_COPPER:
-		return BeeTasks::make_ore_task(tile, ORE_WORK_SECONDS, hasNearbyConveyor ? B32_FALSE : B32_TRUE);
+		return BeeTasks::make_ore_task(tile, ORE_WORK_SECONDS, B32_FALSE); // just try putting on the belt no matter if it's actually there
 	case World::TILE_GRASS_FLOWERS:
-		return BeeTasks::make_flower_task(tile, FLOWER_WORK_SECONDS, hasNearbyConveyor ? B32_FALSE : B32_TRUE);
+		return BeeTasks::make_flower_task(tile, FLOWER_WORK_SECONDS, B32_TRUE); // don't put pollen on belts
 	default:
 		return BeeTasks::Task{};
 	}
@@ -1457,12 +1461,27 @@ B32 place_hive(V2U32 topLeft, B32 large, B32 refundable = B32_TRUE) {
 	if (!can_place_hive_footprint(topLeft, footprint)) {
 		return B32_FALSE;
 	}
+	if (refundable && !tile_in_any_hive_radius(topLeft)) return B32_FALSE; // in survival, only place in range of other hives
 	clear_tasks_in_footprint(topLeft, footprint);
 	clear_machines_in_footprint(topLeft, footprint);
 	clear_hives_in_footprint(topLeft, footprint);
 	hives.push_back(newHive);
 	hiveRefundable.push_back(refundable);
 	return B32_TRUE;
+}
+
+B32 has_hive(V2U tile) {
+	for (TerrainGen::HiveDesc& hive : hives) {
+		if (hive.tile == tile) return B32_TRUE;
+		if (hive.large && (
+			tile == V2U{ hive.tile.x, hive.tile.y + 1 } || 
+			tile == V2U{ hive.tile.x + 1, hive.tile.y } || 
+			tile == V2U{ hive.tile.x + 1, hive.tile.y + 1 }
+		)) {
+			return B32_TRUE;
+		}
+	}
+	return B32_FALSE;
 }
 
 B32 place_structure(V2U32 topLeft, Factory::MachineType type, Rotation2 orientation, B32 refundable = B32_TRUE) {
@@ -1477,10 +1496,14 @@ B32 place_structure(V2U32 topLeft, Factory::MachineType type, Rotation2 orientat
 			if (tileType == World::TILE_WATER || tileType == World::TILE_MOUNTAIN) {
 				return B32_FALSE;
 			}
+			// Use refundable as indicator for "creative".. maybe a bad idea, buut should be fine
+			if (refundable && has_hive(V2U{ tile.x, tile.y })) {
+				return B32_FALSE; // In survival not allowed to remove hives
+			}
 		}
 	}
 	clear_tasks_in_footprint(topLeft, footprint);
-	clear_hives_in_footprint(topLeft, footprint);
+	clear_hives_in_footprint(topLeft, footprint); // only get here if allowed to remove hives
 	clear_machines_in_footprint(topLeft, footprint);
 	if (!Factory::place_machine_type(V2U{ topLeft.x, topLeft.y }, type, orientation)) {
 		return B32_FALSE;
@@ -1504,6 +1527,10 @@ B32 ensure_conveyor_tile(V2U32 tile, B32 refundable = B32_TRUE) {
 	if (Factory::has_machine(V2U{ tile.x, tile.y })) {
 		return B32_FALSE;
 	}
+	// Use refundable as indicator for "creative".. maybe a bad idea, buut should be fine
+	if (refundable && has_hive(V2U{ tile.x, tile.y })) {
+		return B32_FALSE; // Survival menu can't break hives
+	}
 	if (refundable) {
 		if (!consume_conveyor_item()) {
 			return B32_FALSE;
@@ -1511,15 +1538,13 @@ B32 ensure_conveyor_tile(V2U32 tile, B32 refundable = B32_TRUE) {
 	}
 
 	unqueue_tile_task(tile);
-	remove_hive_covering_tile(tile);
+	remove_hive_covering_tile(tile); // will only reach here if allowed to remove hives
 	if (Factory::place_belt(V2U{ tile.x, tile.y })) {
 		set_machine_refundable(Factory::get_machine_from_tile(V2U{ tile.x, tile.y }), refundable);
 		return B32_TRUE;
 	}
 
-	if (refundable) {
-		Inventory::add_item(Inventory::ITEM_CONVEYOR, 1);
-	}
+	// if (refundable) Inventory::add_item(Inventory::ITEM_CONVEYOR, 1);
 	return B32_FALSE;
 }
 
