@@ -39,6 +39,7 @@ Controls:
 - Make beehives only placeable within current beehive range
 - Make belts free
 - Fix furnace rendering
+- When deconstructing belts, refund items on them
 
 When all of that's done, we will do a `Hackathon+` release.
 
