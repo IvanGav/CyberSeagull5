@@ -21,24 +21,29 @@ Controls:
 - Left Click to cancel a command
 - Shift + Left Drag OR Middle Drag to pan camera (or just move the mouse close to the edge of the screen)
 - Scroll Wheel to zoom in/out
+- H to see hive range
+	- Can only place new hives near old hives
 - B/I for build menu
 	- With a selected building, Left Click/Drag to build
 	- With a selected building, Right Drag to remove (gets refunded) (if doesn't work, select a different building)
 	- With a selected building, Escape to deselect
 - Right Click on an assembler to change recipes (Left Click to confirm)
 - Left Click on an Inventory Resource (to the left) to select it. After that, Left Click on a Belt to order a bee to place it down.
-- Tilde for creative menu (debug/creative)
-- Shift + R to regenerate the world (debug/creative)
+- Debug/Creative
+	- Tilde for creative menu
+	- Backslash for 50 of each item
+	- Shift + R to regenerate the world
 
 ## TODO
-- Make beach tiles auto-renew (collect again after it's just collected, just like ore)
-- Fix the bug where you put a bee on an ore, then place a belt next
-- Add junctions
-- Make first hive unkillable (can be killed by placing belts/etc over it)
-- Make ores away from spawn be more rich
-- Make beehives only placeable within current beehive range
-- Make belts free
-- Fix furnace rendering
+- ~~Make beach tiles auto-renew (collect again after it's just collected, just like ore)~~
+- ~~Fix the bug where you put a bee on an ore, then place a belt next~~
+- Add junctions (Everything is hooked up, just make them unique in Factory.h search for `// TODO add junctions`)
+- ~~Make all hives unkillable in survival~~ (maybe shouldn't make *all* unkillable? idk)
+- ~~Make ores away from spawn be more rich~~
+- ~~Make beehives only placeable within current beehive range~~
+- ~~Make belts free~~
+- Fix furnace rendering (new texture is not so egregious, so probably fine for the release)
+- ~~When deconstructing machines, refund items in them~~
 
 When all of that's done, we will do a `Hackathon+` release.
 
@@ -49,3 +54,5 @@ Locations of specific things in the source code:
 - Textures in `Resources.h`
 - Build costs in `BeeDemo.h` at line 200-ish
 - Build menu items in `EditorInteractions.h` - `BuildMenuEntry buildMenuEntries[]`
+- Creating tile tasks in `BeeDemo.h` - `make_task_for_tile`
+- Resources left on a tile in `BeeDemo.h` - `U8 *Remaining[TerrainGen::MAX_WORLD_MAP_TILES]{};`

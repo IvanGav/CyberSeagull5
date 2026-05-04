@@ -46,6 +46,7 @@ Task make_shore_task(V2U32 targetTile, F32 workDurationSeconds) {
 	task.type = TaskType::TASK_SHORE;
 	task.targetTile = targetTile;
 	task.workDurationSeconds = workDurationSeconds;
+	task.persistent = B32_TRUE;
 	return task;
 }
 

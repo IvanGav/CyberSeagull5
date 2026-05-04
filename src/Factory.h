@@ -22,6 +22,7 @@ enum MachineType : U32 {
 	MACHINE_ASSEMBLER,
 	MACHINE_BIG_ASSEMBLER,
 	MACHINE_SPLITTER,
+	MACHINE_JUNCTION,
 	MACHINE_Count
 };
 
@@ -157,7 +158,6 @@ void Machine::transfer(ItemStack& incoming) {
 	}
 	// a real recipe; just do a normal lookup
 	U32 index = U32(-1);
-	//if (this->selectedRecipe.def->numInputs == 3) { __debugbreak(); } // TODO temporary
 	for (U32 i = 0; i < this->selectedRecipe.def->numInputs; i++) {
 		if (selectedRecipe.def->inputs[i].item == incoming.item) {
 			index = i;
@@ -186,7 +186,6 @@ B32 Machine::can_transfer(ItemStack const& incoming) const {
 	}
 	// a real recipe; just do a normal lookup
 	U32 index = U32(-1);
-	//if (this->selectedRecipe.def->numInputs == 3) { __debugbreak(); } // TODO temporary
 	for (U32 i = 0; i < this->selectedRecipe.def->numInputs; i++) {
 		if (selectedRecipe.def->inputs[i].item == incoming.item) {
 			index = i;
@@ -387,6 +386,7 @@ MachineDef get_smelter(Rotation2 orientation) {
 	result.type = MACHINE_SMELTER;
 	result.size = V2U{ 1, 1 };
 	result.sprite = &Resources::tile.furnace;
+	result.spriteProcessingAlt = &Resources::tile.furnaceOn;
 	result.inventoryStackSize = 6;
 	result.processAtOnce = 1;
 	result.recipes = &Recipe::recipeGroups.smelter;
@@ -538,6 +538,7 @@ MachineDef get_static_machine(MachineType type, Rotation2 orientation) {
 	case MACHINE_BIG_ASSEMBLER:
 		result = get_big_assembler(orientation);
 		break;
+	case MACHINE_JUNCTION: // TODO add junctions
 	case MACHINE_SPLITTER:
 		result.size = V2U{ 1, 1 };
 		result.sprite = &Resources::tile.splitter;
@@ -742,6 +743,10 @@ void remove_machine(Machine* machine) {
 	if (!machine || machine->generation == 0) {
 		return;
 	}
+	for (U32 i = 0; i < machine->selectedRecipe.def->numInputs; i++) {
+		Inventory::inv[machine->inventory[i].item] += machine->inventory[i].count;
+	}
+	Inventory::inv[machine->outputBuf.item] += machine->outputBuf.count;
 	machineIdToMachine[machine->id] = nullptr;
 	freeMachineIds.push_back(machine->id);
 	World::set_machine(Rng2I32{ I32(machine->pos.x), I32(machine->pos.y), I32(machine->pos.x + machine->size.x - 1), I32(machine->pos.y + machine->size.y - 1) }, World::MACHINE_NULL_ID);
@@ -958,7 +963,7 @@ void render_recipe_option_tooltip(const Recipe::RecipeDef& recipe) {
 }
 
 void render_machine_progress_bar(Machine* machine, I32 tileScale) {
-	if (!machine || !machine->selectedRecipe.def || machine->type == MACHINE_BELT || machine->type == MACHINE_SPLITTER) {
+	if (!machine || !machine->selectedRecipe.def || machine->type == MACHINE_BELT || machine->type == MACHINE_SPLITTER || machine->type == MACHINE_JUNCTION) {
 		return;
 	}
 	F32 maxTime = machine->max_process_time();
@@ -1011,7 +1016,7 @@ void render_machine_hover_tooltip(Machine* machine, I32 tileScale) {
 	I32 smallNumberSize = 16;
 	I32 rowHeight = max(iconSize + 10, bigNumberSize + 4);
 	I32 pad = 8;
-	B32 showProgress = machine->type != MACHINE_SPLITTER && machine->type != MACHINE_BELT && machine->max_process_time() > 0.0F ? B32_TRUE : B32_FALSE;
+	B32 showProgress = machine->type != MACHINE_SPLITTER && machine->type != MACHINE_BELT && machine->type != MACHINE_JUNCTION && machine->max_process_time() > 0.0F ? B32_TRUE : B32_FALSE;
 	I32 progressHeight = showProgress ? 16 : 0;
 	I32 tipW = 136;
 	I32 tipH = pad * 2 + rowHeight + I32(recipe.numInputs) * rowHeight + progressHeight;
@@ -1106,12 +1111,25 @@ void render(I32 tileScale) {
 				Graphics::blit_sprite_cutout(Resources::tile.belt.upToDown, screenPos.x + 16 * tileScale, screenPos.y, tileScale, beltAnimTime);
 				Graphics::blit_sprite_cutout(Resources::tile.belt.downToUp, screenPos.x, screenPos.y, tileScale, beltAnimTime);
 			}
-		}
-		if (machine->type == MACHINE_BIG_ASSEMBLER) {
+		} else if (machine->type == MACHINE_BIG_ASSEMBLER) {
 			U32 beltAnimTime = animRawTime / 8 % Resources::tile.belt.downToUp.animFrames;
 			Graphics::blit_sprite_cutout(Resources::tile.belt.downToUp, screenPos.x, screenPos.y + 16 * tileScale, tileScale, beltAnimTime);
 			Graphics::blit_sprite_cutout(Resources::tile.belt.downToUp, screenPos.x + 16 * tileScale, screenPos.y + 16 * tileScale, tileScale, beltAnimTime);
 			Graphics::blit_sprite_cutout(Resources::tile.belt.downToUp, screenPos.x + 32 * tileScale, screenPos.y + 16 * tileScale, tileScale, beltAnimTime);
+		} else if (machine->type == MACHINE_SMELTER) {
+			U32 beltAnimTime = animRawTime / 8 % Resources::tile.belt.downToUp.animFrames;
+			if (machine->ioDefs[0].ioDirections & World::MACHINE_INPUT_DOWN) {
+				Graphics::blit_sprite_cutout(Resources::tile.belt.downToUp, screenPos.x, screenPos.y, tileScale, beltAnimTime);
+			}
+			else if (machine->ioDefs[0].ioDirections & World::MACHINE_INPUT_LEFT) {
+				Graphics::blit_sprite_cutout(Resources::tile.belt.leftToRight, screenPos.x, screenPos.y, tileScale, beltAnimTime);
+			}
+			else if (machine->ioDefs[0].ioDirections & World::MACHINE_INPUT_UP) {
+				Graphics::blit_sprite_cutout(Resources::tile.belt.upToDown, screenPos.x, screenPos.y, tileScale, beltAnimTime);
+			}
+			else if (machine->ioDefs[0].ioDirections & World::MACHINE_INPUT_RIGHT) {
+				Graphics::blit_sprite_cutout(Resources::tile.belt.rightToLeft, screenPos.x, screenPos.y, tileScale, beltAnimTime);
+			}
 		}
 		Resources::Sprite* renderSprite = machine->spriteProcessingAlt && machine->enough_inputs() ? machine->spriteProcessingAlt : machine->sprite;
 		V2I drawPos = machine_sprite_draw_pos(machine, renderSprite, tileScale);
