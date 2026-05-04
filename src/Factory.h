@@ -52,9 +52,10 @@ struct Machine {
 	U32 id = 0;
 	U32 animFrame = 0;
 	ItemStack inventory[Recipe::MAX_UNIQUE_INPUTS]{};
-	ItemStack outputBuf{};
+	ItemStack outputBuf{}; ItemStack secondaryOutputBuf{}; // in junctions, `secondaryOutputBuf` is strictly vertical; in other machines it's not used
 	U32 inventoryStackSizeLimit = 1; // should be only for belts and outputs
 	MachineHandle outputs[MAX_OUTPUTS];
+	U8 outputsDir[MAX_OUTPUTS];
 	U32 outputCount;
 	U32 currentOutput;
 	IODef ioDefs[MAX_IO_DEFS];
@@ -62,7 +63,7 @@ struct Machine {
 	Recipe::RecipeRef selectedRecipe{};
 
 	ItemStack& get_belt_item();
-	void transfer(ItemStack& incoming);
+	void transfer(ItemStack& incoming, B32 vertical);
 	B32 can_transfer(ItemStack const& incoming) const;
 	B32 enough_inputs() const;
 	void finish_recipe();
@@ -90,7 +91,8 @@ F32 Machine::max_process_time() const {
 }
 
 void Machine::switch_recipe_to(Recipe::RecipeDef* newRecipe) {
-	for (U32 i = 0; i < newRecipe->numInputs; i++) {
+	if (newRecipe == this->selectedRecipe.def) return;
+	for (U32 i = 0; i < Recipe::MAX_UNIQUE_INPUTS; i++) {
 		if (this->inventory[i].count > 0) { Inventory::inv[this->inventory[i].item] += this->inventory[i].count; } // put the items into inventory
 		this->inventory[i] = ItemStack{ newRecipe->inputs->item, 0 };
 	}
@@ -105,7 +107,7 @@ B32 Machine::enough_inputs() const {
 	}
 	// if unit (belt), then say yes if have anything
 	if (this->selectedRecipe.def->numInputs == 0) {
-		return this->inventory[0].count > 0;
+		return this->inventory[0].count > 0 || this->inventory[1].count > 0;
 	}
 	for (U32 i = 0; i < this->selectedRecipe.def->numInputs; i++) {
 		if (this->inventory[i].count < this->selectedRecipe.def->inputs[i].count) {
@@ -122,8 +124,19 @@ void Machine::finish_recipe() {
 	}
 	// if unit (belt), then say yes if have anything
 	if (this->selectedRecipe.def->numInputs == 0) {
-		this->outputBuf = this->inventory[0];
-		this->inventory[0].count = 0;
+		if (this->type == MACHINE_JUNCTION) {
+			if (this->inventory[0].count > 0) {
+				this->outputBuf = this->inventory[0];
+				this->inventory[0].count = 0;
+			}
+			if (this->inventory[1].count > 0) {
+				this->secondaryOutputBuf = this->inventory[1];
+				this->inventory[1].count = 0;
+			}
+		} else {
+			this->outputBuf = this->inventory[0];
+			this->inventory[0].count = 0;
+		}
 		this->selectedRecipe.reset();
 		return;
 	}
@@ -145,11 +158,18 @@ void Machine::finish_recipe() {
 }
 
 // transfer from `incoming` to self; modifies `incoming`
-void Machine::transfer(ItemStack& incoming) {
+void Machine::transfer(ItemStack& incoming, B32 vertical = B32_FALSE) {
 	if (incoming.count == 0) return;
 	if (this->selectedRecipe.def == nullptr) { __debugbreak(); return; }
 	// if unit, accept as long as has space and same item
 	if (this->selectedRecipe.def->numInputs == 0) {
+		if (vertical) {
+			if (this->secondaryOutputBuf.count > 0 || this->inventory[1].count > 0) { return; } // Only allow for 1 item to be on a belt
+			this->inventory[1] = incoming;
+			incoming.count--;
+			this->inventory[1].count = 1;
+			return;
+		}
 		if (this->outputBuf.count > 0 || this->inventory[0].count > 0) { return; } // Only allow for 1 item to be on a belt
 		this->inventory[0] = incoming;
 		incoming.count--;
@@ -181,7 +201,7 @@ B32 Machine::can_transfer(ItemStack const& incoming) const {
 	if (this->selectedRecipe.def == nullptr) { __debugbreak(); return B32_FALSE; }
 	// if unit, accept as long as has space and same item
 	if (this->selectedRecipe.def->numInputs == 0) {
-		if (this->outputBuf.count > 0 || this->inventory[0].count > 0) { return B32_FALSE; } // Only allow for 1 item to be on a belt
+		// if (this->outputBuf.count > 0 || this->inventory[0].count > 0) { return B32_FALSE; } // Only allow for 1 item to be on a belt
 		return B32_TRUE;
 	}
 	// a real recipe; just do a normal lookup
@@ -302,19 +322,23 @@ void update_machine_connections(Machine* machine) {
 			continue;
 		}
 		if (machine->outputCount < MAX_OUTPUTS && io.ioDirections & World::MACHINE_OUTPUT_DOWN && World::can_connect_input(V2U{ machine->pos.x + io.pos.x, machine->pos.y + io.pos.y + 1 }, DIRECTION2_FRONT)) {
-			Machine* m = get_machine_from_tile(V2U{ machine->pos.x + io.pos.x, machine->pos.y + io.pos.y + 1 });;
+			Machine* m = get_machine_from_tile(V2U{ machine->pos.x + io.pos.x, machine->pos.y + io.pos.y + 1 });
+			machine->outputsDir[machine->outputCount] = World::MACHINE_OUTPUT_DOWN;
 			machine->outputs[machine->outputCount++] = MachineHandle{m, m->generation};
 		}
 		if (machine->outputCount < MAX_OUTPUTS && io.ioDirections & World::MACHINE_OUTPUT_UP && World::can_connect_input(V2U{ machine->pos.x + io.pos.x, machine->pos.y + io.pos.y - 1 }, DIRECTION2_BACK)) {
-			Machine* m = get_machine_from_tile(V2U{ machine->pos.x + io.pos.x, machine->pos.y + io.pos.y - 1 });;
+			Machine* m = get_machine_from_tile(V2U{ machine->pos.x + io.pos.x, machine->pos.y + io.pos.y - 1 });
+			machine->outputsDir[machine->outputCount] = World::MACHINE_OUTPUT_UP;
 			machine->outputs[machine->outputCount++] = MachineHandle{ m, m->generation };
 		}
 		if (machine->outputCount < MAX_OUTPUTS && io.ioDirections & World::MACHINE_OUTPUT_LEFT && World::can_connect_input(V2U{ machine->pos.x + io.pos.x - 1, machine->pos.y + io.pos.y }, DIRECTION2_RIGHT)) {
-			Machine* m = get_machine_from_tile(V2U{ machine->pos.x + io.pos.x - 1, machine->pos.y + io.pos.y });;
+			Machine* m = get_machine_from_tile(V2U{ machine->pos.x + io.pos.x - 1, machine->pos.y + io.pos.y });
+			machine->outputsDir[machine->outputCount] = World::MACHINE_OUTPUT_LEFT;
 			machine->outputs[machine->outputCount++] = MachineHandle{ m, m->generation };
 		}
 		if (machine->outputCount < MAX_OUTPUTS && io.ioDirections & World::MACHINE_OUTPUT_RIGHT && World::can_connect_input(V2U{ machine->pos.x + io.pos.x + 1, machine->pos.y + io.pos.y }, DIRECTION2_LEFT)) {
-			Machine* m = get_machine_from_tile(V2U{ machine->pos.x + io.pos.x + 1, machine->pos.y + io.pos.y });;
+			Machine* m = get_machine_from_tile(V2U{ machine->pos.x + io.pos.x + 1, machine->pos.y + io.pos.y });
+			machine->outputsDir[machine->outputCount] = World::MACHINE_OUTPUT_RIGHT;
 			machine->outputs[machine->outputCount++] = MachineHandle{ m, m->generation };
 		}
 	}
@@ -474,6 +498,7 @@ FINLINE V2U machine_footprint(MachineType type, Rotation2 orientation) {
 	case MACHINE_BIG_ASSEMBLER: return V2U{ 3, 2 };
 	case MACHINE_SMELTER:
 	case MACHINE_SPLITTER:
+	case MACHINE_JUNCTION:
 	case MACHINE_BELT:
 	default: return V2U{ 1, 1 };
 	}
@@ -538,7 +563,14 @@ MachineDef get_static_machine(MachineType type, Rotation2 orientation) {
 	case MACHINE_BIG_ASSEMBLER:
 		result = get_big_assembler(orientation);
 		break;
-	case MACHINE_JUNCTION: // TODO add junctions
+	case MACHINE_JUNCTION: {
+		result.size = V2U{ 1, 1 };
+		result.sprite = &Resources::tile.junction;
+		result.inventoryStackSize = 1;
+		result.recipes = &Recipe::recipeGroups.belt;
+		result.ioDefs[0] = IODef{ V2I{ 0, 0 }, 0xFF };
+		break;
+	}
 	case MACHINE_SPLITTER:
 		result.size = V2U{ 1, 1 };
 		result.sprite = &Resources::tile.splitter;
@@ -794,6 +826,7 @@ void reset() {
 
 U32 animRawTime;
 
+// Return a machine that can be transferred to (from given machine)
 Machine* get_compatible_output(Machine* machine) {
 	for (U32 i = 0; i < machine->outputCount; i++) {
 		U32 outputIdx = (i + machine->currentOutput) % machine->outputCount;
@@ -817,9 +850,25 @@ void update(F32 dt) {
 			// recipe has just finished; transfer inputs to outputs and reset current timer
 			machine->finish_recipe();
 		}
-		if (machine->outputBuf.count > 0) {
+		if (machine->outputBuf.count > 0 || machine->secondaryOutputBuf.count > 0) {
 			if (Machine* output = get_compatible_output(machine)) {
-				output->transfer(machine->outputBuf);
+				B32 is_vertical = B32_FALSE;
+				for (U32 i = 0; i < machine->outputCount; i++) {
+					if (machine->outputs[i].machine == output) {
+						if (machine->outputsDir[i] == World::MACHINE_OUTPUT_DOWN || machine->outputsDir[i] == World::MACHINE_OUTPUT_UP) {
+							is_vertical = B32_TRUE;
+							break;
+						}
+					}
+				}
+				if (machine->type == MACHINE_JUNCTION) {
+					if(is_vertical)
+						output->transfer(machine->secondaryOutputBuf, output->type == MACHINE_JUNCTION ? is_vertical : B32_FALSE);
+					else
+						output->transfer(machine->outputBuf, output->type == MACHINE_JUNCTION ? is_vertical : B32_FALSE);
+				} else {
+					output->transfer(machine->outputBuf, output->type == MACHINE_JUNCTION ? is_vertical : B32_FALSE);
+				}
 			}
 		}
 		machine->animFrame = animRawTime / 8 % machine->sprite->animFrames;
