@@ -7,6 +7,8 @@
 #include "Inventory.h"
 #include "TileSpace.h"
 
+namespace Cyber5eagull::BeeDemo { U32 get_richness_animation_frame(U32 x, U32 y); };
+
 namespace World {
 
 enum TileType : U8 {
@@ -242,7 +244,8 @@ void render(V2F camera, I32 tileScale) {
 			I32 drawY = y * tileSize - camStartY;
 			TileType tile = tiles[y * size.x + x];
 			Resources::Sprite* sprite = tile == TILE_MOUNTAIN ? mountain_sprite_for_tile(x, y) : tileSprite[tile];
-			Graphics::blit_sprite(*sprite, drawX, drawY, tileScale, 0);
+			U32 richness = Cyber5eagull::BeeDemo::get_richness_animation_frame(x, y);
+			Graphics::blit_sprite(*sprite, drawX, drawY, tileScale, richness);
 		}
 	}
 	render_beach(camera, tileScale);
