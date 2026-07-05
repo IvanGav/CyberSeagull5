@@ -369,16 +369,19 @@ void begin_conveyor_drag(V2U32 hoveredTile) {
 		conveyorLastInputSide = DIRECTION2_INVALID;
 		return;
 	}
-	if (!Factory::has_machine(tile)) {
+	if (Factory::has_machine(tile)) {
+		conveyorLastInputSide = Factory::conveyor_input_dir(Factory::get_machine_from_tile(hoveredTile));
+		conveyorDragHasIncoming = B32_TRUE;
+	} else {
 		if (!BeeDemoNS::ensure_conveyor_tile(hoveredTile, CreativeToolkit::selectedBrushFreePlacement ? B32_FALSE : B32_TRUE)) {
 			conveyorDragActive = B32_FALSE;
 			conveyorDragHasIncoming = B32_FALSE;
 			conveyorLastInputSide = DIRECTION2_INVALID;
 			return;
 		}
+		conveyorLastInputSide = DIRECTION2_INVALID;
+		conveyorDragHasIncoming = B32_FALSE;
 	}
-	conveyorLastInputSide = DIRECTION2_INVALID;
-	conveyorDragHasIncoming = B32_FALSE;
 	conveyorDragActive = B32_TRUE;
 	conveyorLastTile = hoveredTile;
 }

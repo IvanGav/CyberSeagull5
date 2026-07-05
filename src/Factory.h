@@ -752,6 +752,17 @@ B32 place_belt(V2U pos) {
 	return set_belt_shape(pos, DIRECTION2_LEFT, DIRECTION2_RIGHT);
 }
 
+Direction2 conveyor_input_dir(Machine* belt) {
+	DEBUG_ASSERT(belt != nullptr);
+	DEBUG_ASSERT(belt->type == MACHINE_BELT);
+	if (belt->ioDefs[0].ioDirections & World::MACHINE_INPUT_DOWN) return DIRECTION2_BACK;
+	if (belt->ioDefs[0].ioDirections & World::MACHINE_INPUT_UP) return DIRECTION2_FRONT;
+	if (belt->ioDefs[0].ioDirections & World::MACHINE_INPUT_LEFT) return DIRECTION2_LEFT;
+	if (belt->ioDefs[0].ioDirections & World::MACHINE_INPUT_RIGHT) return DIRECTION2_RIGHT;
+	__debugbreak();
+	return DIRECTION2_INVALID;
+}
+
 B32 place_machine_type(V2U pos, MachineType type, Rotation2 orientation) {
 	if (type == MACHINE_BELT) {
 		return place_belt(pos);

@@ -28,6 +28,10 @@ static constexpr U16 STARTING_COPPER_PER_TILE = 10;
 static constexpr U16 STARTING_FLOWER_PER_TILE = 16;
 static constexpr F32 ADDED_RICHNESS_PER_TILE = 1.5;
 
+static constexpr U16 RESOURCE_RICHNESS_SPRITE_THRESHOLD_1 = 10;
+static constexpr U16 RESOURCE_RICHNESS_SPRITE_THRESHOLD_2 = 30;
+static constexpr U16 RESOURCE_RICHNESS_SPRITE_THRESHOLD_3 = 65;
+
 using TerrainGen::HiveDesc;
 using TerrainGen::WorldGenerationState;
 
@@ -1499,6 +1503,20 @@ B32 has_hive(V2U tile) {
 		}
 	}
 	return B32_FALSE;
+}
+
+U32 get_richness_animation_frame(U32 x, U32 y) {
+	U32 resourceLeft;
+	switch (TerrainGen::get_world_tile({x,y})) {
+	case World::TILE_GRASS_IRON: resourceLeft = ironRemaining[tile_resource_index({ x,y })];  break;
+	case World::TILE_GRASS_COPPER: resourceLeft = copperRemaining[tile_resource_index({ x,y })]; break;
+	case World::TILE_GRASS_FLOWERS: resourceLeft = flowerRemaining[tile_resource_index({ x,y })]; break;
+	default: resourceLeft = 0; break;
+	}
+	if (resourceLeft < RESOURCE_RICHNESS_SPRITE_THRESHOLD_1) return 0;
+	if (resourceLeft < RESOURCE_RICHNESS_SPRITE_THRESHOLD_2) return 1;
+	if (resourceLeft < RESOURCE_RICHNESS_SPRITE_THRESHOLD_3) return 2;
+	return 3;
 }
 
 B32 place_structure(V2U32 topLeft, Factory::MachineType type, Rotation2 orientation, B32 refundable = B32_TRUE) {

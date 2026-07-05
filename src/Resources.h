@@ -145,12 +145,12 @@ Texture tutorial[7];
 void load() {
 	scrung = load_texture("scrung.png"a);
 	scrungPart = Sprite{ &scrung, 128, 128, 128, 128, 1 };
-	tileset = load_texture("tileset_v9.png"a);
+	tileset = load_texture("tileset_v10.png"a);
 	tile.undef = Sprite{ &tileset, 0, 0, 16, 16, 1 };
 	tile.grass = Sprite{ &tileset, 16, 0, 16, 16, 1 };
-	tile.grassIron = Sprite{ &tileset, 32, 0, 16, 16, 1 };
-	tile.grassCopper = Sprite{ &tileset, 32, 16, 16, 16, 1 };
-	tile.grassFlowers = Sprite{ &tileset, 32, 32, 16, 16, 1 };
+	tile.grassIron = Sprite{ &tileset, 15 * 16, 32, 16, 16, 4 };	// i marked them as animation frames, but they're resource richness, really
+	tile.grassCopper = Sprite{ &tileset, 15 * 16, 16, 16, 16, 4 };
+	tile.grassFlowers = Sprite{ &tileset, 15 * 16, 0, 16, 16, 4 };
 	tile.sand = Sprite{ &tileset, 0, 16, 16, 16, 1 };
 	tile.beach = Sprite{ &tileset, 16, 16, 16, 16, 1 };
 	tile.water = Sprite{ &tileset, 0, 8 * 16, 16, 16, 2 };
@@ -226,8 +226,8 @@ void load() {
 
 	tile.bigAssembler = Sprite{ &tileset, 192, 80, 48, 32, 1 };
 	tile.bigAssemblerOn = Sprite{ &tileset, 240, 80, 48, 32, 1 };
-	tile.furnace = Sprite{ &tileset, 16 * 16, 13 * 16, 16, 32, 1 };
-	tile.furnaceOn = Sprite{ &tileset, 17 * 16, 13 * 16, 16, 32, 1 };
+	tile.furnace = Sprite{ &tileset, 17 * 16, 11 * 16, 16, 32, 1 };
+	tile.furnaceOn = Sprite{ &tileset, 18 * 16, 11 * 16, 16, 32, 1 };
 
 	for (U32 i = 0; i < ARRAY_COUNT(tutorial); i++) {
 		tutorial[i] = load_texture(strafmt(globalArena, "tutorial_%.png"a, i));
