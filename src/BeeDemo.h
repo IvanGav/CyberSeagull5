@@ -1241,7 +1241,6 @@ BeeTasks::Task make_task_for_tile(V2U32 tile) {
 	if (!tile_is_selectable_task(tile)) {
 		return BeeTasks::Task{};
 	}
-	// B32 hasNearbyConveyor = has_adjacent_conveyor(tile);
 	switch (TerrainGen::get_world_tile(tile)) {
 	case World::TILE_BEACH:
 		return BeeTasks::make_shore_task(tile, SHORE_WORK_SECONDS);
@@ -1364,8 +1363,7 @@ void handle_work_cycle_finished(const BeeSystem::Event& event) {
             U32 takenCount = 0u;
             if (try_take_belt_item(event.task.targetTile, &takenItem, &takenCount, request.count)) {
                 bee.set_cargo(takenItem, takenCount);
-            }
-            else {
+            } else {
                 bee.clear_cargo();
             }
 
@@ -1378,8 +1376,7 @@ void handle_work_cycle_finished(const BeeSystem::Event& event) {
         }
         if (try_insert_belt_item(event.task.targetTile, request.item, request.count)) {
             bee.clear_cargo();
-        }
-        else {
+        } else {
             bee.state = BeeTasks::State::STATE_TRAVEL_HOME;
             bee.velocity = V2F32{};
         }
