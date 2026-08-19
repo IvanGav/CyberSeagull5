@@ -187,12 +187,16 @@ public:
 		case State::STATE_IDLE: {
 			velocity = V2F32{};
 		} break;
-
 		case State::STATE_TRAVEL_TO_TARGET: {
 			if (!hasTask) {
 				state = State::STATE_TRAVEL_HOME;
 				invalidate_navigation_path();
 				break;
+			}
+
+			if (activeTask.type == TaskType::TASK_CONVEYOR_INSERT && !carrying() && activeTask.workTile == activeTask.targetTile) {
+				activeTask.targetTile = Cyber5eagull::BeeDemo::nearest_hive_tile_for_tile(activeTask.workTile);
+				invalidate_navigation_path();
 			}
 
 			V2F32 targetPosition = task_world_position(activeTask);
@@ -516,11 +520,9 @@ private:
 
 		if (activeTask.returnHomeAfterWork) {
 			state = State::STATE_TRAVEL_HOME;
-		}
-		else if (activeTask.persistent) {
+		} else if (activeTask.persistent) {
 			state = State::STATE_WORKING;
-		}
-		else {
+		} else {
 			state = State::STATE_IDLE;
 			activeTask = Task{};
 			hasTask = B32_FALSE;

@@ -27,6 +27,7 @@ enum TileType : U8 {
 Resources::Sprite* tileSprite[TILE_Count];
 
 V2U size;
+U32 maxDepth;
 TileType* tiles;
 const U32 MACHINE_NULL_ID = 0;
 U32* tileMachineIds;
@@ -42,12 +43,12 @@ enum MachineConnectFlags {
 };
 Flags8* canMachineConnect;
 
-TileType get_tile(U32* machineId, I32 x, I32 y) {
-	if (x < 0 || y < 0 || x >= size.x || y >= size.y) {
+TileType get_tile(U32* machineId, I32 x, I32 y, I32 depth) {
+	if (x < 0 || y < 0 || depth < 0 || x >= size.x || y >= size.y || depth >= maxDepth) {
 		return TILE_UNDEF;
 	}
 	if (machineId) {
-		*machineId = tileMachineIds[y * size.x + x];
+		*machineId = tileMachineIds[(depth * size.y + y) * size.x + x];
 	}
 	return tiles[y * size.x + x];
 }
@@ -105,35 +106,43 @@ struct BeachTileInfo {
 U32 num_beach_tiles;
 BeachTileInfo* beach_tiles;
 
-void set_machine(Rng2I32 range, U32 machineId) {
+void set_machine(Rng2I32 range, I32 depth, U32 machineId) {
+	if (depth < 0 || depth >= maxDepth) {
+		return;
+	}
+	U32* machineIdLayer = tileMachineIds + depth * size.x * size.y;
+	Flags8* connectLayer = canMachineConnect + depth * size.x * size.y;
 	range = range.intersected(Rng2I32{ 0, 0, I32(size.x - 1), I32(size.y - 1) });
 	for (I32 y = range.minY; y <= range.maxY; y++) {
 		for (I32 x = range.minX; x <= range.maxX; x++) {
-			tileMachineIds[y * size.x + x] = machineId;
-			canMachineConnect[y * size.x + x] = 0;
+			machineIdLayer[y * size.x + x] = machineId;
+			connectLayer[y * size.x + x] = 0;
 		}
 	}
 }
 
-void set_connectivity(V2U pos, Flags8 machineConnectFlags) {
-	if (pos.x < size.x && pos.y < size.y && tileMachineIds[pos.y * size.x + pos.x] != MACHINE_NULL_ID) {
-		canMachineConnect[pos.y * size.x + pos.x] = machineConnectFlags;
+void set_connectivity(V2U pos, I32 depth, Flags8 machineConnectFlags) {
+	Flags8* connectLayer = canMachineConnect + depth * size.x * size.y;
+	if (pos.x < size.x && pos.y < size.y && tileMachineIds[(depth * size.y + pos.y) * size.x + pos.x] != MACHINE_NULL_ID) {
+		connectLayer[pos.y * size.x + pos.x] = machineConnectFlags;
 	}
 }
 
-Flags8 get_connectivity_flags(V2U pos) {
-	if (pos.x >= size.x || pos.y >= size.y) {
+Flags8 get_connectivity_flags(V2U pos, U32 depth) {
+	if (pos.x >= size.x || pos.y >= size.y || depth >= maxDepth) {
 		return 0;
 	}
-	Flags8 connectFlags = canMachineConnect[pos.y * size.x + pos.x];
+	Flags8* connectLayer = canMachineConnect + depth * size.x * size.y;
+	Flags8 connectFlags = connectLayer[pos.y * size.x + pos.x];
 	return connectFlags;
 }
 
-B32 can_connect_input(V2U pos, Direction2 fromDir) {
-	if (pos.x >= size.x || pos.y >= size.y) {
+B32 can_connect_input(V2U pos, U32 depth, Direction2 fromDir) {
+	if (pos.x >= size.x || pos.y >= size.y || depth >= maxDepth) {
 		return B32_FALSE;
 	}
-	Flags8 connectFlags = canMachineConnect[pos.y * size.x + pos.x];
+	Flags8* connectLayer = canMachineConnect + depth * size.x * size.y;
+	Flags8 connectFlags = connectLayer[pos.y * size.x + pos.x];
 	switch (fromDir) {
 	case DIRECTION2_LEFT: return connectFlags & MACHINE_INPUT_LEFT;
 	case DIRECTION2_RIGHT: return connectFlags & MACHINE_INPUT_RIGHT;
@@ -143,19 +152,27 @@ B32 can_connect_input(V2U pos, Direction2 fromDir) {
 	return B32_FALSE;
 }
 
+void reset_runtime_state() {
+	num_beach_tiles = 0;
+	for (U32 i = 0; i < size.x * size.y * maxDepth; i++) {
+		tileMachineIds[i] = MACHINE_NULL_ID;
+		canMachineConnect[i] = 0;
+	}
+}
+
 void init(V2U extent) {
 	size = extent;
+	maxDepth = 2;
 	tiles = globalArena.alloc<TileType>(extent.x * extent.y);
 	num_beach_tiles = 0;
 	beach_tiles = globalArena.alloc<BeachTileInfo>(extent.x * extent.y);
 	rng.seed_rand();
-	tileMachineIds = globalArena.alloc<U32>(extent.x * extent.y);
-	canMachineConnect = globalArena.alloc<Flags8>(extent.x * extent.y);
+	tileMachineIds = globalArena.alloc<U32>(extent.x * extent.y * maxDepth);
+	canMachineConnect = globalArena.alloc<Flags8>(extent.x * extent.y * maxDepth);
 	for (U32 i = 0; i < extent.x * extent.y; i++) {
 		tiles[i] = TILE_GRASS;
-		tileMachineIds[i] = MACHINE_NULL_ID;
-		canMachineConnect[i] = 0;
 	}
+	reset_runtime_state();
 
 	tileSprite[TILE_UNDEF] = &Resources::tile.undef;
 	tileSprite[TILE_GRASS] = &Resources::tile.grass;
@@ -166,13 +183,6 @@ void init(V2U extent) {
 	tileSprite[TILE_BEACH] = &Resources::tile.beach;
 	tileSprite[TILE_WATER] = &Resources::tile.water;
 	tileSprite[TILE_MOUNTAIN] = &Resources::tile.mountain;
-}
-
-void reset_runtime_state() {
-	num_beach_tiles = 0;
-	for (U32 i = 0; i < size.x * size.y; i++) {
-		tileMachineIds[i] = MACHINE_NULL_ID;
-	}
 }
 
 void render_beach(V2F camera, I32 tileScale) {
@@ -249,6 +259,11 @@ void render(V2F camera, I32 tileScale) {
 		}
 	}
 	render_beach(camera, tileScale);
+	for (U32 x = 1; x < 7; x++) {
+		I32 drawX = x * tileSize - camStartX;
+		I32 drawY = World::size.y / 2 * tileSize - camStartY;
+		Graphics::blit_sprite_cutout(Resources::tile.dockSegment, drawX, drawY, tileScale, 0);
+	}
 }
 
 // Call every frame to update the shore tiles

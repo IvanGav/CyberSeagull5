@@ -186,9 +186,9 @@ public:
 		events.clear();
 		for (U32 beeIndex = 0; beeIndex < bees.size; beeIndex++) {
 			I32 taskIndex = find_task_assigned_to_bee(beeIndex);
-			BeeTasks::Task eventTask = taskIndex >= 0 ? queuedTasks[taskIndex].task : BeeTasks::Task{};
 
 			BeeTasks::UpdateResult result = bees[beeIndex].update(dtSeconds);
+			BeeTasks::Task eventTask = taskIndex >= 0 ? queuedTasks[taskIndex].task : BeeTasks::Task{};
 
 			if (result.finishedWork && taskIndex >= 0) {
 				push_event(EventType::EVENT_WORK_CYCLE_FINISHED, beeIndex, eventTask);

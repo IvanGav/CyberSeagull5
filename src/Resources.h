@@ -87,6 +87,14 @@ struct {
 		Sprite upToLeft;
 		Sprite upToRight;
 	} belt;
+	struct {
+		Sprite inElevator;
+		Sprite inChute;
+		Sprite outLeft;
+		Sprite outDown;
+		Sprite outRight;
+		Sprite outUp;
+	} via;
 	Sprite num[10];
 	struct {
 		Sprite ironOre;
@@ -139,13 +147,17 @@ struct {
 	Sprite bigAssemblerOn;
 	Sprite furnace;
 	Sprite furnaceOn;
+	Sprite camera;
+	Sprite dockSegment;
+	Sprite ship;
 } tile;
-Texture tutorial[7];
+Texture tutorial[8];
+Texture winMessage;
 
 void load() {
 	scrung = load_texture("scrung.png"a);
 	scrungPart = Sprite{ &scrung, 128, 128, 128, 128, 1 };
-	tileset = load_texture("tileset_v10.png"a);
+	tileset = load_texture("tileset_v11.png"a);
 	tile.undef = Sprite{ &tileset, 0, 0, 16, 16, 1 };
 	tile.grass = Sprite{ &tileset, 16, 0, 16, 16, 1 };
 	tile.grassIron = Sprite{ &tileset, 15 * 16, 32, 16, 16, 4 };	// i marked them as animation frames, but they're resource richness, really
@@ -178,6 +190,12 @@ void load() {
 	tile.belt.rightToDown = Sprite{ &tileset, 64, 128, 16, 16, 3 };
 	tile.belt.upToLeft = Sprite{ &tileset, 64, 112, 16, 16, 3 };
 	tile.belt.upToRight = Sprite{ &tileset, 64, 144, 16, 16, 3 };
+	tile.via.inElevator = Sprite{ &tileset, 160, 224, 16, 16, 1 };
+	tile.via.inChute = Sprite{ &tileset, 144, 224, 16, 16, 1 };
+	tile.via.outLeft = Sprite{ &tileset, 256, 112, 16, 16, 3 };
+	tile.via.outDown = Sprite{ &tileset, 256, 128, 16, 16, 3 };
+	tile.via.outRight = Sprite{ &tileset, 256, 144, 16, 16, 3 };
+	tile.via.outUp = Sprite{ &tileset, 256, 160, 16, 16, 3 };
 	for (U32 i = 0; i < 10; i++) {
 		tile.num[i] = Sprite{&tileset, 16*i, 12*16, 16, 16, 1};
 	}
@@ -229,9 +247,15 @@ void load() {
 	tile.furnace = Sprite{ &tileset, 17 * 16, 11 * 16, 16, 32, 1 };
 	tile.furnaceOn = Sprite{ &tileset, 18 * 16, 11 * 16, 16, 32, 1 };
 
+	tile.camera = Sprite{ &tileset, 176, 224, 16, 16, 1 };
+
+	tile.dockSegment = Sprite{ &tileset, 240, 224, 16, 48, 1 };
+	tile.ship = Sprite{ &tileset, 256, 208, 48, 64, 1 };
+
 	for (U32 i = 0; i < ARRAY_COUNT(tutorial); i++) {
 		tutorial[i] = load_texture(strafmt(globalArena, "tutorial_%.png"a, i));
 	}
+	winMessage = load_texture("win_message.png"a);
 }
 
 }
