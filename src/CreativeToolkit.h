@@ -89,7 +89,11 @@ FINLINE B32 brush_uses_rotation(CreativeBrush brush) {
 }
 
 FINLINE void set_selected_brush(CreativeBrush brush, B32 freePlacement = B32_FALSE) {
-	selectedBrush = brush;
+	if (selectedBrush == brush) {
+		selectedBrush = CreativeBrush::TASK_SELECT;
+	} else {
+		selectedBrush = brush;
+	}
 	selectedBrushFreePlacement = freePlacement;
 	selectedRotation = ROTATION2_0;
 	for (U32 i = 0; i < ARRAY_COUNT(brushOrder); i++) {

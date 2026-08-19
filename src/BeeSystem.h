@@ -3,6 +3,11 @@
 #include "Bee.h"
 #include "Sounds.h"
 
+namespace Cyber5eagull::BeeDemo {
+	I32 find_conveyor_delivery_request(V2U32 tile);
+	void remove_conveyor_delivery_request(U32 index);
+}
+
 namespace BeeSystem {
 
 struct HomeAnchor {
@@ -163,9 +168,13 @@ public:
 		QueuedTask removed = queuedTasks[taskIndex];
 		if (removed.assignedBee >= 0 && U32(removed.assignedBee) < bees.size) {
 			bees[removed.assignedBee].cancel_task();
-			push_event(EventType::EVENT_TASK_UNASSIGNED, U32(removed.assignedBee), removed.task);
+			//push_event(EventType::EVENT_TASK_UNASSIGNED, U32(removed.assignedBee), removed.task); // never read
 		}
 		queuedTasks.remove_ordered(taskIndex);
+		I32 deliveryIndex = Cyber5eagull::BeeDemo::find_conveyor_delivery_request(removed.task.targetTile);
+		if (deliveryIndex >= 0) {
+			Cyber5eagull::BeeDemo::remove_conveyor_delivery_request(U32(deliveryIndex));
+		}
 	}
 
 	void unqueue_task_for_tile(V2U32 tile) {

@@ -5,12 +5,13 @@
 #include "Resources.h"
 
 namespace SelectUI {
+	constexpr I32 NO_SELECTION = -1;
 	// you can pick out of these sprites; the picked sprite will be returned as an index into the array
 	ArenaArrayList<Resources::Sprite*> selections;
 	void(*callback)(U32) = nullptr;
 	I32 itemSize = 16; // assume all items are 16x16
 	I32 scale = 4; // UI scale
-	I32 selectedItem = -1; // -1 means no selection
+	I32 selectedItem = NO_SELECTION;
 	B32 open = B32_FALSE;
 
 	I32 borderPadding = 50;
@@ -103,13 +104,13 @@ namespace SelectUI {
 	}
 
 	void set_selected_index(I32 index) {
-		selectedItem = index >= 0 && U32(index) < selections.size ? index : -1;
+		selectedItem = index >= 0 && U32(index) < selections.size ? index : NO_SELECTION;
 	}
 
 	void change_select_options(ArenaArrayList<Resources::Sprite*> options, void(*set_callback)(U32) = nullptr) {
 		selections = options;
 		open = B32_FALSE;
-		selectedItem = -1;
+		selectedItem = NO_SELECTION;
 		callback = set_callback;
 	}
 
@@ -131,7 +132,7 @@ namespace SelectUI {
 		selections.push_back(&Resources::tile.rock.full);
 		selections.push_back(&Resources::tile.rock.right);
 
-		selectedItem = -1;
+		selectedItem = NO_SELECTION;
 		open = B32_FALSE;
 		popupMode = B32_FALSE;
 	}
@@ -159,7 +160,7 @@ namespace SelectUI {
 				layout.itemScreenSize);
 		}
 
-		if (selectedItem == -1) return;
+		if (selectedItem == NO_SELECTION) return;
 		Graphics::border(
 			layout.beginX + (selectedItem % layout.cols) * layout.itemScreenSize,
 			layout.beginY + (selectedItem / layout.cols) * layout.itemScreenSize,
@@ -186,9 +187,14 @@ namespace SelectUI {
 			return B32_TRUE;
 		}
 
-		selectedItem = index;
+		if (index == selectedItem) {
+			selectedItem = NO_SELECTION;
+		} else {
+			selectedItem = index;
+		}
+
 		if (callback != nullptr) {
-			callback(U32(index));
+			callback(U32(selectedItem));
 		}
 		open = B32_FALSE;
 		popupMode = B32_FALSE;

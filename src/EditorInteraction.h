@@ -510,17 +510,14 @@ void update_drag_interactions() {
 
 	if (leftHeld) {
 		apply_drag_brush(CreativeToolkit::selectedBrush);
-	}
-	else if (rightHeld) {
+	} else if (rightHeld) {
 		conveyorDragActive = B32_FALSE;
 		if (CreativeToolkit::selectedBrush == CreativeBrush::TASK_SELECT) {
 			apply_task_unassign();
-		}
-		else {
+		} else {
 			apply_drag_brush(CreativeBrush::ERASE);
 		}
-	}
-	else {
+	} else {
 		hasLastDraggedTile = B32_FALSE;
 		conveyorDragActive = B32_FALSE;
 	}
@@ -540,7 +537,38 @@ void keyboard_callback(Win32::Key key, Win32::ButtonState state) {
 		return;
 	}
 
-	if (key == Win32::KEY_I || key == Win32::KEY_B) {
+	if (key == Win32::KEY_R && Win32::keyboardState[Win32::KEY_CAPS_LOCK]) {
+		BeeDemoNS::init(hiveTile);
+		center_camera_on_tile(hiveTile);
+		reset_drag_state();
+		CreativeToolkit::set_selected_brush(CreativeBrush::TASK_SELECT, B32_FALSE);
+		Inventory::clear_selected_item();
+		CreativeToolkit::selectedRotation = ROTATION2_0;
+		CreativeToolkit::close_ui();
+		SelectUI::open = B32_FALSE;
+		close_item_build_menu();
+		return;
+	}
+
+	if (key == Win32::KEY_TAB && Win32::keyboardState[Win32::KEY_CAPS_LOCK]) {
+		close_item_build_menu();
+		CreativeToolkit::toggle_ui();
+		if (CreativeToolkit::tilesheetVisible) {
+			SelectUI::open = B32_FALSE;
+		}
+		hasLastDraggedTile = B32_FALSE;
+		uiLeftCapture = B32_FALSE;
+		conveyorDragActive = B32_FALSE;
+		return;
+	}
+
+	if (key == Win32::KEY_E && Win32::keyboardState[Win32::KEY_CAPS_LOCK]) {
+		for (U32& item_count : Inventory::inv) {
+			item_count = 50;
+		}
+	}
+
+	if (key == Win32::KEY_TAB) {
 		Factory::recipeMenuMachine.machine = nullptr; // special case; when opening the menu, close the recipe picker
 		toggle_item_build_menu();
 		if (itemBuildMenuVisible) {
@@ -554,47 +582,10 @@ void keyboard_callback(Win32::Key key, Win32::ButtonState state) {
 		return;
 	}
 
-	if (key == Win32::KEY_R && Win32::keyboardState[Win32::KEY_CTRL] && Win32::keyboardState[Win32::KEY_SHIFT]) {
-		BeeDemoNS::init(hiveTile);
-		center_camera_on_tile(hiveTile);
-		reset_drag_state();
-		CreativeToolkit::set_selected_brush(CreativeBrush::TASK_SELECT, B32_FALSE);
-		Inventory::clear_selected_item();
-		CreativeToolkit::selectedRotation = ROTATION2_0;
-		CreativeToolkit::close_ui();
-		SelectUI::open = B32_FALSE;
-		close_item_build_menu();
-		return;
-	}
-
-	if (key == Win32::KEY_BACKTICK) {
-		close_item_build_menu();
-		CreativeToolkit::toggle_ui();
-		if (CreativeToolkit::tilesheetVisible) {
-			SelectUI::open = B32_FALSE;
-		}
-		hasLastDraggedTile = B32_FALSE;
-		uiLeftCapture = B32_FALSE;
-		conveyorDragActive = B32_FALSE;
-		return;
-	}
-
-	if (key == Win32::KEY_BACKSLASH) {
-		for (U32& item_count : Inventory::inv) {
-			item_count = 50;
-		}
-	}
-
-	if (key == Win32::KEY_R && !Win32::keyboardState[Win32::KEY_CTRL]) {
+	if (key == Win32::KEY_R) {
 		if (CreativeToolkit::brush_uses_rotation(CreativeToolkit::selectedBrush)) {
-			CreativeToolkit::rotate_cw();
-		}
-		return;
-	}
-
-	if (key == Win32::KEY_Q) {
-		if (CreativeToolkit::brush_uses_rotation(CreativeToolkit::selectedBrush)) {
-			CreativeToolkit::rotate_ccw();
+			if (Win32::keyboardState[Win32::KEY_SHIFT]) { CreativeToolkit::rotate_ccw(); }
+			else { CreativeToolkit::rotate_cw(); }
 		}
 		return;
 	}
@@ -608,6 +599,16 @@ void keyboard_callback(Win32::Key key, Win32::ButtonState state) {
 		Inventory::clear_selected_item();
 		CreativeToolkit::selectedRotation = ROTATION2_0;
 		conveyorDragActive = B32_FALSE;
+		return;
+	}
+
+	if (key == Win32::KEY_Q) {
+		V2U32 tile{};
+		if (mouse_to_tile(&tile)) {
+			Factory::Machine* picked_machine = Factory::get_machine_from_tile(V2U{ tile.x, tile.y }, Cyber5eagull::activeEditingLayer);
+			Cyber5eagull::CreativeToolkit::set_selected_brush(Cyber5eagull::BeeDemo::brush_for_machine_type(picked_machine), B32_FALSE);
+			return;
+		}
 	}
 }
 
@@ -630,16 +631,6 @@ void mouse_callback(Win32::MouseButton button, Win32::MouseValue state) {
 	if (button == Win32::MOUSE_BUTTON_RIGHT && state.state == Win32::BUTTON_STATE_DOWN) {
 		if (itemBuildMenuVisible && !build_menu_contains(mouse)) {
 			close_item_build_menu();
-		}
-
-		if (!CreativeToolkit::tilesheetVisible && !SelectUI::open && !Win32::keyboardState[Win32::KEY_SHIFT]) {
-			V2U32 tile{};
-			if (mouse_to_tile(&tile) && BeeDemoNS::queue_conveyor_pickup(tile, 1)) {
-				suppressRightDragUntilRelease = B32_TRUE;
-				hasLastDraggedTile = B32_FALSE;
-				conveyorDragActive = B32_FALSE;
-				return;
-			}
 		}
 
 		if (!CreativeToolkit::tilesheetVisible) {
@@ -699,6 +690,15 @@ void mouse_callback(Win32::MouseButton button, Win32::MouseValue state) {
 			uiLeftCapture = B32_TRUE;
 			return;
 		}
+		if (!CreativeToolkit::tilesheetVisible && !SelectUI::open && !Win32::keyboardState[Win32::KEY_SHIFT]) {
+			V2U32 tile{};
+			if (mouse_to_tile(&tile) && BeeDemoNS::queue_conveyor_pickup(tile, 1)) {
+				suppressRightDragUntilRelease = B32_TRUE;
+				hasLastDraggedTile = B32_FALSE;
+				conveyorDragActive = B32_FALSE;
+				return;
+			}
+		}
 	}
 
 	if ((button == Win32::MOUSE_BUTTON_LEFT || button == Win32::MOUSE_BUTTON_RIGHT) && state.state == Win32::BUTTON_STATE_UP) {
@@ -707,8 +707,7 @@ void mouse_callback(Win32::MouseButton button, Win32::MouseValue state) {
 		if (button == Win32::MOUSE_BUTTON_LEFT) {
 			cameraDragActive = B32_FALSE;
 			uiLeftCapture = B32_FALSE;
-		}
-		else {
+		} else {
 			suppressRightDragUntilRelease = B32_FALSE;
 		}
 	}

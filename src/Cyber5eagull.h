@@ -141,7 +141,7 @@ void render() {
 	World::render(camera, worldTileScale);
 	Factory::render(worldTileScale, activeEditingLayer);
 	CreativeToolkit::render_world_preview(camera, worldTileScale, currentFrameTime);
-	if (Win32::keyboardState[Win32::KEY_H]) {
+	if (Win32::keyboardState[Win32::KEY_SPACE]) {
 		BeeDemo::render_hive_ranges(camera, worldTileScale);
 	}
 	BeeDemo::render_task_markers(camera, worldTileScale);
