@@ -1,6 +1,7 @@
 #pragma once
 
 #include "drillengine/DrillLib.h"
+#include "Cyber5eagull_decl.h"
 #include "Resources.h"
 #include "Graphics.h"
 #include "World.h"
@@ -10,32 +11,13 @@
 namespace Cyber5eagull {
 V2I tile_to_screen_px(V2U tile);
 }
+namespace Cyber5eagull::BeeDemo {
+void queue_tile_task(V2U32 tile);
+}
 
 namespace Factory {
 
 using namespace Inventory;
-
-inline void fill_rect_blended(I32 x, I32 y, I32 width, I32 height, RGBA8 color) {
-	I32 startX = max(x, 0);
-	I32 startY = max(y, 0);
-	I32 endX = min(x + width, Win32::framebufferWidth);
-	I32 endY = min(y + height, Win32::framebufferHeight);
-	if (startX >= endX || startY >= endY || color.a == 0) {
-		return;
-	}
-	U32 srcA = color.a;
-	U32 invA = 255u - srcA;
-	for (I32 py = startY; py < endY; py++) {
-		RGBA8* row = Win32::framebuffer + py * Win32::framebufferWidth;
-		for (I32 px = startX; px < endX; px++) {
-			RGBA8 dst = row[px];
-			row[px].r = U8((U32(dst.r) * invA + U32(color.r) * srcA) / 255u);
-			row[px].g = U8((U32(dst.g) * invA + U32(color.g) * srcA) / 255u);
-			row[px].b = U8((U32(dst.b) * invA + U32(color.b) * srcA) / 255u);
-			row[px].a = 255;
-		}
-	}
-}
 
 enum MachineType : U32 {
 	MACHINE_NONE,
@@ -44,11 +26,19 @@ enum MachineType : U32 {
 	MACHINE_ASSEMBLER,
 	MACHINE_BIG_ASSEMBLER,
 	MACHINE_SPLITTER,
+	MACHINE_JUNCTION,
+	MACHINE_VIA_CHUTE,
+	MACHINE_VIA_ELEVATOR,
+	MACHINE_VIA_OUTPUT,
+	MACHINE_CAMERA,
 	MACHINE_Count
 };
 
+const U32 CAMERA_SEE_WIDTH = 3;
+const U32 CAMERA_SEE_DEPTH = 4;
+
 const U32 MAX_IO_DEFS = 8;
-const U32 MAX_OUTPUTS = 4;
+const U32 MAX_OUTPUTS = 6;
 
 struct IODef {
 	V2I pos;
@@ -69,26 +59,31 @@ struct Machine {
 	Resources::Sprite* sprite = nullptr;
 	Resources::Sprite* spriteProcessingAlt = nullptr;
 	V2U pos{};
+	U32 depth = 0;
 	V2U size{ 1, 1 };
 	U32 id = 0;
 	U32 animFrame = 0;
 	ItemStack inventory[Recipe::MAX_UNIQUE_INPUTS]{};
-	ItemStack outputBuf{};
-	U32 inventoryStackSizeLimit = 1;
-	U32 amountToProcess;
+	ItemStack outputBuf{}; ItemStack secondaryOutputBuf{}; // in junctions, `secondaryOutputBuf` is strictly vertical; in other machines it's not used
+	U32 inventoryStackSizeLimit = 1; // should be only for belts and outputs
 	MachineHandle outputs[MAX_OUTPUTS];
+	U8 outputsDir[MAX_OUTPUTS];
 	U32 outputCount;
 	U32 currentOutput;
 	IODef ioDefs[MAX_IO_DEFS];
 	Recipe::RecipeGroup* recipes = nullptr;
 	Recipe::RecipeRef selectedRecipe{};
+	World::BeachTileInfo* cameraBeachTiles[CAMERA_SEE_WIDTH];
+	U32 cameraBeachTileCount;
 
-	ItemStack& get_item_stack();
-	void transfer(ItemStack& incoming);
+	ItemStack& get_belt_item();
+	void transfer(ItemStack& incoming, B32 vertical);
+	B32 can_transfer(ItemStack const& incoming) const;
 	B32 enough_inputs() const;
 	void finish_recipe();
-	F32 process_time();
-	F32 max_process_time();
+	F32 process_time() const;
+	F32 max_process_time() const;
+	void switch_recipe_to(Recipe::RecipeDef* def);
 };
 
 FINLINE Machine* MachineHandle::get() const {
@@ -96,26 +91,37 @@ FINLINE Machine* MachineHandle::get() const {
 }
 
 // only valid for a belt; panic if not a belt
-ItemStack& Machine::get_item_stack() {
+ItemStack& Machine::get_belt_item() {
 	DEBUG_ASSERT(this->selectedRecipe.def->numInputs == 0, "get_item_stack called on non-belt");
-	return this->inventory[0].count > 0 ? this->inventory[0] : this->outputBuf;
+	return this->outputBuf.count > 0 ? this->outputBuf : this->inventory[0];
 }
 
-F32 Machine::process_time() {
+// THESE 2 SHOULD RETURN THE CURRENT PROGRESS AND MAX TIME OF THE DEFINITION; THERE MAY BE MULTIPLE UNIT DEFINITIONS WITH DIFFERENT PROCESS TIMES EATHAN THERE'S A REASON I MADE A UNIT RECIPE AND NOT A NULLPTR DEF
+F32 Machine::process_time() const {
 	return this->selectedRecipe.def ? this->selectedRecipe.progress : 0.0F;
 }
-F32 Machine::max_process_time() {
+F32 Machine::max_process_time() const {
 	return this->selectedRecipe.def ? this->selectedRecipe.def->time : 0.0F;
+}
+
+void Machine::switch_recipe_to(Recipe::RecipeDef* newRecipe) {
+	if (newRecipe == this->selectedRecipe.def) return;
+	for (U32 i = 0; i < Recipe::MAX_UNIQUE_INPUTS; i++) {
+		if (this->inventory[i].count > 0) { Inventory::inv[this->inventory[i].item] += this->inventory[i].count; } // put the items into inventory
+		this->inventory[i] = ItemStack{ newRecipe->inputs->item, 0 };
+	}
+	this->selectedRecipe = Recipe::RecipeRef::from(newRecipe);
 }
 
 // return true if enough inputs to craft the selected recipe
 B32 Machine::enough_inputs() const {
 	if (this->selectedRecipe.def == nullptr) {
+		__debugbreak();
 		return B32_FALSE;
 	}
 	// if unit (belt), then say yes if have anything
 	if (this->selectedRecipe.def->numInputs == 0) {
-		return this->inventory[0].count > 0;
+		return this->inventory[0].count > 0 || this->inventory[1].count > 0;
 	}
 	for (U32 i = 0; i < this->selectedRecipe.def->numInputs; i++) {
 		if (this->inventory[i].count < this->selectedRecipe.def->inputs[i].count) {
@@ -132,18 +138,29 @@ void Machine::finish_recipe() {
 	}
 	// if unit (belt), then say yes if have anything
 	if (this->selectedRecipe.def->numInputs == 0) {
-		this->outputBuf = this->inventory[0];
-		this->inventory[0].count = 0;
+		if (this->type == MACHINE_JUNCTION) {
+			if (this->inventory[0].count > 0) {
+				this->outputBuf = this->inventory[0];
+				this->inventory[0].count = 0;
+			}
+			if (this->inventory[1].count > 0) {
+				this->secondaryOutputBuf = this->inventory[1];
+				this->inventory[1].count = 0;
+			}
+		} else {
+			this->outputBuf = this->inventory[0];
+			this->inventory[0].count = 0;
+		}
 		this->selectedRecipe.reset();
 		return;
 	}
 	// else
-	// if not enough space in the outputBuf, wait
-	if (this->outputBuf.count + this->selectedRecipe.def->output.count > this->inventoryStackSizeLimit) {
-		return;
-	}
 	// if wrong type in output, wait
 	if (this->outputBuf.item != this->selectedRecipe.def->output.item && this->outputBuf.count != 0) {
+		return;
+	}
+	// if the outputBuf is already full, wait
+	if (this->outputBuf.count >= this->inventoryStackSizeLimit) {
 		return;
 	}
 	for (U32 i = 0; i < this->selectedRecipe.def->numInputs; i++) {
@@ -155,11 +172,19 @@ void Machine::finish_recipe() {
 }
 
 // transfer from `incoming` to self; modifies `incoming`
-void Machine::transfer(ItemStack& incoming) {
-	if (incoming.count == 0 || this->selectedRecipe.def == nullptr) return;
+void Machine::transfer(ItemStack& incoming, B32 vertical = B32_FALSE) {
+	if (incoming.count == 0) return;
+	if (this->selectedRecipe.def == nullptr) { __debugbreak(); return; }
 	// if unit, accept as long as has space and same item
 	if (this->selectedRecipe.def->numInputs == 0) {
-		if (this->outputBuf.count != 0 || this->inventory[0].count != 0) { return; } // Only allow for 1 item to be on a belt
+		if (vertical) {
+			if (this->secondaryOutputBuf.count > 0 || this->inventory[1].count > 0) { return; } // Only allow for 1 item to be on a belt
+			this->inventory[1] = incoming;
+			incoming.count--;
+			this->inventory[1].count = 1;
+			return;
+		}
+		if (this->outputBuf.count > 0 || this->inventory[0].count > 0) { return; } // Only allow for 1 item to be on a belt
 		this->inventory[0] = incoming;
 		incoming.count--;
 		this->inventory[0].count = 1;
@@ -174,7 +199,8 @@ void Machine::transfer(ItemStack& incoming) {
 		}
 	}
 	if (index == U32(-1)) return;
-	I32 canAccept = this->inventoryStackSizeLimit - this->inventory[index].count;
+	// force the machine to take as many items as the recipe requires
+	I32 canAccept = this->selectedRecipe.def->inputs[index].count - this->inventory[index].count;
 	if (canAccept == 0) return; // already full
 	if (incoming.count > canAccept) { this->inventory[index].item = incoming.item; incoming.count -= canAccept; this->inventory[index].count += canAccept; return; } // transfer up to full
 	// can transfer all
@@ -182,6 +208,29 @@ void Machine::transfer(ItemStack& incoming) {
 	this->inventory[index].count += incoming.count;
 	incoming.count = 0;
 	return;
+}
+
+B32 Machine::can_transfer(ItemStack const& incoming) const {
+	if (incoming.count == 0) return B32_TRUE;
+	if (this->selectedRecipe.def == nullptr) { __debugbreak(); return B32_FALSE; }
+	// if unit, accept as long as has space and same item
+	if (this->selectedRecipe.def->numInputs == 0) {
+		// if (this->outputBuf.count > 0 || this->inventory[0].count > 0) { return B32_FALSE; } // Only allow for 1 item to be on a belt
+		return B32_TRUE;
+	}
+	// a real recipe; just do a normal lookup
+	U32 index = U32(-1);
+	for (U32 i = 0; i < this->selectedRecipe.def->numInputs; i++) {
+		if (selectedRecipe.def->inputs[i].item == incoming.item) {
+			index = i;
+			break;
+		}
+	}
+	if (index == U32(-1)) return B32_FALSE;
+	// force the machine to take as many items as the recipe requires
+	I32 canAccept = this->selectedRecipe.def->inputs[index].count - this->inventory[index].count;
+	if (canAccept == 0) return B32_FALSE; // already full
+	return B32_TRUE;
 }
 
 PoolAllocator<Machine> machineAllocator{};
@@ -195,12 +244,13 @@ MachineHandle recipeMenuMachine{};
 
 void recipe_menu_select_callback(U32 optionIndex) {
 	Machine* machine = recipeMenuMachine.get();
+	Factory::recipeMenuMachine.machine = nullptr; // also close the menu after choosing an item
 	if (!machine || !machine->recipes || optionIndex >= machine->recipes->options.size) {
 		SelectUI::open = B32_FALSE;
 		SelectUI::clear_popup_anchor();
 		return;
 	}
-	machine->selectedRecipe = Recipe::RecipeRef::from(machine->recipes->options[optionIndex]);
+	machine->switch_recipe_to(machine->recipes->options[optionIndex]);
 	SelectUI::set_selected_index(I32(optionIndex));
 	SelectUI::open = B32_FALSE;
 	SelectUI::clear_popup_anchor();
@@ -211,7 +261,11 @@ FINLINE B32 machine_supports_recipe_menu(const Machine* machine) {
 }
 
 I32 selected_recipe_option_index(const Machine* machine) {
-	if (!machine_supports_recipe_menu(machine) || machine->selectedRecipe.def == nullptr) {
+	if (machine->selectedRecipe.def == nullptr) {
+		__debugbreak();
+		return -1;
+	}
+	if (!machine_supports_recipe_menu(machine)) {
 		return -1;
 	}
 	for (U32 i = 0; i < machine->recipes->options.size; i++) {
@@ -239,30 +293,24 @@ FINLINE V2I direction_offset(Direction2 direction) {
 	case DIRECTION2_RIGHT: return V2I{ 1, 0 };
 	case DIRECTION2_FRONT: return V2I{ 0, -1 };
 	case DIRECTION2_BACK: return V2I{ 0, 1 };
-	default: return V2I{ 0, 0 };
+	default: { __debugbreak(); return V2I{ 0, 0 }; }
 	}
 }
 
 FINLINE Direction2 opposite_direction(Direction2 direction) {
-	switch (direction) {
-	case DIRECTION2_LEFT: return DIRECTION2_RIGHT;
-	case DIRECTION2_RIGHT: return DIRECTION2_LEFT;
-	case DIRECTION2_FRONT: return DIRECTION2_BACK;
-	case DIRECTION2_BACK: return DIRECTION2_FRONT;
-	default: return DIRECTION2_INVALID;
-	}
+	return DIRECTION2_OPPOSITE[direction];
 }
 
-FINLINE B32 tile_in_bounds(V2U pos) {
-	return pos.x < World::size.x && pos.y < World::size.y ? B32_TRUE : B32_FALSE;
+FINLINE B32 tile_in_bounds(V2U pos, U32 depth) {
+	return pos.x < World::size.x && pos.y < World::size.y && depth < World::maxDepth ? B32_TRUE : B32_FALSE;
 }
 
-Machine* get_machine_from_tile(V2U pos) {
-	if (!tile_in_bounds(pos)) {
+Machine* get_machine_from_tile(V2U pos, U32 depth) {
+	if (!tile_in_bounds(pos, depth)) {
 		return nullptr;
 	}
 	U32 machineId = World::MACHINE_NULL_ID;
-	World::get_tile(&machineId, I32(pos.x), I32(pos.y));
+	World::get_tile(&machineId, I32(pos.x), I32(pos.y), I32(depth));
 	if (machineId == World::MACHINE_NULL_ID || machineId >= machineIdToMachine.size) {
 		return nullptr;
 	}
@@ -275,26 +323,44 @@ void update_machine_connections(Machine* machine) {
 	}
 	memset(machine->outputs, 0, sizeof(machine->outputs));
 	machine->outputCount = 0;
+	U32 depth = machine->depth;
 	for (U32 i = 0; i < MAX_IO_DEFS && machine->outputCount < MAX_OUTPUTS; i++) {
 		IODef io = machine->ioDefs[i];
 		if (io.ioDirections == 0) {
 			continue;
 		}
-		if (machine->outputCount < MAX_OUTPUTS && io.ioDirections & World::MACHINE_OUTPUT_DOWN && World::can_connect_input(V2U{ machine->pos.x + io.pos.x, machine->pos.y + io.pos.y + 1 }, DIRECTION2_FRONT)) {
-			Machine* m = get_machine_from_tile(V2U{ machine->pos.x + io.pos.x, machine->pos.y + io.pos.y + 1 });;
+		if (machine->outputCount < MAX_OUTPUTS && io.ioDirections & World::MACHINE_OUTPUT_DOWN && World::can_connect_input(V2U{ machine->pos.x + io.pos.x, machine->pos.y + io.pos.y + 1 }, machine->depth, DIRECTION2_FRONT)) {
+			Machine* m = get_machine_from_tile(V2U{ machine->pos.x + io.pos.x, machine->pos.y + io.pos.y + 1 }, depth);
+			machine->outputsDir[machine->outputCount] = World::MACHINE_OUTPUT_DOWN;
 			machine->outputs[machine->outputCount++] = MachineHandle{m, m->generation};
 		}
-		if (machine->outputCount < MAX_OUTPUTS && io.ioDirections & World::MACHINE_OUTPUT_UP && World::can_connect_input(V2U{ machine->pos.x + io.pos.x, machine->pos.y + io.pos.y - 1 }, DIRECTION2_BACK)) {
-			Machine* m = get_machine_from_tile(V2U{ machine->pos.x + io.pos.x, machine->pos.y + io.pos.y - 1 });;
+		if (machine->outputCount < MAX_OUTPUTS && io.ioDirections & World::MACHINE_OUTPUT_UP && World::can_connect_input(V2U{ machine->pos.x + io.pos.x, machine->pos.y + io.pos.y - 1 }, machine->depth, DIRECTION2_BACK)) {
+			Machine* m = get_machine_from_tile(V2U{ machine->pos.x + io.pos.x, machine->pos.y + io.pos.y - 1 }, depth);
+			machine->outputsDir[machine->outputCount] = World::MACHINE_OUTPUT_UP;
 			machine->outputs[machine->outputCount++] = MachineHandle{ m, m->generation };
 		}
-		if (machine->outputCount < MAX_OUTPUTS && io.ioDirections & World::MACHINE_OUTPUT_LEFT && World::can_connect_input(V2U{ machine->pos.x + io.pos.x - 1, machine->pos.y + io.pos.y }, DIRECTION2_RIGHT)) {
-			Machine* m = get_machine_from_tile(V2U{ machine->pos.x + io.pos.x - 1, machine->pos.y + io.pos.y });;
+		if (machine->outputCount < MAX_OUTPUTS && io.ioDirections & World::MACHINE_OUTPUT_LEFT && World::can_connect_input(V2U{ machine->pos.x + io.pos.x - 1, machine->pos.y + io.pos.y }, machine->depth, DIRECTION2_RIGHT)) {
+			Machine* m = get_machine_from_tile(V2U{ machine->pos.x + io.pos.x - 1, machine->pos.y + io.pos.y }, depth);
+			machine->outputsDir[machine->outputCount] = World::MACHINE_OUTPUT_LEFT;
 			machine->outputs[machine->outputCount++] = MachineHandle{ m, m->generation };
 		}
-		if (machine->outputCount < MAX_OUTPUTS && io.ioDirections & World::MACHINE_OUTPUT_RIGHT && World::can_connect_input(V2U{ machine->pos.x + io.pos.x + 1, machine->pos.y + io.pos.y }, DIRECTION2_LEFT)) {
-			Machine* m = get_machine_from_tile(V2U{ machine->pos.x + io.pos.x + 1, machine->pos.y + io.pos.y });;
+		if (machine->outputCount < MAX_OUTPUTS && io.ioDirections & World::MACHINE_OUTPUT_RIGHT && World::can_connect_input(V2U{ machine->pos.x + io.pos.x + 1, machine->pos.y + io.pos.y }, machine->depth, DIRECTION2_LEFT)) {
+			Machine* m = get_machine_from_tile(V2U{ machine->pos.x + io.pos.x + 1, machine->pos.y + io.pos.y }, depth);
+			machine->outputsDir[machine->outputCount] = World::MACHINE_OUTPUT_RIGHT;
 			machine->outputs[machine->outputCount++] = MachineHandle{ m, m->generation };
+		}
+	}
+	if (machine->type == MACHINE_VIA_CHUTE) {
+		if (Machine* connection = get_machine_from_tile(machine->pos, machine->depth + 1)) {
+			if (connection->type == MACHINE_VIA_OUTPUT) {
+				machine->outputs[machine->outputCount++] = MachineHandle{ connection, connection->generation };
+			}
+		}
+	} else if (machine->type == MACHINE_VIA_ELEVATOR) {
+		if (Machine* connection = get_machine_from_tile(machine->pos, machine->depth - 1)) {
+			if (connection->type == MACHINE_VIA_OUTPUT) {
+				machine->outputs[machine->outputCount++] = MachineHandle{ connection, connection->generation };
+			}
 		}
 	}
 }
@@ -353,7 +419,7 @@ MachineDef get_assembler(Rotation2 orientation) {
 	case ROTATION2_180: result.sprite = &Resources::tile.assembler.upOff; result.spriteProcessingAlt = &Resources::tile.assembler.upOn; break;
 	case ROTATION2_270: result.sprite = &Resources::tile.assembler.rightOff; result.spriteProcessingAlt = &Resources::tile.assembler.rightOn; break;
 	}
-	result.inventoryStackSize = 6;
+	result.inventoryStackSize = 8;
 	result.ioDefs[0] = rotate_iodef(IODef{ V2I{ 0, 1 }, World::MACHINE_INPUT_DOWN }, result.size, orientation);
 	result.ioDefs[1] = rotate_iodef(IODef{ V2I{ 1, 1 }, World::MACHINE_OUTPUT_DOWN }, result.size, orientation);
 	result.recipes = &Recipe::recipeGroups.assembler;
@@ -365,20 +431,21 @@ MachineDef get_smelter(Rotation2 orientation) {
 	result.type = MACHINE_SMELTER;
 	result.size = V2U{ 1, 1 };
 	result.sprite = &Resources::tile.furnace;
-	result.inventoryStackSize = 4;
+	result.spriteProcessingAlt = &Resources::tile.furnaceOn;
+	result.inventoryStackSize = 6;
 	result.processAtOnce = 1;
 	result.recipes = &Recipe::recipeGroups.smelter;
 
 	switch (orientation) {
 	case ROTATION2_0:
 	default:
-		result.ioDefs[0] = IODef{ V2I{ 0, 0 }, Flags8(World::MACHINE_INPUT_UP | World::MACHINE_OUTPUT_DOWN) };
+		result.ioDefs[0] = IODef{ V2I{ 0, 0 }, Flags8(World::MACHINE_INPUT_DOWN | World::MACHINE_OUTPUT_UP) };
 		break;
 	case ROTATION2_90:
 		result.ioDefs[0] = IODef{ V2I{ 0, 0 }, Flags8(World::MACHINE_INPUT_LEFT | World::MACHINE_OUTPUT_RIGHT) };
 		break;
 	case ROTATION2_180:
-		result.ioDefs[0] = IODef{ V2I{ 0, 0 }, Flags8(World::MACHINE_INPUT_DOWN | World::MACHINE_OUTPUT_UP) };
+		result.ioDefs[0] = IODef{ V2I{ 0, 0 }, Flags8(World::MACHINE_INPUT_UP | World::MACHINE_OUTPUT_DOWN) };
 		break;
 	case ROTATION2_270:
 		result.ioDefs[0] = IODef{ V2I{ 0, 0 }, Flags8(World::MACHINE_INPUT_RIGHT | World::MACHINE_OUTPUT_LEFT) };
@@ -452,6 +519,11 @@ FINLINE V2U machine_footprint(MachineType type, Rotation2 orientation) {
 	case MACHINE_BIG_ASSEMBLER: return V2U{ 3, 2 };
 	case MACHINE_SMELTER:
 	case MACHINE_SPLITTER:
+	case MACHINE_JUNCTION:
+	case MACHINE_VIA_CHUTE:
+	case MACHINE_VIA_ELEVATOR:
+	case MACHINE_VIA_OUTPUT:
+	case MACHINE_CAMERA:
 	case MACHINE_BELT:
 	default: return V2U{ 1, 1 };
 	}
@@ -516,6 +588,14 @@ MachineDef get_static_machine(MachineType type, Rotation2 orientation) {
 	case MACHINE_BIG_ASSEMBLER:
 		result = get_big_assembler(orientation);
 		break;
+	case MACHINE_JUNCTION: {
+		result.size = V2U{ 1, 1 };
+		result.sprite = &Resources::tile.junction;
+		result.inventoryStackSize = 1;
+		result.recipes = &Recipe::recipeGroups.belt;
+		result.ioDefs[0] = IODef{ V2I{ 0, 0 }, 0xFF };
+		break;
+	}
 	case MACHINE_SPLITTER:
 		result.size = V2U{ 1, 1 };
 		result.sprite = &Resources::tile.splitter;
@@ -523,6 +603,36 @@ MachineDef get_static_machine(MachineType type, Rotation2 orientation) {
 		result.recipes = &Recipe::recipeGroups.belt;
 		result.ioDefs[0] = IODef{ V2I{ 0, 0 }, 0xFF };
 		break;
+	case MACHINE_VIA_CHUTE:
+		result.size = V2U{ 1, 1 };
+		result.sprite = &Resources::tile.via.inChute;
+		result.inventoryStackSize = 1;
+		result.recipes = &Recipe::recipeGroups.belt;
+		result.ioDefs[0] = IODef{ V2I{ 0, 0 }, Flags8(World::MACHINE_INPUT_UP | World::MACHINE_INPUT_DOWN | World::MACHINE_INPUT_LEFT | World::MACHINE_INPUT_RIGHT) };
+		break;
+	case MACHINE_VIA_ELEVATOR:
+		result.size = V2U{ 1, 1 };
+		result.sprite = &Resources::tile.via.inElevator;
+		result.inventoryStackSize = 1;
+		result.recipes = &Recipe::recipeGroups.belt;
+		result.ioDefs[0] = IODef{ V2I{ 0, 0 }, Flags8(World::MACHINE_INPUT_UP | World::MACHINE_INPUT_DOWN | World::MACHINE_INPUT_LEFT | World::MACHINE_INPUT_RIGHT) };
+		break;
+	case MACHINE_VIA_OUTPUT:
+		result.size = V2U{ 1, 1 };
+		switch (orientation) {
+		case ROTATION2_0: result.sprite = &Resources::tile.via.outDown; break;
+		case ROTATION2_90: result.sprite = &Resources::tile.via.outLeft; break;
+		case ROTATION2_180: result.sprite = &Resources::tile.via.outUp; break;
+		case ROTATION2_270: result.sprite = &Resources::tile.via.outRight; break;
+		}
+		result.inventoryStackSize = 1;
+		result.recipes = &Recipe::recipeGroups.belt;
+		result.ioDefs[0] = rotate_iodef(IODef{ V2I{ 0, 0 }, World::MACHINE_OUTPUT_DOWN }, result.size, orientation);
+		break;
+	case MACHINE_CAMERA:
+		result.size = V2U{ 1, 1 };
+		result.recipes = &Recipe::recipeGroups.belt;
+		result.sprite = &Resources::tile.camera;
 	default:
 		break;
 	}
@@ -534,10 +644,10 @@ void update_connections_around_io(Machine* machine, const IODef& io) {
 		return;
 	}
 	update_machine_connections(machine);
-	update_machine_connections(get_machine_from_tile(V2U{ machine->pos.x + io.pos.x + 1, machine->pos.y + io.pos.y }));
-	update_machine_connections(get_machine_from_tile(V2U{ machine->pos.x + io.pos.x - 1, machine->pos.y + io.pos.y }));
-	update_machine_connections(get_machine_from_tile(V2U{ machine->pos.x + io.pos.x, machine->pos.y + io.pos.y + 1 }));
-	update_machine_connections(get_machine_from_tile(V2U{ machine->pos.x + io.pos.x, machine->pos.y + io.pos.y - 1 }));
+	update_machine_connections(get_machine_from_tile(V2U{ machine->pos.x + io.pos.x + 1, machine->pos.y + io.pos.y }, machine->depth));
+	update_machine_connections(get_machine_from_tile(V2U{ machine->pos.x + io.pos.x - 1, machine->pos.y + io.pos.y }, machine->depth));
+	update_machine_connections(get_machine_from_tile(V2U{ machine->pos.x + io.pos.x, machine->pos.y + io.pos.y + 1 }, machine->depth));
+	update_machine_connections(get_machine_from_tile(V2U{ machine->pos.x + io.pos.x, machine->pos.y + io.pos.y - 1 }, machine->depth));
 }
 
 void apply_machine_def(Machine* machine, const MachineDef& def) {
@@ -546,7 +656,7 @@ void apply_machine_def(Machine* machine, const MachineDef& def) {
 
 	for (U32 y = 0; y < machine->size.y; y++) {
 		for (U32 x = 0; x < machine->size.x; x++) {
-			World::set_connectivity(V2U{ machine->pos.x + x, machine->pos.y + y }, 0);
+			World::set_connectivity(V2U{ machine->pos.x + x, machine->pos.y + y }, machine->depth, 0);
 		}
 	}
 
@@ -555,13 +665,12 @@ void apply_machine_def(Machine* machine, const MachineDef& def) {
 	machine->sprite = def.sprite;
 	machine->spriteProcessingAlt = def.spriteProcessingAlt;
 	machine->animFrame = 0;
-	machine->amountToProcess = def.processAtOnce;
 	machine->inventoryStackSizeLimit = def.inventoryStackSize;
 	machine->recipes = def.recipes;
 	memcpy(machine->ioDefs, def.ioDefs, sizeof(machine->ioDefs));
 	for (U32 i = 0; i < MAX_IO_DEFS; i++) {
 		if (machine->ioDefs[i].ioDirections != 0) {
-			World::set_connectivity(V2U{ machine->pos.x + machine->ioDefs[i].pos.x, machine->pos.y + machine->ioDefs[i].pos.y }, machine->ioDefs[i].ioDirections);
+			World::set_connectivity(V2U{ machine->pos.x + machine->ioDefs[i].pos.x, machine->pos.y + machine->ioDefs[i].pos.y }, machine->depth, machine->ioDefs[i].ioDirections);
 		}
 	}
 	for (U32 i = 0; i < MAX_IO_DEFS; i++) {
@@ -569,10 +678,24 @@ void apply_machine_def(Machine* machine, const MachineDef& def) {
 			continue;
 		}
 		update_machine_connections(machine);
-		update_machine_connections(get_machine_from_tile(V2U{ machine->pos.x + machine->ioDefs[i].pos.x + 1, machine->pos.y + machine->ioDefs[i].pos.y }));
-		update_machine_connections(get_machine_from_tile(V2U{ machine->pos.x + machine->ioDefs[i].pos.x - 1, machine->pos.y + machine->ioDefs[i].pos.y }));
-		update_machine_connections(get_machine_from_tile(V2U{ machine->pos.x + machine->ioDefs[i].pos.x, machine->pos.y + machine->ioDefs[i].pos.y + 1 }));
-		update_machine_connections(get_machine_from_tile(V2U{ machine->pos.x + machine->ioDefs[i].pos.x, machine->pos.y + machine->ioDefs[i].pos.y - 1 }));
+		update_machine_connections(get_machine_from_tile(V2U{ machine->pos.x + machine->ioDefs[i].pos.x + 1, machine->pos.y + machine->ioDefs[i].pos.y }, machine->depth));
+		update_machine_connections(get_machine_from_tile(V2U{ machine->pos.x + machine->ioDefs[i].pos.x - 1, machine->pos.y + machine->ioDefs[i].pos.y }, machine->depth));
+		update_machine_connections(get_machine_from_tile(V2U{ machine->pos.x + machine->ioDefs[i].pos.x, machine->pos.y + machine->ioDefs[i].pos.y + 1 }, machine->depth));
+		update_machine_connections(get_machine_from_tile(V2U{ machine->pos.x + machine->ioDefs[i].pos.x, machine->pos.y + machine->ioDefs[i].pos.y - 1 }, machine->depth));
+	}
+	if (machine->type == MACHINE_VIA_CHUTE || machine->type == MACHINE_VIA_ELEVATOR || machine->type == MACHINE_VIA_OUTPUT) {
+		update_machine_connections(get_machine_from_tile(machine->pos, machine->depth + 1));
+		update_machine_connections(get_machine_from_tile(machine->pos, machine->depth - 1));
+	}
+	if (machine->type == MACHINE_CAMERA) {
+		machine->cameraBeachTileCount = 0;
+		for (I32 y = I32(machine->pos.y) - CAMERA_SEE_WIDTH / 2; y <= I32(machine->pos.y) + CAMERA_SEE_WIDTH / 2; y++) {
+			for (I32 x = I32(machine->pos.x) - CAMERA_SEE_DEPTH; x < I32(machine->pos.x) && machine->cameraBeachTileCount < CAMERA_SEE_WIDTH; x++) {
+				if (World::BeachTileInfo* tile = World::find_beach_tile(V2U{ U32(x), U32(y) })) {
+					machine->cameraBeachTiles[machine->cameraBeachTileCount++] = tile;
+				}
+			}
+		}
 	}
 	Recipe::RecipeDef* previousRecipe = machine->selectedRecipe.def;
 	if (machine->recipes && machine->recipes->options.size > 0) {
@@ -588,8 +711,8 @@ void apply_machine_def(Machine* machine, const MachineDef& def) {
 		machine->selectedRecipe = Recipe::RecipeRef::from(machine->recipes->options[nextRecipeIndex]);
 	}
 	else {
-		machine->selectedRecipe = Recipe::RecipeRef{};
-		//machine->selectedRecipe = Recipe::RecipeRef::from(machine->recipes->options[0]);
+		//machine->selectedRecipe = Recipe::RecipeRef{}; // BAD
+		machine->selectedRecipe = Recipe::RecipeRef::from(machine->recipes->options[0]);
 	}
 }
 
@@ -606,11 +729,12 @@ MachineHandle alloc_machine() {
 	return MachineHandle{ machine, machine->generation };
 }
 
-B32 has_machine(V2U pos) {
-	return get_machine_from_tile(pos) != nullptr ? B32_TRUE : B32_FALSE;
+B32 has_machine(V2U pos, U32 depth) {
+	return get_machine_from_tile(pos, depth) != nullptr ? B32_TRUE : B32_FALSE;
 }
 
 void open_recipe_menu_for_machine(Machine* machine) {
+	Factory::recipeMenuMachine.machine = nullptr; // when trying to open a new menu, the last one should close
 	if (!machine_supports_recipe_menu(machine)) {
 		SelectUI::open = B32_FALSE;
 		SelectUI::clear_popup_anchor();
@@ -625,19 +749,19 @@ void open_recipe_menu_for_machine(Machine* machine) {
 }
 
 void open_recipe_menu_for_machine(V2U pos) {
-	open_recipe_menu_for_machine(get_machine_from_tile(pos));
+	open_recipe_menu_for_machine(get_machine_from_tile(pos, 0));
 }
 
-B32 has_belt(V2U pos) {
-	return machine_is_belt(get_machine_from_tile(pos));
+B32 has_belt(V2U pos, U32 depth) {
+	return machine_is_belt(get_machine_from_tile(pos, depth));
 }
 
-B32 tile_can_host_machine(V2U pos) {
-	if (!tile_in_bounds(pos)) {
+B32 tile_can_host_machine(V2U pos, U32 depth) {
+	if (!tile_in_bounds(pos, depth)) {
 		return B32_FALSE;
 	}
 	U32 existingId = World::MACHINE_NULL_ID;
-	World::TileType tile = World::get_tile(&existingId, I32(pos.x), I32(pos.y));
+	World::TileType tile = World::get_tile(&existingId, I32(pos.x), I32(pos.y), depth);
 	if (existingId != World::MACHINE_NULL_ID) {
 		return B32_FALSE;
 	}
@@ -650,25 +774,29 @@ B32 tile_can_host_machine(V2U pos) {
 	}
 }
 
-MachineHandle try_place_machine(V2U pos, const MachineDef& def) {
-	for (I32 y = I32(pos.y); y < I32(pos.y + def.size.y); y++) {
-		for (I32 x = I32(pos.x); x < I32(pos.x + def.size.x); x++) {
-			if (!tile_can_host_machine(V2U{ U32(x), U32(y) })) {
-				return MachineHandle{};
-			}
-		}
-	}
-
+MachineHandle force_place_machine(V2U pos, U32 depth, const MachineDef& def) {
 	MachineHandle handle = alloc_machine();
 	Machine* machine = handle.machine;
 	machine->pos = pos;
-	World::set_machine(Rng2I32{ I32(pos.x), I32(pos.y), I32(pos.x + def.size.x - 1), I32(pos.y + def.size.y - 1) }, machine->id);
+	machine->depth = depth;
+	World::set_machine(Rng2I32{ I32(pos.x), I32(pos.y), I32(pos.x + def.size.x - 1), I32(pos.y + def.size.y - 1) }, I32(depth), machine->id);
 	machineTiles.push_back(machine);
 	apply_machine_def(machine, def);
 	return handle;
 }
 
-B32 set_belt_shape(V2U pos, Direction2 src, Direction2 dst) {
+MachineHandle try_place_machine(V2U pos, U32 depth, const MachineDef& def) {
+	for (I32 y = I32(pos.y); y < I32(pos.y + def.size.y); y++) {
+		for (I32 x = I32(pos.x); x < I32(pos.x + def.size.x); x++) {
+			if (!tile_can_host_machine(V2U{ U32(x), U32(y) }, depth)) {
+				return MachineHandle{};
+			}
+		}
+	}
+	return force_place_machine(pos, depth, def);
+}
+
+B32 set_belt_shape(V2U pos, U32 depth, Direction2 src, Direction2 dst) {
 	if (src == DIRECTION2_INVALID || dst == DIRECTION2_INVALID || src == dst) {
 		return B32_FALSE;
 	}
@@ -677,7 +805,7 @@ B32 set_belt_shape(V2U pos, Direction2 src, Direction2 dst) {
 		return B32_FALSE;
 	}
 
-	Machine* existing = get_machine_from_tile(pos);
+	Machine* existing = get_machine_from_tile(pos, depth);
 	if (existing) {
 		if (!machine_is_belt(existing)) {
 			return B32_FALSE;
@@ -686,26 +814,37 @@ B32 set_belt_shape(V2U pos, Direction2 src, Direction2 dst) {
 		return B32_TRUE;
 	}
 
-	return try_place_machine(pos, def).get() ? B32_TRUE : B32_FALSE;
+	return try_place_machine(pos, depth, def).get() ? B32_TRUE : B32_FALSE;
 }
 
-B32 place_belt(V2U pos) {
-	Machine* existing = get_machine_from_tile(pos);
+B32 place_belt(V2U pos, U32 depth) {
+	Machine* existing = get_machine_from_tile(pos, depth);
 	if (existing) {
 		return machine_is_belt(existing);
 	}
-	return set_belt_shape(pos, DIRECTION2_LEFT, DIRECTION2_RIGHT);
+	return set_belt_shape(pos, depth, DIRECTION2_LEFT, DIRECTION2_RIGHT);
 }
 
-B32 place_machine_type(V2U pos, MachineType type, Rotation2 orientation) {
+Direction2 conveyor_input_dir(Machine* belt) {
+	DEBUG_ASSERT(belt != nullptr);
+	DEBUG_ASSERT(belt->type == MACHINE_BELT);
+	if (belt->ioDefs[0].ioDirections & World::MACHINE_INPUT_DOWN) return DIRECTION2_BACK;
+	if (belt->ioDefs[0].ioDirections & World::MACHINE_INPUT_UP) return DIRECTION2_FRONT;
+	if (belt->ioDefs[0].ioDirections & World::MACHINE_INPUT_LEFT) return DIRECTION2_LEFT;
+	if (belt->ioDefs[0].ioDirections & World::MACHINE_INPUT_RIGHT) return DIRECTION2_RIGHT;
+	__debugbreak();
+	return DIRECTION2_INVALID;
+}
+
+B32 place_machine_type(V2U pos, U32 depth, MachineType type, Rotation2 orientation) {
 	if (type == MACHINE_BELT) {
-		return place_belt(pos);
+		return place_belt(pos, depth);
 	}
 	MachineDef def = get_static_machine(type, orientation);
 	if (!def.sprite) {
 		return B32_FALSE;
 	}
-	Machine* existing = get_machine_from_tile(pos);
+	Machine* existing = get_machine_from_tile(pos, depth);
 	if (existing) {
 		if (existing->type == type && existing->pos.x == pos.x && existing->pos.y == pos.y) {
 			apply_machine_def(existing, def);
@@ -713,32 +852,36 @@ B32 place_machine_type(V2U pos, MachineType type, Rotation2 orientation) {
 		}
 		return B32_FALSE;
 	}
-	return try_place_machine(pos, def).get() ? B32_TRUE : B32_FALSE;
+	return try_place_machine(pos, depth, def).get() ? B32_TRUE : B32_FALSE;
 }
 
 void remove_machine(Machine* machine) {
 	if (!machine || machine->generation == 0) {
 		return;
 	}
+	for (U32 i = 0; i < machine->selectedRecipe.def->numInputs; i++) {
+		Inventory::inv[machine->inventory[i].item] += machine->inventory[i].count;
+	}
+	Inventory::inv[machine->outputBuf.item] += machine->outputBuf.count;
 	machineIdToMachine[machine->id] = nullptr;
 	freeMachineIds.push_back(machine->id);
-	World::set_machine(Rng2I32{ I32(machine->pos.x), I32(machine->pos.y), I32(machine->pos.x + machine->size.x - 1), I32(machine->pos.y + machine->size.y - 1) }, World::MACHINE_NULL_ID);
+	World::set_machine(Rng2I32{ I32(machine->pos.x), I32(machine->pos.y), I32(machine->pos.x + machine->size.x - 1), I32(machine->pos.y + machine->size.y - 1) }, I32(machine->depth), World::MACHINE_NULL_ID);
 	machineTiles.remove_obj_unordered(machine);
 	machine->generation = 0;
 	for (U32 i = 0; i < MAX_IO_DEFS; i++) {
 		if (machine->ioDefs[i].ioDirections == 0) {
 			continue;
 		}
-		update_machine_connections(get_machine_from_tile(V2U{ machine->pos.x + machine->ioDefs[i].pos.x + 1, machine->pos.y + machine->ioDefs[i].pos.y }));
-		update_machine_connections(get_machine_from_tile(V2U{ machine->pos.x + machine->ioDefs[i].pos.x - 1, machine->pos.y + machine->ioDefs[i].pos.y }));
-		update_machine_connections(get_machine_from_tile(V2U{ machine->pos.x + machine->ioDefs[i].pos.x, machine->pos.y + machine->ioDefs[i].pos.y + 1 }));
-		update_machine_connections(get_machine_from_tile(V2U{ machine->pos.x + machine->ioDefs[i].pos.x, machine->pos.y + machine->ioDefs[i].pos.y - 1 }));
+		update_machine_connections(get_machine_from_tile(V2U{ machine->pos.x + machine->ioDefs[i].pos.x + 1, machine->pos.y + machine->ioDefs[i].pos.y }, machine->depth));
+		update_machine_connections(get_machine_from_tile(V2U{ machine->pos.x + machine->ioDefs[i].pos.x - 1, machine->pos.y + machine->ioDefs[i].pos.y }, machine->depth));
+		update_machine_connections(get_machine_from_tile(V2U{ machine->pos.x + machine->ioDefs[i].pos.x, machine->pos.y + machine->ioDefs[i].pos.y + 1 }, machine->depth));
+		update_machine_connections(get_machine_from_tile(V2U{ machine->pos.x + machine->ioDefs[i].pos.x, machine->pos.y + machine->ioDefs[i].pos.y - 1 }, machine->depth));
 	}
 	machineAllocator.free(machine);
 }
 
-void remove_machine(V2U pos) {
-	if (Machine* machine = get_machine_from_tile(pos)) {
+void remove_machine(V2U pos, U32 depth) {
+	if (Machine* machine = get_machine_from_tile(pos, depth)) {
 		remove_machine(machine);
 	}
 }
@@ -767,11 +910,12 @@ void reset() {
 
 U32 animRawTime;
 
+// Return a machine that can be transferred to (from given machine)
 Machine* get_compatible_output(Machine* machine) {
 	for (U32 i = 0; i < machine->outputCount; i++) {
 		U32 outputIdx = (i + machine->currentOutput) % machine->outputCount;
 		if (Machine* test = machine->outputs[outputIdx].get()) {
-			if (test->inventory[0].count == 0 || test->inventory[0].item == machine->inventory[0].item && test->inventory[0].count < test->inventoryStackSizeLimit) {
+			if (test->can_transfer(machine->outputBuf)) {
 				machine->currentOutput = outputIdx + 1;
 				return test;
 			}
@@ -790,12 +934,39 @@ void update(F32 dt) {
 			// recipe has just finished; transfer inputs to outputs and reset current timer
 			machine->finish_recipe();
 		}
-		if (machine->outputBuf.count > 0) {
+		if (machine->outputBuf.count > 0 || machine->secondaryOutputBuf.count > 0) {
+			if (machine->type == MACHINE_BELT && machine->ioDefs[0].ioDirections & World::MACHINE_OUTPUT_LEFT && machine->pos.x == 1 && Cyber5eagull::totalCyberSeagullsOnShip < Cyber5eagull::TARGET_CYBERSEAGULL_COUNT) {
+				machine->outputBuf.count--;
+				if (machine->outputBuf.item == Inventory::ITEM_CYBER_GULL) {
+					Cyber5eagull::totalCyberSeagullsOnShip++;
+				}
+			}
 			if (Machine* output = get_compatible_output(machine)) {
-				output->transfer(machine->outputBuf);
+				B32 is_vertical = B32_FALSE;
+				for (U32 i = 0; i < machine->outputCount; i++) {
+					if (machine->outputs[i].machine == output) {
+						if (machine->outputsDir[i] == World::MACHINE_OUTPUT_DOWN || machine->outputsDir[i] == World::MACHINE_OUTPUT_UP) {
+							is_vertical = B32_TRUE;
+							break;
+						}
+					}
+				}
+				if (machine->type == MACHINE_JUNCTION) {
+					if(is_vertical)
+						output->transfer(machine->secondaryOutputBuf, output->type == MACHINE_JUNCTION ? is_vertical : B32_FALSE);
+					else
+						output->transfer(machine->outputBuf, output->type == MACHINE_JUNCTION ? is_vertical : B32_FALSE);
+				} else {
+					output->transfer(machine->outputBuf, output->type == MACHINE_JUNCTION ? is_vertical : B32_FALSE);
+				}
 			}
 		}
 		machine->animFrame = animRawTime / 8 % machine->sprite->animFrames;
+		if (machine->type == MACHINE_CAMERA) {
+			for (I32 i = 0; i < machine->cameraBeachTileCount; i++) {
+				Cyber5eagull::BeeDemo::queue_tile_task(machine->cameraBeachTiles[i]->coord);
+			}
+		}
 	}
 	tickCount++;
 }
@@ -936,7 +1107,7 @@ void render_recipe_option_tooltip(const Recipe::RecipeDef& recipe) {
 }
 
 void render_machine_progress_bar(Machine* machine, I32 tileScale) {
-	if (!machine || !machine->selectedRecipe.def || machine->type == MACHINE_BELT || machine->type == MACHINE_SPLITTER) {
+	if (!machine || !machine->selectedRecipe.def || machine->type == MACHINE_BELT || machine->type == MACHINE_SPLITTER || machine->type == MACHINE_JUNCTION || machine->type == MACHINE_VIA_CHUTE || machine->type == MACHINE_VIA_ELEVATOR || machine->type == MACHINE_VIA_OUTPUT) {
 		return;
 	}
 	F32 maxTime = machine->max_process_time();
@@ -989,7 +1160,8 @@ void render_machine_hover_tooltip(Machine* machine, I32 tileScale) {
 	I32 smallNumberSize = 16;
 	I32 rowHeight = max(iconSize + 10, bigNumberSize + 4);
 	I32 pad = 8;
-	B32 showProgress = machine->type != MACHINE_SPLITTER && machine->type != MACHINE_BELT && machine->max_process_time() > 0.0F ? B32_TRUE : B32_FALSE;
+	B32 showProgress = machine->type != MACHINE_SPLITTER && machine->type != MACHINE_BELT && machine->type != MACHINE_JUNCTION && machine->type != MACHINE_VIA_CHUTE && machine->type != MACHINE_VIA_ELEVATOR && machine->type != MACHINE_VIA_OUTPUT && machine->type != MACHINE_CAMERA
+		&& machine->max_process_time() > 0.0F ? B32_TRUE : B32_FALSE;
 	I32 progressHeight = showProgress ? 16 : 0;
 	I32 tipW = 136;
 	I32 tipH = pad * 2 + rowHeight + I32(recipe.numInputs) * rowHeight + progressHeight;
@@ -1027,7 +1199,7 @@ void render_machine_hover_tooltip(Machine* machine, I32 tileScale) {
 
 		U32 currentCount = machine->inventory[i].count;
 		if (currentCount > 0u) {
-			fill_rect_blended(iconX + iconSize - 18, iconY - 2, 18, 18, RGBA8{ 24, 24, 24, 190 });
+			Graphics::fill_rect_blended(iconX + iconSize - 18, iconY - 2, 18, 18, RGBA8{ 24, 24, 24, 190 });
 			Graphics::display_num(currentCount, iconX + iconSize - 17, iconY - 1, smallNumberSize);
 		}
 
@@ -1063,7 +1235,98 @@ void render_machine_hover_tooltip(Machine* machine, I32 tileScale) {
 	}
 }
 
-void render(I32 tileScale) {
+void render(I32 tileScale, I32 depthOverlayLayer) {
+	for (Machine* machine : machineTiles) {
+		if (!machine || !machine->sprite || machine->depth != 0) {
+			continue;
+		}
+		V2I screenPos = Cyber5eagull::tile_to_screen_px(machine->pos);
+		if (machine->type == MACHINE_ASSEMBLER) {
+			U32 beltAnimTime = animRawTime / 8 % Resources::tile.belt.downToUp.animFrames;
+			if (machine->sprite == &Resources::tile.assembler.downOff) {
+				Graphics::blit_sprite_cutout(Resources::tile.belt.downToUp, screenPos.x, screenPos.y + 16 * tileScale, tileScale, beltAnimTime);
+				Graphics::blit_sprite_cutout(Resources::tile.belt.upToDown, screenPos.x + 16 * tileScale, screenPos.y + 16 * tileScale, tileScale, beltAnimTime);
+			} else if (machine->sprite == &Resources::tile.assembler.leftOff) {
+				Graphics::blit_sprite_cutout(Resources::tile.belt.leftToRight, screenPos.x, screenPos.y, tileScale, beltAnimTime);
+				Graphics::blit_sprite_cutout(Resources::tile.belt.rightToLeft, screenPos.x, screenPos.y + 16 * tileScale, tileScale, beltAnimTime);
+			} else if (machine->sprite == &Resources::tile.assembler.rightOff) {
+				Graphics::blit_sprite_cutout(Resources::tile.belt.leftToRight, screenPos.x + 16 * tileScale, screenPos.y, tileScale, beltAnimTime);
+				Graphics::blit_sprite_cutout(Resources::tile.belt.rightToLeft, screenPos.x + 16 * tileScale, screenPos.y + 16 * tileScale, tileScale, beltAnimTime);
+			} else if (machine->sprite == &Resources::tile.assembler.upOff) {
+				Graphics::blit_sprite_cutout(Resources::tile.belt.upToDown, screenPos.x + 16 * tileScale, screenPos.y, tileScale, beltAnimTime);
+				Graphics::blit_sprite_cutout(Resources::tile.belt.downToUp, screenPos.x, screenPos.y, tileScale, beltAnimTime);
+			}
+		} else if (machine->type == MACHINE_BIG_ASSEMBLER) {
+			U32 beltAnimTime = animRawTime / 8 % Resources::tile.belt.downToUp.animFrames;
+			Graphics::blit_sprite_cutout(Resources::tile.belt.downToUp, screenPos.x, screenPos.y + 16 * tileScale, tileScale, beltAnimTime);
+			Graphics::blit_sprite_cutout(Resources::tile.belt.downToUp, screenPos.x + 16 * tileScale, screenPos.y + 16 * tileScale, tileScale, beltAnimTime);
+			Graphics::blit_sprite_cutout(Resources::tile.belt.downToUp, screenPos.x + 32 * tileScale, screenPos.y + 16 * tileScale, tileScale, beltAnimTime);
+		} else if (machine->type == MACHINE_SMELTER) {
+			U32 beltAnimTime = animRawTime / 8 % Resources::tile.belt.downToUp.animFrames;
+			if (machine->ioDefs[0].ioDirections & World::MACHINE_INPUT_DOWN) {
+				Graphics::blit_sprite_cutout(Resources::tile.belt.downToUp, screenPos.x, screenPos.y, tileScale, beltAnimTime);
+			}
+			else if (machine->ioDefs[0].ioDirections & World::MACHINE_INPUT_LEFT) {
+				Graphics::blit_sprite_cutout(Resources::tile.belt.leftToRight, screenPos.x, screenPos.y, tileScale, beltAnimTime);
+			}
+			else if (machine->ioDefs[0].ioDirections & World::MACHINE_INPUT_UP) {
+				Graphics::blit_sprite_cutout(Resources::tile.belt.upToDown, screenPos.x, screenPos.y, tileScale, beltAnimTime);
+			}
+			else if (machine->ioDefs[0].ioDirections & World::MACHINE_INPUT_RIGHT) {
+				Graphics::blit_sprite_cutout(Resources::tile.belt.rightToLeft, screenPos.x, screenPos.y, tileScale, beltAnimTime);
+			}
+		}
+		Resources::Sprite* renderSprite = machine->spriteProcessingAlt && machine->enough_inputs() ? machine->spriteProcessingAlt : machine->sprite;
+		V2I drawPos = machine_sprite_draw_pos(machine, renderSprite, tileScale);
+		Graphics::blit_sprite_cutout(*renderSprite, drawPos.x, drawPos.y, tileScale, machine->animFrame);
+	}
+	for (Machine* machine : machineTiles) {
+		if (machine && machine->depth == 0 && machine->type == MACHINE_BELT && (machine->inventory[0].count > 0 || machine->outputBuf.count > 0)) {
+			ItemStack stack = machine->get_belt_item();
+			F32 t = clamp01(machine->process_time() / machine->max_process_time());
+			if (machine->outputBuf.count > 0) t = 0.0;
+			V2F renderStartPos = DIRECTION2_V2F[input_flag_to_direction(machine->ioDefs[0].ioDirections)] * 0.5F + 0.5F;
+			V2F renderEndPos = DIRECTION2_V2F[output_flag_to_direction(machine->ioDefs[0].ioDirections)] * 0.5F + 0.5F;
+			V2F renderOffset = (renderEndPos + (renderStartPos - renderEndPos) * t) * 16 * tileScale - 8 * tileScale;
+			V2I screenPos = Cyber5eagull::tile_to_screen_px(machine->pos);
+			Graphics::blit_sprite_cutout(*Inventory::itemSprite[stack.item], screenPos.x + I32(renderOffset.x), screenPos.y + I32(renderOffset.y), tileScale, 0);
+		}
+	}
+	if (depthOverlayLayer != 0) {
+		for (Machine* machine : machineTiles) {
+			if (!machine || machine->depth != depthOverlayLayer) {
+				continue;
+			}
+			V2I drawPos = machine_sprite_draw_pos(machine, machine->sprite, tileScale);
+			Graphics::blit_sprite_cutout_blue(*machine->sprite, drawPos.x, drawPos.y, tileScale, machine->animFrame);
+		}
+		for (Machine* machine : machineTiles) {
+			if (!machine || machine->depth != depthOverlayLayer) {
+				continue;
+			}
+			if (machine->type == MACHINE_BELT && (machine->inventory[0].count > 0 || machine->outputBuf.count > 0)) {
+				ItemStack stack = machine->get_belt_item();
+				F32 t = clamp01(machine->process_time() / machine->max_process_time());
+				if (machine->outputBuf.count > 0) t = 0.0;
+				V2F renderStartPos = DIRECTION2_V2F[input_flag_to_direction(machine->ioDefs[0].ioDirections)] * 0.5F + 0.5F;
+				V2F renderEndPos = DIRECTION2_V2F[output_flag_to_direction(machine->ioDefs[0].ioDirections)] * 0.5F + 0.5F;
+				V2F renderOffset = (renderEndPos + (renderStartPos - renderEndPos) * t) * 16 * tileScale - 8 * tileScale;
+				V2I screenPos = Cyber5eagull::tile_to_screen_px(machine->pos);
+				Graphics::blit_sprite_cutout_blue(*Inventory::itemSprite[stack.item], screenPos.x + I32(renderOffset.x), screenPos.y + I32(renderOffset.y), tileScale, 0);
+			}
+		}
+	}
+	V2I shipScreenPos = Cyber5eagull::tile_to_screen_px(V2U{ 0, World::size.y / 2 - 1 });
+	Graphics::blit_sprite_cutout(Resources::tile.ship, shipScreenPos.x - I32(min(Cyber5eagull::shipOffset, F32(Resources::tile.ship.width)) * tileScale), shipScreenPos.y, tileScale, 0);
+	if (Cyber5eagull::gameOver) {
+		// Hide ship going off edge of map
+		Graphics::box(shipScreenPos.x - Resources::tile.ship.width * tileScale, shipScreenPos.y, Resources::tile.ship.width * tileScale, Resources::tile.ship.height * tileScale, 0, RGBA8{}, RGBA8{ 0, 0, 0, 255 });
+	} else {
+		Graphics::display_num(Cyber5eagull::totalCyberSeagullsOnShip, shipScreenPos.x, shipScreenPos.y + tileScale * 24, tileScale * 16);
+	}
+}
+
+void render_ui(I32 tileScale) {
 	I32 hoveredRecipeOption = -1;
 	if (SelectUI::open) {
 		if (Machine* popupMachine = recipeMenuMachine.get()) {
@@ -1082,48 +1345,10 @@ void render(I32 tileScale) {
 		if (!machine || !machine->sprite) {
 			continue;
 		}
-		V2I screenPos = Cyber5eagull::tile_to_screen_px(machine->pos);
-		if (machine->type == MACHINE_ASSEMBLER) {
-			U32 beltAnimTime = animRawTime / 8 % Resources::tile.belt.downToUp.animFrames;
-			if (machine->sprite == &Resources::tile.assembler.downOff) {
-				Graphics::blit_sprite_cutout(Resources::tile.belt.downToUp, screenPos.x, screenPos.y + 16 * tileScale, tileScale, beltAnimTime);
-				Graphics::blit_sprite_cutout(Resources::tile.belt.upToDown, screenPos.x + 16 * tileScale, screenPos.y + 16 * tileScale, tileScale, beltAnimTime);
-			} else if (machine->sprite == &Resources::tile.assembler.leftOff) {
-				Graphics::blit_sprite_cutout(Resources::tile.belt.leftToRight, screenPos.x, screenPos.y, tileScale, beltAnimTime);
-				Graphics::blit_sprite_cutout(Resources::tile.belt.rightToLeft, screenPos.x, screenPos.y + 16 * tileScale, tileScale, beltAnimTime);
-			} else if (machine->sprite == &Resources::tile.assembler.rightOff) {
-				Graphics::blit_sprite_cutout(Resources::tile.belt.rightToLeft, screenPos.x + 16 * tileScale, screenPos.y, tileScale, beltAnimTime);
-				Graphics::blit_sprite_cutout(Resources::tile.belt.leftToRight, screenPos.x + 16 * tileScale, screenPos.y + 16 * tileScale, tileScale, beltAnimTime);
-			} else if (machine->sprite == &Resources::tile.assembler.upOff) {
-				Graphics::blit_sprite_cutout(Resources::tile.belt.upToDown, screenPos.x + 16 * tileScale, screenPos.y, tileScale, beltAnimTime);
-				Graphics::blit_sprite_cutout(Resources::tile.belt.downToUp, screenPos.x, screenPos.y, tileScale, beltAnimTime);
-			}
-		}
-		if (machine->type == MACHINE_BIG_ASSEMBLER) {
-			U32 beltAnimTime = animRawTime / 8 % Resources::tile.belt.downToUp.animFrames;
-			Graphics::blit_sprite_cutout(Resources::tile.belt.downToUp, screenPos.x, screenPos.y + 16 * tileScale, tileScale, beltAnimTime);
-			Graphics::blit_sprite_cutout(Resources::tile.belt.downToUp, screenPos.x + 16 * tileScale, screenPos.y + 16 * tileScale, tileScale, beltAnimTime);
-			Graphics::blit_sprite_cutout(Resources::tile.belt.downToUp, screenPos.x + 32 * tileScale, screenPos.y + 16 * tileScale, tileScale, beltAnimTime);
-		}
-		//Graphics::blit_sprite_cutout(machine->spriteProcessingAlt && machine->enough_inputs() ? *machine->spriteProcessingAlt : *machine->sprite, screenPos.x, screenPos.y, tileScale, machine->animFrame);
-		Resources::Sprite* renderSprite = machine->spriteProcessingAlt && machine->enough_inputs() ? machine->spriteProcessingAlt : machine->sprite;
-		V2I drawPos = machine_sprite_draw_pos(machine, renderSprite, tileScale);
-		Graphics::blit_sprite_cutout(*renderSprite, drawPos.x, drawPos.y, tileScale, machine->animFrame);
 		render_machine_recipe_badge(machine, tileScale);
 		render_machine_progress_bar(machine, tileScale);
 	}
-	for (Machine* machine : machineTiles) {
-		if (machine && machine->type == MACHINE_BELT && (machine->inventory[0].count > 0 || machine->outputBuf.count > 0)) {
-			ItemStack stack = machine->get_item_stack();
-			F32 t = clamp01(machine->process_time() / machine->max_process_time());
-			if (machine->outputBuf.count > 0) t = 0.0;
-			V2F renderStartPos = DIRECTION2_V2F[input_flag_to_direction(machine->ioDefs[0].ioDirections)] * 0.5F + 0.5F;
-			V2F renderEndPos = DIRECTION2_V2F[output_flag_to_direction(machine->ioDefs[0].ioDirections)] * 0.5F + 0.5F;
-			V2F renderOffset = (renderEndPos + (renderStartPos - renderEndPos) * t) * 16 * tileScale - 8 * tileScale;
-			V2I screenPos = Cyber5eagull::tile_to_screen_px(machine->pos);
-			Graphics::blit_sprite_cutout(*Inventory::itemSprite[stack.item], screenPos.x + I32(renderOffset.x), screenPos.y + I32(renderOffset.y), tileScale, 0);
-		}
-	}
+
 	if (SelectUI::open) {
 		if (Machine* popupMachine = recipeMenuMachine.get()) {
 			if (hoveredRecipeOption >= 0 && popupMachine->recipes && U32(hoveredRecipeOption) < popupMachine->recipes->options.size) {

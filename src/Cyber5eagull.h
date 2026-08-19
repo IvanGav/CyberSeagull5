@@ -25,6 +25,7 @@ static constexpr I32 MAX_WORLD_TILE_SCALE = 200;
 static constexpr F32 CAMERA_EDGE_SCROLL_PIXELS = 20.0F;
 static constexpr F32 CAMERA_SCROLL_SPEED = 500.0F;
 static constexpr F32 SHIFT_SCROLL_PAN_TILES = 2.5F;
+static constexpr F32 MAX_OUT_OF_BOUNDS_VIEW = 250.0F;
 
 F64 lastFrameTime = 0.0;
 F32 dt = 0.0F;
@@ -32,6 +33,13 @@ F32 dt = 0.0F;
 V2F camera{};
 I32 worldTileScale = DEFAULT_WORLD_TILE_SCALE;
 V2U32 hiveTile{};
+U32 activeEditingLayer = 0;
+
+U32 totalCyberSeagullsOnShip = 0;
+const U32 TARGET_CYBERSEAGULL_COUNT = 20;
+F32 shipOffset = 0.0F;
+const F32 SHIP_SPEED = 5.0F;
+B32 gameOver = B32_FALSE;
 
 I32 world_tile_pixels() {
 	return 16 * worldTileScale;
@@ -42,10 +50,10 @@ F32 world_tile_pixels_f32() {
 }
 
 void clamp_camera() {
-	F32 maxCameraX = max(F32(I32(World::size.x) * world_tile_pixels() - Win32::framebufferWidth), 0.0F);
-	F32 maxCameraY = max(F32(I32(World::size.y) * world_tile_pixels() - Win32::framebufferHeight), 0.0F);
-	camera.x = clamp(camera.x, 0.0F, maxCameraX);
-	camera.y = clamp(camera.y, 0.0F, maxCameraY);
+	F32 maxCameraX = max(F32(I32(World::size.x) * world_tile_pixels() - Win32::framebufferWidth) + MAX_OUT_OF_BOUNDS_VIEW, -MAX_OUT_OF_BOUNDS_VIEW);
+	F32 maxCameraY = max(F32(I32(World::size.y) * world_tile_pixels() - Win32::framebufferHeight) + MAX_OUT_OF_BOUNDS_VIEW, -MAX_OUT_OF_BOUNDS_VIEW);
+	camera.x = clamp(camera.x, -MAX_OUT_OF_BOUNDS_VIEW, maxCameraX);
+	camera.y = clamp(camera.y, -MAX_OUT_OF_BOUNDS_VIEW, maxCameraY);
 }
 
 V2F32 screen_to_world(V2F32 screenPosition) {
@@ -100,6 +108,11 @@ void update() {
 	BeeDemo::update(dt);
 	EditorInteraction::update_drag_interactions();
 
+	if (totalCyberSeagullsOnShip >= TARGET_CYBERSEAGULL_COUNT) {
+		gameOver = B32_TRUE;
+		shipOffset += dt * SHIP_SPEED;
+	}
+
 	V2F mouse = Win32::get_mouse();
 	if (!EditorInteraction::cameraDragActive) {
 		if (mouse.x < CAMERA_EDGE_SCROLL_PIXELS) {
@@ -119,13 +132,14 @@ void update() {
 }
 
 U32 tutorialIndex = 0;
+U32 gameWinIndex = 0;
 I32 tutorialScale = 3;
 
 void render() {
 	F64 currentFrameTime = current_time_seconds();
 	memset(Win32::framebuffer, 0, Win32::framebufferWidth * Win32::framebufferHeight * sizeof(RGBA8));
 	World::render(camera, worldTileScale);
-	Factory::render(worldTileScale);
+	Factory::render(worldTileScale, activeEditingLayer);
 	CreativeToolkit::render_world_preview(camera, worldTileScale, currentFrameTime);
 	if (Win32::keyboardState[Win32::KEY_H]) {
 		BeeDemo::render_hive_ranges(camera, worldTileScale);
@@ -134,6 +148,7 @@ void render() {
 	BeeDemo::render_conveyors(camera, worldTileScale, currentFrameTime);
 	BeeDemo::render_hives(camera, worldTileScale);
 	BeeDemo::render_bees(camera, worldTileScale, currentFrameTime);
+	Factory::render_ui(worldTileScale);
 	Inventory::draw_inv();
 	EditorInteraction::render_item_build_menu();
 	CreativeToolkit::render_ui();
@@ -141,6 +156,10 @@ void render() {
 	if (tutorialIndex < ARRAY_COUNT(Resources::tutorial)) {
 		Resources::Texture& tut = Resources::tutorial[tutorialIndex];
 		Graphics::blit_texture_cutout(tut, max(0, (I32(Win32::framebufferWidth) - I32(tut.width) * tutorialScale) / 2), max(0, I32(Win32::framebufferHeight) - I32(tut.height) * tutorialScale), tutorialScale);
+	}
+	if (Cyber5eagull::gameOver && gameWinIndex < 1) {
+		Resources::Texture& win = Resources::winMessage;
+		Graphics::blit_texture_cutout(win, max(0, (I32(Win32::framebufferWidth) - I32(win.width) * tutorialScale) / 2), max(0, I32(Win32::framebufferHeight) - I32(win.height) * tutorialScale), tutorialScale);
 	}
 	lastFrameTime = currentFrameTime;
 }
@@ -153,6 +172,15 @@ void mouse_callback(Win32::MouseButton button, Win32::MouseValue state) {
 		Rng2F32 tutorialBox{ x, y, x + tut.width * tutorialScale, y + tut.height * tutorialScale };
 		if (tutorialBox.contains_point(Win32::get_mouse())) {
 			tutorialIndex++;
+		}
+	}
+	if (Cyber5eagull::gameOver && gameWinIndex < 1 && state.state == Win32::BUTTON_STATE_UP) {
+		Resources::Texture& tut = Resources::tutorial[tutorialIndex];
+		F32 x = F32(max(0, (I32(Win32::framebufferWidth) - I32(tut.width) * tutorialScale) / 2));
+		F32 y = F32(max(0, I32(Win32::framebufferHeight) - I32(tut.height) * tutorialScale));
+		Rng2F32 winBox{ x, y, x + tut.width * tutorialScale, y + tut.height * tutorialScale };
+		if (winBox.contains_point(Win32::get_mouse())) {
+			gameWinIndex++;
 		}
 	}
 	EditorInteraction::mouse_callback(button, state);

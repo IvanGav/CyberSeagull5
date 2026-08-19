@@ -24,7 +24,7 @@ enum ItemType : U8 {
 	ITEM_POLLEN,
 	ITEM_HONEY,
 	ITEM_LEMON_JUICE,
-	ITEM_CONVEYOR,
+	// ITEM_CONVEYOR,
     ITEM_CYBER_GULL,
 	ITEM_Count
 };
@@ -190,7 +190,7 @@ void init() {
   	itemSprite[ITEM_POLLEN] = &Resources::tile.item.pollen;
 	itemSprite[ITEM_HONEY] = &Resources::tile.item.honey;
 	itemSprite[ITEM_LEMON_JUICE] = &Resources::tile.item.lemonJuice;
-	itemSprite[ITEM_CONVEYOR] = &Resources::tile.icon.belt;
+	// itemSprite[ITEM_CONVEYOR] = &Resources::tile.icon.belt;
     itemSprite[ITEM_CYBER_GULL] = &Resources::tile.item.cyberGull;
 
 }
@@ -207,7 +207,7 @@ void draw_inv() {
         I32 rowY = row_y(i);
         I32 rowW = panelW - PANEL_BORDER * 2 - 8;
         I32 rowH = row_height();
-        RGBA8 fill = inv[i] > 0u ? RGBA8{ 96, 114, 146, 255 } : RGBA8{ 66, 70, 78, 255 };
+        RGBA8 fill = inv[i] > 0u ? RGBA8{ 150, 114, 146, 255 } : RGBA8{ 100, 70, 78, 255 };
         RGBA8 border = inv[i] > 0u ? RGBA8{ 28, 28, 28, 255 } : RGBA8{ 44, 44, 44, 255 };
         if (selectedItem == ItemType(i)) {
             fill = RGBA8{ 150, 168, 82, 255 };

@@ -2,6 +2,9 @@
 
 #include "drillengine/DrillLib.h"
 
+namespace Cyber5eagull::BeeDemo {
+V2U nearest_hive_tile_for_tile(V2U tile);
+}
 
 namespace BeeTasks {
 
@@ -12,6 +15,7 @@ enum class TaskType : U8 {
 	TASK_FLOWER,
 	TASK_BUILD,
 	TASK_GENERIC,
+	TASK_CONVEYOR_INSERT
 };
 
 enum class State : U8 {
@@ -24,6 +28,8 @@ enum class State : U8 {
 struct Task {
 	TaskType type = TaskType::TASK_NONE;
 	V2U32 targetTile{};
+	V2U32 workTile;
+	Inventory::ItemType itemToCollect;
 	F32 workDurationSeconds = 0.0F;
 	B32 persistent = B32_FALSE;
 	B32 returnHomeAfterWork = B32_TRUE;
@@ -46,6 +52,7 @@ Task make_shore_task(V2U32 targetTile, F32 workDurationSeconds) {
 	task.type = TaskType::TASK_SHORE;
 	task.targetTile = targetTile;
 	task.workDurationSeconds = workDurationSeconds;
+	task.persistent = B32_TRUE;
 	return task;
 }
 
@@ -74,6 +81,18 @@ Task make_build_task(V2U32 targetTile, F32 workDurationSeconds) {
 	task.type = TaskType::TASK_BUILD;
 	task.targetTile = targetTile;
 	task.workDurationSeconds = workDurationSeconds;
+	return task;
+}
+
+Task make_conveyor_insert_task(V2U32 targetTile, F32 workDurationSeconds, Inventory::ItemType item) {
+	Task task{};
+	task.type = TaskType::TASK_CONVEYOR_INSERT;
+	task.targetTile = targetTile;
+	task.workTile = targetTile;
+	task.workDurationSeconds = workDurationSeconds;
+	task.persistent = B32_TRUE;
+	task.returnHomeAfterWork = B32_FALSE;
+	task.itemToCollect = item;
 	return task;
 }
 

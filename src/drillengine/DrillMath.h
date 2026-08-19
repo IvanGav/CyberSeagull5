@@ -2479,9 +2479,9 @@ enum Rotation2 : I32 {
 V2I apply_rotation(V2I pos, Rotation2 r, V2I bounds = {}) {
 	switch (r) {
 	case ROTATION2_0: break;
-	case ROTATION2_90: pos = V2I{ bounds.y - pos.y, pos.x }; break;
-	case ROTATION2_180: pos = V2I{ bounds.x - pos.x, bounds.y - bounds.y }; break;
-	case ROTATION2_270: pos = V2I{ pos.y, bounds.x - pos.x }; break;
+	case ROTATION2_90: pos = V2I{ bounds.y - pos.y - 1, pos.x }; break;
+	case ROTATION2_180: pos = V2I{ bounds.x - pos.x - 1, bounds.y - pos.y - 1 }; break;
+	case ROTATION2_270: pos = V2I{ pos.y, bounds.x - pos.x - 1 }; break;
 	}
 	return pos;
 }

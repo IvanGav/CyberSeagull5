@@ -68,6 +68,7 @@ struct {
 	Sprite hive;
 	Sprite hiveLarge;
 	Sprite splitter;
+	Sprite junction;
 	Sprite merger;
 	Sprite beeFly;
 	Sprite beeMine;
@@ -86,6 +87,14 @@ struct {
 		Sprite upToLeft;
 		Sprite upToRight;
 	} belt;
+	struct {
+		Sprite inElevator;
+		Sprite inChute;
+		Sprite outLeft;
+		Sprite outDown;
+		Sprite outRight;
+		Sprite outUp;
+	} via;
 	Sprite num[10];
 	struct {
 		Sprite ironOre;
@@ -120,6 +129,11 @@ struct {
 		Sprite assembler;
 		Sprite hive;
 		Sprite furnace;
+		Sprite bigAssembler;
+		Sprite bee;
+		Sprite bigHive;
+		Sprite splitter;
+		Sprite junction;
 	} icon;
 	struct {
 		Sprite full;
@@ -132,18 +146,23 @@ struct {
 	Sprite bigAssembler;
 	Sprite bigAssemblerOn;
 	Sprite furnace;
+	Sprite furnaceOn;
+	Sprite camera;
+	Sprite dockSegment;
+	Sprite ship;
 } tile;
-Texture tutorial[7];
+Texture tutorial[8];
+Texture winMessage;
 
 void load() {
 	scrung = load_texture("scrung.png"a);
 	scrungPart = Sprite{ &scrung, 128, 128, 128, 128, 1 };
-	tileset = load_texture("tileset_v9.png"a);
+	tileset = load_texture("tileset_v11.png"a);
 	tile.undef = Sprite{ &tileset, 0, 0, 16, 16, 1 };
 	tile.grass = Sprite{ &tileset, 16, 0, 16, 16, 1 };
-	tile.grassIron = Sprite{ &tileset, 32, 0, 16, 16, 1 };
-	tile.grassCopper = Sprite{ &tileset, 32, 16, 16, 16, 1 };
-	tile.grassFlowers = Sprite{ &tileset, 32, 32, 16, 16, 1 };
+	tile.grassIron = Sprite{ &tileset, 15 * 16, 32, 16, 16, 4 };	// i marked them as animation frames, but they're resource richness, really
+	tile.grassCopper = Sprite{ &tileset, 15 * 16, 16, 16, 16, 4 };
+	tile.grassFlowers = Sprite{ &tileset, 15 * 16, 0, 16, 16, 4 };
 	tile.sand = Sprite{ &tileset, 0, 16, 16, 16, 1 };
 	tile.beach = Sprite{ &tileset, 16, 16, 16, 16, 1 };
 	tile.water = Sprite{ &tileset, 0, 8 * 16, 16, 16, 2 };
@@ -154,6 +173,7 @@ void load() {
 	tile.hive = Sprite{ &tileset, 16, 32, 16, 16, 1 };
 	tile.hiveLarge = Sprite{ &tileset, 0, 64, 32, 32, 1 };
 	tile.splitter = Sprite{ &tileset, 3 * 16, 6 * 16, 16, 16, 1 };
+	tile.junction = Sprite{ &tileset, 3 * 16, 7 * 16, 16, 16, 1 };
 	tile.merger = Sprite{ &tileset, 32, 64, 16, 16, 1 };
 	tile.beeFly = Sprite{ &tileset, 0, 160, 16, 16, 4 };
 	tile.beeMine = Sprite{ &tileset, 0, 144, 16, 16, 4 };
@@ -170,6 +190,12 @@ void load() {
 	tile.belt.rightToDown = Sprite{ &tileset, 64, 128, 16, 16, 3 };
 	tile.belt.upToLeft = Sprite{ &tileset, 64, 112, 16, 16, 3 };
 	tile.belt.upToRight = Sprite{ &tileset, 64, 144, 16, 16, 3 };
+	tile.via.inElevator = Sprite{ &tileset, 160, 224, 16, 16, 1 };
+	tile.via.inChute = Sprite{ &tileset, 144, 224, 16, 16, 1 };
+	tile.via.outLeft = Sprite{ &tileset, 256, 112, 16, 16, 3 };
+	tile.via.outDown = Sprite{ &tileset, 256, 128, 16, 16, 3 };
+	tile.via.outRight = Sprite{ &tileset, 256, 144, 16, 16, 3 };
+	tile.via.outUp = Sprite{ &tileset, 256, 160, 16, 16, 3 };
 	for (U32 i = 0; i < 10; i++) {
 		tile.num[i] = Sprite{&tileset, 16*i, 12*16, 16, 16, 1};
 	}
@@ -194,6 +220,11 @@ void load() {
 	tile.icon.assembler = Sprite{ &tileset, 1 * 16, 14 * 16, 16, 16, 1 };
 	tile.icon.hive = Sprite{ &tileset, 2 * 16, 14 * 16, 16, 16, 1 };
 	tile.icon.furnace = Sprite{ &tileset, 3 * 16, 14 * 16, 16, 16, 1 };
+	tile.icon.bigAssembler = Sprite{ &tileset, 4 * 16, 14 * 16, 16, 16, 1 };
+	tile.icon.bee = Sprite{ &tileset, 5 * 16, 14 * 16, 16, 16, 1 };
+	tile.icon.bigHive = Sprite{ &tileset, 6 * 16, 14 * 16, 16, 16, 1 };
+	tile.icon.splitter = Sprite{ &tileset, 7 * 16, 14 * 16, 16, 16, 1 };
+	tile.icon.junction = Sprite{ &tileset, 8 * 16, 14 * 16, 16, 16, 1 };
 
 	tile.rock.topLeft = Sprite{ &tileset, 16 * 10, 11 * 16, 16, 16, 1 };
 	tile.rock.top = Sprite{ &tileset, 16 * 11, 11 * 16, 16, 16, 1 };
@@ -213,10 +244,18 @@ void load() {
 
 	tile.bigAssembler = Sprite{ &tileset, 192, 80, 48, 32, 1 };
 	tile.bigAssemblerOn = Sprite{ &tileset, 240, 80, 48, 32, 1 };
-	tile.furnace = Sprite{ &tileset, 14 * 16, 11 * 16, 16, 32, 1 };
+	tile.furnace = Sprite{ &tileset, 17 * 16, 11 * 16, 16, 32, 1 };
+	tile.furnaceOn = Sprite{ &tileset, 18 * 16, 11 * 16, 16, 32, 1 };
+
+	tile.camera = Sprite{ &tileset, 176, 224, 16, 16, 1 };
+
+	tile.dockSegment = Sprite{ &tileset, 240, 224, 16, 48, 1 };
+	tile.ship = Sprite{ &tileset, 256, 208, 48, 64, 1 };
+
 	for (U32 i = 0; i < ARRAY_COUNT(tutorial); i++) {
 		tutorial[i] = load_texture(strafmt(globalArena, "tutorial_%.png"a, i));
 	}
+	winMessage = load_texture("win_message.png"a);
 }
 
 }

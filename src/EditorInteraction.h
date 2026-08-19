@@ -2,6 +2,7 @@
 
 #include "CreativeToolkit.h"
 #include "SelectUI.h"
+#include "Cyber5eagull_decl.h"
 
 namespace Cyber5eagull::EditorInteraction {
 
@@ -32,7 +33,7 @@ inline void fill_rect_blended(I32 x, I32 y, I32 width, I32 height, RGBA8 color) 
 
 namespace Detail {
 inline void apply_creative_brush_dispatch(CreativeBrush brush, V2U32 tile, Rotation2 orientation) {
-	BeeDemoNS::apply_creative_brush(brush, tile, orientation, CreativeToolkit::selectedBrushFreePlacement);
+	BeeDemoNS::apply_creative_brush(brush, tile, Cyber5eagull::activeEditingLayer, orientation, CreativeToolkit::selectedBrushFreePlacement);
 }
 }
 
@@ -60,11 +61,15 @@ struct BuildMenuEntry {
 
 BuildMenuEntry buildMenuEntries[] = {
 	{ BuildMenuEntryType::ENTRY_BRUSH, CreativeBrush::CONVEYOR },
-	{ BuildMenuEntryType::ENTRY_BUY_BEE, CreativeBrush::TASK_SELECT },
+	{ BuildMenuEntryType::ENTRY_BRUSH, CreativeBrush::SPLITTER },
+	{ BuildMenuEntryType::ENTRY_BRUSH, CreativeBrush::VIA_CHUTE },
+	{ BuildMenuEntryType::ENTRY_BRUSH, CreativeBrush::VIA_ELEVATOR },
+	{ BuildMenuEntryType::ENTRY_BRUSH, CreativeBrush::VIA_OUTPUT },
 	{ BuildMenuEntryType::ENTRY_BRUSH, CreativeBrush::ASSEMBLER_SMALL },
 	{ BuildMenuEntryType::ENTRY_BRUSH, CreativeBrush::ASSEMBLER_LARGE },
 	{ BuildMenuEntryType::ENTRY_BRUSH, CreativeBrush::ASSEMBLER_VERY_LARGE },
-	{ BuildMenuEntryType::ENTRY_BRUSH, CreativeBrush::SPLITTER },
+	{ BuildMenuEntryType::ENTRY_BRUSH, CreativeBrush::CAMERA },
+	{ BuildMenuEntryType::ENTRY_BUY_BEE, CreativeBrush::TASK_SELECT },
 	{ BuildMenuEntryType::ENTRY_BRUSH, CreativeBrush::HIVE_SMALL },
 	{ BuildMenuEntryType::ENTRY_BRUSH, CreativeBrush::HIVE_BIG },
 };
@@ -155,6 +160,7 @@ FINLINE I32 build_menu_index_at(V2F32 mousePos) {
 }
 
 FINLINE void close_item_build_menu() {
+	Factory::recipeMenuMachine.machine = nullptr;
 	itemBuildMenuVisible = B32_FALSE;
 }
 
@@ -175,7 +181,7 @@ FINLINE void toggle_item_build_menu() {
 
 FINLINE Resources::Sprite* build_menu_sprite(const BuildMenuEntry& entry) {
 	if (entry.type == BuildMenuEntryType::ENTRY_BUY_BEE) {
-		return &Resources::tile.beeFly;
+		return &Resources::tile.icon.bee;
 	}
 	return CreativeToolkit::brush_icon(entry.brush);
 }
@@ -199,7 +205,7 @@ FINLINE U32 build_menu_badge_count(const BuildMenuEntry& entry) {
 		return BeeDemoNS::total_bee_count();
 	}
 	if (entry.brush == CreativeBrush::CONVEYOR) {
-		return Inventory::count(Inventory::ITEM_CONVEYOR);
+		//return Inventory::count(Inventory::ITEM_CONVEYOR);
 	}
 	return BeeDemoNS::build_available_count(entry.brush);
 }
@@ -359,29 +365,32 @@ Direction2 direction_from_to(V2U32 from, V2U32 to) {
 	return DIRECTION2_INVALID;
 }
 
-void begin_conveyor_drag(V2U32 hoveredTile) {
+void begin_conveyor_drag(V2U32 hoveredTile, U32 depth) {
 	V2U tile{ hoveredTile };
-	if (Factory::has_machine(tile) && !Factory::has_belt(tile)) {
+	if (Factory::has_machine(tile, depth) && !Factory::has_belt(tile, depth)) {
 		conveyorDragActive = B32_FALSE;
 		conveyorDragHasIncoming = B32_FALSE;
 		conveyorLastInputSide = DIRECTION2_INVALID;
 		return;
 	}
-	if (!Factory::has_machine(tile)) {
-		if (!BeeDemoNS::ensure_conveyor_tile(hoveredTile, CreativeToolkit::selectedBrushFreePlacement ? B32_FALSE : B32_TRUE)) {
+	if (Factory::has_machine(tile, depth)) {
+		conveyorLastInputSide = Factory::conveyor_input_dir(Factory::get_machine_from_tile(hoveredTile, depth));
+		conveyorDragHasIncoming = B32_TRUE;
+	} else {
+		if (!BeeDemoNS::ensure_conveyor_tile(hoveredTile, depth, CreativeToolkit::selectedBrushFreePlacement ? B32_FALSE : B32_TRUE)) {
 			conveyorDragActive = B32_FALSE;
 			conveyorDragHasIncoming = B32_FALSE;
 			conveyorLastInputSide = DIRECTION2_INVALID;
 			return;
 		}
+		conveyorLastInputSide = DIRECTION2_INVALID;
+		conveyorDragHasIncoming = B32_FALSE;
 	}
-	conveyorLastInputSide = DIRECTION2_INVALID;
-	conveyorDragHasIncoming = B32_FALSE;
 	conveyorDragActive = B32_TRUE;
 	conveyorLastTile = hoveredTile;
 }
 
-void continue_conveyor_drag(V2U32 hoveredTile) {
+void continue_conveyor_drag(V2U32 hoveredTile, U32 depth) {
 	Direction2 newDirection = direction_from_to(conveyorLastTile, hoveredTile);
 	if (newDirection == DIRECTION2_INVALID) {
 		return;
@@ -394,15 +403,15 @@ void continue_conveyor_drag(V2U32 hoveredTile) {
 	}
 
 	V2U previousTile{ conveyorLastTile.x, conveyorLastTile.y };
-	Factory::set_belt_shape(previousTile, previousInput, newDirection);
+	Factory::set_belt_shape(previousTile, depth, previousInput, newDirection);
 
 	Direction2 nextInput = Factory::opposite_direction(newDirection);
 	Direction2 nextOutput = newDirection;
 
-	if (!BeeDemoNS::ensure_conveyor_tile(hoveredTile, CreativeToolkit::selectedBrushFreePlacement ? B32_FALSE : B32_TRUE)) {
+	if (!BeeDemoNS::ensure_conveyor_tile(hoveredTile, depth, CreativeToolkit::selectedBrushFreePlacement ? B32_FALSE : B32_TRUE)) {
 		return;
 	}
-	if (!Factory::set_belt_shape(nextTile, nextInput, nextOutput)) {
+	if (!Factory::set_belt_shape(nextTile, depth, nextInput, nextOutput)) {
 		return;
 	}
 
@@ -423,11 +432,11 @@ void apply_conveyor_drag() {
 	hasLastDraggedTile = B32_TRUE;
 
 	if (!conveyorDragActive) {
-		begin_conveyor_drag(hoveredTile);
+		begin_conveyor_drag(hoveredTile, Cyber5eagull::activeEditingLayer);
 		return;
 	}
 
-	continue_conveyor_drag(hoveredTile);
+	continue_conveyor_drag(hoveredTile, Cyber5eagull::activeEditingLayer);
 }
 
 void apply_drag_brush(CreativeBrush brush) {
@@ -466,6 +475,7 @@ void update_drag_interactions() {
 	B32 shiftHeld = Win32::keyboardState[Win32::KEY_SHIFT] ? B32_TRUE : B32_FALSE;
 	B32 leftHeld = Win32::mouseButtonState[Win32::MOUSE_BUTTON_LEFT] ? B32_TRUE : B32_FALSE;
 	B32 rightHeld = Win32::mouseButtonState[Win32::MOUSE_BUTTON_RIGHT] ? B32_TRUE : B32_FALSE;
+	B32 middleHeld = Win32::mouseButtonState[Win32::MOUSE_BUTTON_MIDDLE] ? B32_TRUE : B32_FALSE;
 
 	if (!leftHeld) {
 		uiLeftCapture = B32_FALSE;
@@ -480,7 +490,7 @@ void update_drag_interactions() {
 		return;
 	}
 
-	if (shiftHeld && leftHeld && !uiLeftCapture && !CreativeToolkit::tilesheetVisible && !SelectUI::open) {
+	if (((shiftHeld && leftHeld) || middleHeld) && !uiLeftCapture && !CreativeToolkit::tilesheetVisible && !SelectUI::open) {
 		cameraDragActive = B32_TRUE;
 		hasLastDraggedTile = B32_FALSE;
 		conveyorDragActive = B32_FALSE;
@@ -517,10 +527,12 @@ void update_drag_interactions() {
 }
 
 void keyboard_callback(Win32::Key key, Win32::ButtonState state) {
+	if (key == Win32::KEY_CTRL) {
+		Cyber5eagull::activeEditingLayer = state == Win32::BUTTON_STATE_DOWN ? 1 : 0;
+	}
 	if (state != Win32::BUTTON_STATE_DOWN) {
 		return;
 	}
-
 
 	U32 hotkeyIndex = 0;
 	if (itemBuildMenuVisible && build_menu_key_to_index(key, &hotkeyIndex)) {
@@ -529,6 +541,7 @@ void keyboard_callback(Win32::Key key, Win32::ButtonState state) {
 	}
 
 	if (key == Win32::KEY_I || key == Win32::KEY_B) {
+		Factory::recipeMenuMachine.machine = nullptr; // special case; when opening the menu, close the recipe picker
 		toggle_item_build_menu();
 		if (itemBuildMenuVisible) {
 			CreativeToolkit::close_ui();
@@ -541,7 +554,7 @@ void keyboard_callback(Win32::Key key, Win32::ButtonState state) {
 		return;
 	}
 
-	if (key == Win32::KEY_R && Win32::keyboardState[Win32::KEY_CTRL]) {
+	if (key == Win32::KEY_R && Win32::keyboardState[Win32::KEY_CTRL] && Win32::keyboardState[Win32::KEY_SHIFT]) {
 		BeeDemoNS::init(hiveTile);
 		center_camera_on_tile(hiveTile);
 		reset_drag_state();
@@ -564,6 +577,12 @@ void keyboard_callback(Win32::Key key, Win32::ButtonState state) {
 		uiLeftCapture = B32_FALSE;
 		conveyorDragActive = B32_FALSE;
 		return;
+	}
+
+	if (key == Win32::KEY_BACKSLASH) {
+		for (U32& item_count : Inventory::inv) {
+			item_count = 50;
+		}
 	}
 
 	if (key == Win32::KEY_R && !Win32::keyboardState[Win32::KEY_CTRL]) {
@@ -615,7 +634,7 @@ void mouse_callback(Win32::MouseButton button, Win32::MouseValue state) {
 
 		if (!CreativeToolkit::tilesheetVisible && !SelectUI::open && !Win32::keyboardState[Win32::KEY_SHIFT]) {
 			V2U32 tile{};
-			if (mouse_to_tile(&tile) && BeeDemoNS::queue_conveyor_pickup(tile, 1u)) {
+			if (mouse_to_tile(&tile) && BeeDemoNS::queue_conveyor_pickup(tile, 1)) {
 				suppressRightDragUntilRelease = B32_TRUE;
 				hasLastDraggedTile = B32_FALSE;
 				conveyorDragActive = B32_FALSE;
@@ -623,14 +642,18 @@ void mouse_callback(Win32::MouseButton button, Win32::MouseValue state) {
 			}
 		}
 
-		if (!CreativeToolkit::tilesheetVisible && Win32::keyboardState[Win32::KEY_SHIFT]) {
+		if (!CreativeToolkit::tilesheetVisible) {
 			V2U32 tile{};
 			if (mouse_to_tile(&tile)) {
-				Factory::Machine* machine = Factory::get_machine_from_tile(V2U{ tile.x, tile.y });
-				if (Factory::machine_supports_recipe_menu(machine)) {
+				Factory::Machine* machine = Factory::get_machine_from_tile(V2U{ tile.x, tile.y }, 0);
+				if (Cyber5eagull::activeEditingLayer == 0 && Factory::machine_supports_recipe_menu(machine)) {
+					Factory::Machine* lastSelectedMachine = Factory::recipeMenuMachine.machine;
 					close_item_build_menu();
 					CreativeToolkit::close_ui();
 					Inventory::clear_selected_item();
+					if (lastSelectedMachine == machine) {
+						return; // don't reopen if just closed
+					}
 					Factory::open_recipe_menu_for_machine(machine);
 					suppressRightDragUntilRelease = B32_TRUE;
 					uiLeftCapture = B32_TRUE;
@@ -661,6 +684,9 @@ void mouse_callback(Win32::MouseButton button, Win32::MouseValue state) {
 			uiLeftCapture = SelectUI::click_callback(mouse);
 			if (uiLeftCapture) {
 				return;
+			} else if (Factory::recipeMenuMachine.machine != nullptr) {
+				// if left clicked outside of the recipe selection ui, close the menu
+				close_item_build_menu();
 			}
 		}
 		if (Inventory::has_selected_item()) {
