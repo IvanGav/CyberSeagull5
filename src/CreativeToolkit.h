@@ -28,8 +28,7 @@ namespace Cyber5eagull::CreativeToolkit {
 using BeeDemo::CreativeBrush;
 
 ArenaArrayList<Resources::Sprite*> selections;
-static constexpr U32 BRUSH_COUNT = 18u;
-CreativeBrush brushOrder[BRUSH_COUNT] = {
+CreativeBrush brushOrder[]{
 	CreativeBrush::TASK_SELECT,
 	CreativeBrush::ERASE,
 	CreativeBrush::GRASS,
@@ -46,6 +45,10 @@ CreativeBrush brushOrder[BRUSH_COUNT] = {
 	CreativeBrush::ASSEMBLER_VERY_LARGE,
 	CreativeBrush::SPLITTER,
 	CreativeBrush::JUNCTION,
+	CreativeBrush::VIA_CHUTE,
+	CreativeBrush::VIA_ELEVATOR,
+	CreativeBrush::VIA_OUTPUT,
+	CreativeBrush::CAMERA,
 	CreativeBrush::HIVE_SMALL,
 	CreativeBrush::HIVE_BIG,
 };
@@ -78,6 +81,7 @@ FINLINE B32 brush_uses_rotation(CreativeBrush brush) {
 	switch (brush) {
 	case CreativeBrush::ASSEMBLER_SMALL:
 	case CreativeBrush::ASSEMBLER_LARGE:
+	case CreativeBrush::VIA_OUTPUT:
 		return B32_TRUE;
 	default:
 		return B32_FALSE;
@@ -88,7 +92,7 @@ FINLINE void set_selected_brush(CreativeBrush brush, B32 freePlacement = B32_FAL
 	selectedBrush = brush;
 	selectedBrushFreePlacement = freePlacement;
 	selectedRotation = ROTATION2_0;
-	for (U32 i = 0; i < BRUSH_COUNT; i++) {
+	for (U32 i = 0; i < ARRAY_COUNT(brushOrder); i++) {
 		if (brushOrder[i] == brush) {
 			selectedItem = I32(i);
 			break;
@@ -125,7 +129,7 @@ FINLINE I32 items_per_row() {
 
 FINLINE I32 row_count() {
 	I32 perRow = items_per_row();
-	return I32(BRUSH_COUNT / U32(perRow)) + ((BRUSH_COUNT % U32(perRow)) > 0 ? 1 : 0);
+	return I32(ARRAY_COUNT(brushOrder) / U32(perRow)) + ((ARRAY_COUNT(brushOrder) % U32(perRow)) > 0 ? 1 : 0);
 }
 
 FINLINE void close_ui() {
@@ -175,6 +179,19 @@ FINLINE Resources::Sprite* preview_sprite(CreativeBrush brush, Rotation2 orienta
 		return &Resources::tile.splitter;
 	case CreativeBrush::JUNCTION:
 		return &Resources::tile.junction;
+	case CreativeBrush::VIA_CHUTE:
+		return &Resources::tile.via.inChute;
+	case CreativeBrush::VIA_ELEVATOR:
+		return &Resources::tile.via.inElevator;
+	case CreativeBrush::VIA_OUTPUT:
+		switch (orientation) {
+		case ROTATION2_90: return &Resources::tile.via.outLeft;
+		case ROTATION2_180: return &Resources::tile.via.outUp;
+		case ROTATION2_270: return &Resources::tile.via.outRight;
+		default: return &Resources::tile.via.outDown;
+		}
+	case CreativeBrush::CAMERA:
+		return &Resources::tile.camera;
 	case CreativeBrush::HIVE_SMALL:
 		return &Resources::tile.hive;
 	case CreativeBrush::HIVE_BIG:
@@ -200,7 +217,7 @@ FINLINE V2U preview_footprint_tiles(CreativeBrush brush) {
 
 FINLINE void init_ui() {
 	selections.clear();
-	for (U32 i = 0; i < BRUSH_COUNT; i++) {
+	for (U32 i = 0; i < ARRAY_COUNT(brushOrder); i++) {
 		selections.push_back(brush_icon(brushOrder[i]));
 	}
 	selectedItem = 0;
@@ -240,7 +257,7 @@ void render_ui() {
 	I32 beginY = panelY + borderSize;
 
 	Graphics::box(panelX, panelY, panelW, panelH, borderSize, borderColor, fillColor);
-	for (U32 i = 0; i < BRUSH_COUNT; i++) {
+	for (U32 i = 0; i < ARRAY_COUNT(brushOrder); i++) {
 		Resources::Sprite* sprite = selections[i];
 		if (!sprite) continue;
 		I32 x = beginX + I32(i % U32(perRow)) * itemScreenSize;
@@ -283,7 +300,7 @@ B32 handle_ui_click(V2F32 mousePos) {
 	mouse.x /= itemScreenSize;
 	mouse.y /= itemScreenSize;
 	I32 index = mouse.x + mouse.y * perRow;
-	if (index < 0 || U32(index) >= BRUSH_COUNT) {
+	if (index < 0 || U32(index) >= ARRAY_COUNT(brushOrder)) {
 		return B32_TRUE;
 	}
 
@@ -386,8 +403,7 @@ void render_world_preview(V2F32 currentCamera, I32 currentWorldTileScale, F64 cu
 	if (selectedBrush == CreativeBrush::ERASE) {
 		fillTint = RGBA8{ 220, 80, 80, 48 };
 		borderTint = RGBA8{ 255, 120, 120, 220 };
-	}
-	else if (brush_uses_rotation(selectedBrush)) {
+	} else if (brush_uses_rotation(selectedBrush)) {
 		fillTint = RGBA8{ 120, 180, 255, 40 };
 		borderTint = RGBA8{ 160, 220, 255, 220 };
 	}

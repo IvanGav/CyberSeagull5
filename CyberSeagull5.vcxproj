@@ -163,6 +163,7 @@
     <ClInclude Include="src\BeeTasks.h" />
     <ClInclude Include="src\CreativeToolkit.h" />
     <ClInclude Include="src\Cyber5eagull.h" />
+    <ClInclude Include="src\Cyber5eagull_decl.h" />
     <ClInclude Include="src\drillengine\DrillLib.h" />
     <ClInclude Include="src\drillengine\DrillLibDefs.h" />
     <ClInclude Include="src\drillengine\DrillMath.h" />
