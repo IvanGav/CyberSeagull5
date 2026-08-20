@@ -200,7 +200,6 @@ void draw_inv() {
     I32 panelY = I32(y_off);
     I32 panelW = panel_width();
     I32 panelH = panel_height();
-    Graphics::box(panelX, panelY, panelW, panelH, PANEL_BORDER, RGBA8{ 24, 24, 24, 255 }, RGBA8{ 70, 78, 98, 255 });
 
     for (U32 i = 0; i < inv.size; i++) {
         I32 rowX = panelX + PANEL_BORDER + 4;
@@ -213,12 +212,16 @@ void draw_inv() {
             fill = RGBA8{ 150, 168, 82, 255 };
             border = RGBA8{ 235, 235, 96, 255 };
         }
-        Graphics::box(rowX, rowY, rowW, rowH, 2, border, fill);
+
+		U32 digit_size = Graphics::num_digits(inv[i]);
+
+        Graphics::box(rowX - 5, rowY - 5, rowW + (digit_size * item_font_size ) + 10 , rowH + 10, PANEL_BORDER, RGBA8{ 24, 24, 24, 255 }, RGBA8{ 70, 78, 98, 255 });
+        Graphics::box(rowX, rowY, rowW + (digit_size * item_font_size), rowH, 2, border, fill); 
 
         I32 iconX = rowX + 4;
         I32 iconY = rowY + 4;
         Graphics::blit_sprite_cutout(*itemSprite[i], iconX, iconY, item_font_size / 16, 0);
-        Graphics::display_num(inv[i], iconX + I32(item_font_size) + 15, rowY + 4, item_font_size);
+        Graphics::display_num(inv[i], iconX + I32(item_font_size) + 6, rowY + 4, item_font_size);
     }
 }
 
