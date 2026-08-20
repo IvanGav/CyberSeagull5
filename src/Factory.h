@@ -34,7 +34,7 @@ enum MachineType : U32 {
 	MACHINE_Count
 };
 
-const U32 CAMERA_SEE_WIDTH = 3;
+const U32 CAMERA_SEE_WIDTH = 5;
 const U32 CAMERA_SEE_DEPTH = 4;
 
 const U32 MAX_IO_DEFS = 8;
@@ -817,12 +817,12 @@ B32 set_belt_shape(V2U pos, U32 depth, Direction2 src, Direction2 dst) {
 	return try_place_machine(pos, depth, def).get() ? B32_TRUE : B32_FALSE;
 }
 
-B32 place_belt(V2U pos, U32 depth) {
+B32 place_belt(V2U pos, U32 depth, Rotation2 orientation) {
 	Machine* existing = get_machine_from_tile(pos, depth);
 	if (existing) {
 		return machine_is_belt(existing);
 	}
-	return set_belt_shape(pos, depth, DIRECTION2_LEFT, DIRECTION2_RIGHT);
+	return set_belt_shape(pos, depth, DIRECTION2_OPPOSITE[ROTATION2_TO_DIRECTION2[orientation]], ROTATION2_TO_DIRECTION2[orientation]);
 }
 
 Direction2 conveyor_input_dir(Machine* belt) {
@@ -838,7 +838,7 @@ Direction2 conveyor_input_dir(Machine* belt) {
 
 B32 place_machine_type(V2U pos, U32 depth, MachineType type, Rotation2 orientation) {
 	if (type == MACHINE_BELT) {
-		return place_belt(pos, depth);
+		return place_belt(pos, depth, orientation);
 	}
 	MachineDef def = get_static_machine(type, orientation);
 	if (!def.sprite) {

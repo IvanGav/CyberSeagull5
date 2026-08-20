@@ -151,7 +151,8 @@ struct {
 	Sprite dockSegment;
 	Sprite ship;
 } tile;
-Texture tutorial[8];
+Texture tutorial[9];
+Texture controlsOverlay;
 Texture winMessage;
 
 void load() {
@@ -255,6 +256,7 @@ void load() {
 	for (U32 i = 0; i < ARRAY_COUNT(tutorial); i++) {
 		tutorial[i] = load_texture(strafmt(globalArena, "tutorial_%.png"a, i));
 	}
+	controlsOverlay = load_texture("controls.png"a);
 	winMessage = load_texture("win_message.png"a);
 }
 

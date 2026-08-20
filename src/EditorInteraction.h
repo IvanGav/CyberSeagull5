@@ -43,7 +43,6 @@ B32 hasLastDraggedTile = B32_FALSE;
 V2U32 lastDraggedTile{};
 
 B32 conveyorDragActive = B32_FALSE;
-B32 conveyorDragHasIncoming = B32_FALSE;
 V2U32 conveyorLastTile{};
 Direction2 conveyorLastInputSide = DIRECTION2_INVALID;
 B32 itemBuildMenuVisible = B32_FALSE;
@@ -92,7 +91,6 @@ void reset_drag_state() {
 	uiLeftCapture = B32_FALSE;
 	hasLastDraggedTile = B32_FALSE;
 	conveyorDragActive = B32_FALSE;
-	conveyorDragHasIncoming = B32_FALSE;
 	conveyorLastInputSide = DIRECTION2_INVALID;
 	suppressRightDragUntilRelease = B32_FALSE;
 }
@@ -369,22 +367,18 @@ void begin_conveyor_drag(V2U32 hoveredTile, U32 depth) {
 	V2U tile{ hoveredTile };
 	if (Factory::has_machine(tile, depth) && !Factory::has_belt(tile, depth)) {
 		conveyorDragActive = B32_FALSE;
-		conveyorDragHasIncoming = B32_FALSE;
 		conveyorLastInputSide = DIRECTION2_INVALID;
 		return;
 	}
 	if (Factory::has_machine(tile, depth)) {
 		conveyorLastInputSide = Factory::conveyor_input_dir(Factory::get_machine_from_tile(hoveredTile, depth));
-		conveyorDragHasIncoming = B32_TRUE;
 	} else {
-		if (!BeeDemoNS::ensure_conveyor_tile(hoveredTile, depth, CreativeToolkit::selectedBrushFreePlacement ? B32_FALSE : B32_TRUE)) {
+		if (!BeeDemoNS::ensure_conveyor_tile(hoveredTile, depth, CreativeToolkit::selectedRotation, CreativeToolkit::selectedBrushFreePlacement ? B32_FALSE : B32_TRUE)) {
 			conveyorDragActive = B32_FALSE;
-			conveyorDragHasIncoming = B32_FALSE;
 			conveyorLastInputSide = DIRECTION2_INVALID;
 			return;
 		}
-		conveyorLastInputSide = DIRECTION2_INVALID;
-		conveyorDragHasIncoming = B32_FALSE;
+		conveyorLastInputSide = DIRECTION2_OPPOSITE[ROTATION2_TO_DIRECTION2[CreativeToolkit::selectedRotation]];
 	}
 	conveyorDragActive = B32_TRUE;
 	conveyorLastTile = hoveredTile;
@@ -397,7 +391,7 @@ void continue_conveyor_drag(V2U32 hoveredTile, U32 depth) {
 	}
 
 	V2U nextTile{ hoveredTile.x, hoveredTile.y };
-	Direction2 previousInput = conveyorDragHasIncoming ? conveyorLastInputSide : Factory::opposite_direction(newDirection);
+	Direction2 previousInput = conveyorLastInputSide;
 	if (previousInput == newDirection) {
 		return;
 	}
@@ -408,7 +402,7 @@ void continue_conveyor_drag(V2U32 hoveredTile, U32 depth) {
 	Direction2 nextInput = Factory::opposite_direction(newDirection);
 	Direction2 nextOutput = newDirection;
 
-	if (!BeeDemoNS::ensure_conveyor_tile(hoveredTile, depth, CreativeToolkit::selectedBrushFreePlacement ? B32_FALSE : B32_TRUE)) {
+	if (!BeeDemoNS::ensure_conveyor_tile(hoveredTile, depth, CreativeToolkit::selectedRotation, CreativeToolkit::selectedBrushFreePlacement ? B32_FALSE : B32_TRUE)) {
 		return;
 	}
 	if (!Factory::set_belt_shape(nextTile, depth, nextInput, nextOutput)) {
@@ -417,7 +411,6 @@ void continue_conveyor_drag(V2U32 hoveredTile, U32 depth) {
 
 	conveyorLastTile = hoveredTile;
 	conveyorLastInputSide = nextInput;
-	conveyorDragHasIncoming = conveyorLastInputSide != DIRECTION2_INVALID ? B32_TRUE : B32_FALSE;
 }
 
 void apply_conveyor_drag() {

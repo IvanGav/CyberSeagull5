@@ -79,6 +79,7 @@ FINLINE Resources::Sprite* brush_icon(CreativeBrush brush) {
 
 FINLINE B32 brush_uses_rotation(CreativeBrush brush) {
 	switch (brush) {
+	case CreativeBrush::CONVEYOR:
 	case CreativeBrush::ASSEMBLER_SMALL:
 	case CreativeBrush::ASSEMBLER_LARGE:
 	case CreativeBrush::VIA_OUTPUT:
@@ -161,10 +162,10 @@ FINLINE Resources::Sprite* preview_sprite(CreativeBrush brush, Rotation2 orienta
 		return nullptr;
 	case CreativeBrush::CONVEYOR:
 		switch (orientation) {
-		case ROTATION2_90: return &Resources::tile.belt.downToUp;
-		case ROTATION2_180: return &Resources::tile.belt.rightToLeft;
-		case ROTATION2_270: return &Resources::tile.belt.upToDown;
-		default: return &Resources::tile.belt.leftToRight;
+		case ROTATION2_90: return &Resources::tile.belt.leftToRight;
+		case ROTATION2_180: return &Resources::tile.belt.upToDown;
+		case ROTATION2_270: return &Resources::tile.belt.rightToLeft;
+		default: return &Resources::tile.belt.downToUp;
 		}
 	case CreativeBrush::ASSEMBLER_SMALL:
 		switch (orientation) {
