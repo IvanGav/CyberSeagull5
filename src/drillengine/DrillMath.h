@@ -2476,6 +2476,8 @@ enum Rotation2 : I32 {
 	ROTATION2_270,
 };
 
+Direction2 ROTATION2_TO_DIRECTION2[]{ DIRECTION2_FRONT, DIRECTION2_RIGHT, DIRECTION2_BACK, DIRECTION2_LEFT };
+
 V2I apply_rotation(V2I pos, Rotation2 r, V2I bounds = {}) {
 	switch (r) {
 	case ROTATION2_0: break;

@@ -569,8 +569,8 @@ void remove_conveyor_tile(V2U32 tile, U32 depth) {
 	}
 }
 
-void add_conveyor_tile(V2U32 tile, U32 depth) {
-	Factory::place_belt(V2U{ tile.x, tile.y }, depth);
+void add_conveyor_tile(V2U32 tile, U32 depth, Rotation2 orientation) {
+	Factory::place_belt(V2U{ tile.x, tile.y }, depth, orientation);
 }
 void remove_machine_tile(V2U32 tile, U32 depth) {
 	Factory::Machine* machine = Factory::get_machine_from_tile(V2U{ tile.x, tile.y }, depth);
@@ -1559,7 +1559,7 @@ U32 get_richness_animation_frame(U32 x, U32 y) {
 }
 
 B32 can_place_machine_at_depth(Factory::MachineType type, U32 depth) {
-	return depth == 0 ? B32_TRUE : type == Factory::MACHINE_BELT || type == Factory::MACHINE_VIA_CHUTE || type == Factory::MACHINE_VIA_ELEVATOR || type == Factory::MACHINE_VIA_OUTPUT;
+	return depth == 0 ? B32_TRUE : type == Factory::MACHINE_BELT || type == Factory::MACHINE_VIA_CHUTE || type == Factory::MACHINE_VIA_ELEVATOR || type == Factory::MACHINE_VIA_OUTPUT || type == Factory::MACHINE_SPLITTER;
 }
 
 B32 place_structure(V2U32 topLeft, U32 depth, Factory::MachineType type, Rotation2 orientation, B32 refundable = B32_TRUE) {
@@ -1595,7 +1595,7 @@ B32 place_structure(V2U32 topLeft, U32 depth, Factory::MachineType type, Rotatio
 	return B32_TRUE;
 }
 
-B32 ensure_conveyor_tile(V2U32 tile, U32 depth, B32 refundable = B32_TRUE) {
+B32 ensure_conveyor_tile(V2U32 tile, U32 depth, Rotation2 orientation, B32 refundable = B32_TRUE) {
 	if (!tile_in_bounds(tile)) {
 		return B32_FALSE;
 	}
@@ -1622,7 +1622,7 @@ B32 ensure_conveyor_tile(V2U32 tile, U32 depth, B32 refundable = B32_TRUE) {
 
 	unqueue_tile_task(tile);
 	remove_hive_covering_tile(tile); // will only reach here if allowed to remove hives
-	if (Factory::place_belt(V2U{ tile.x, tile.y }, depth)) {
+	if (Factory::place_belt(V2U{ tile.x, tile.y }, depth, orientation)) {
 		set_machine_refundable(Factory::get_machine_from_tile(V2U{ tile.x, tile.y }, depth), refundable);
 		return B32_TRUE;
 	}
@@ -1685,7 +1685,7 @@ void apply_creative_brush(CreativeBrush brush, V2U32 tile, U32 depth, Rotation2 
 	} break;
 
 	case CreativeBrush::CONVEYOR: {
-		ensure_conveyor_tile(tile, freePlacement ? B32_FALSE : B32_TRUE);
+		ensure_conveyor_tile(tile, 0, orientation, freePlacement ? B32_FALSE : B32_TRUE);
 	} break;
 
 	case CreativeBrush::ASSEMBLER_SMALL: {

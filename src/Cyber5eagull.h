@@ -161,6 +161,10 @@ void render() {
 		Resources::Texture& win = Resources::winMessage;
 		Graphics::blit_texture_cutout(win, max(0, (I32(Win32::framebufferWidth) - I32(win.width) * tutorialScale) / 2), max(0, I32(Win32::framebufferHeight) - I32(win.height) * tutorialScale), tutorialScale);
 	}
+	if (Win32::keyboardState[Win32::KEY_C]) {
+		Resources::Texture& ctrls = Resources::controlsOverlay;
+		Graphics::blit_texture_cutout(ctrls, max(0, (I32(Win32::framebufferWidth) - I32(ctrls.width) * tutorialScale) / 2), 0, tutorialScale);
+	}
 	lastFrameTime = currentFrameTime;
 }
 
