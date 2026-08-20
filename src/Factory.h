@@ -460,17 +460,18 @@ MachineDef get_big_assembler(Rotation2 orientation) {
 	result.type = MACHINE_BIG_ASSEMBLER;
 	result.size = V2U{ 3, 2 };
 	switch (orientation) {
-	case ROTATION2_0: result.sprite = &Resources::tile.bigAssembler; result.spriteProcessingAlt = &Resources::tile.bigAssemblerOn; break;
-	//case ROTATION2_90: result.sprite = &Resources::tile.assembler.leftOff; result.spriteProcessingAlt = &Resources::tile.assembler.leftOn; break;
-	//case ROTATION2_180: result.sprite = &Resources::tile.assembler.upOff; result.spriteProcessingAlt = &Resources::tile.assembler.upOn; break;
-	//case ROTATION2_270: result.sprite = &Resources::tile.assembler.rightOff; result.spriteProcessingAlt = &Resources::tile.assembler.rightOn; break;
-	defualt: __debugbreak();
+	case ROTATION2_0: result.sprite = &Resources::tile.bigAssembler.downOff; result.spriteProcessingAlt = &Resources::tile.bigAssembler.downOn; break;
+	case ROTATION2_90: result.sprite = &Resources::tile.bigAssembler.leftOff; result.spriteProcessingAlt = &Resources::tile.bigAssembler.leftOn; break;
+	case ROTATION2_180: result.sprite = &Resources::tile.bigAssembler.upOff; result.spriteProcessingAlt = &Resources::tile.bigAssembler.upOn; break;
+	case ROTATION2_270: result.sprite = &Resources::tile.bigAssembler.rightOff; result.spriteProcessingAlt = &Resources::tile.bigAssembler.rightOn; break;
+	default: __debugbreak();
 	}
 	result.inventoryStackSize = 10;
 	result.ioDefs[0] = rotate_iodef(IODef{ V2I{ 0, 1 }, World::MACHINE_INPUT_DOWN }, result.size, orientation);
 	result.ioDefs[1] = rotate_iodef(IODef{ V2I{ 1, 1 }, World::MACHINE_INPUT_DOWN }, result.size, orientation);
 	result.ioDefs[2] = rotate_iodef(IODef{ V2I{ 2, 1 }, World::MACHINE_INPUT_DOWN }, result.size, orientation);
 	result.ioDefs[3] = rotate_iodef(IODef{ V2I{ 1, 0 }, World::MACHINE_OUTPUT_UP }, result.size, orientation);
+	result.size = rotate_bounds(result.size, orientation);
 	result.recipes = &Recipe::recipeGroups.bigAssembler;
 	return result;
 }
@@ -1256,11 +1257,6 @@ void render(I32 tileScale, I32 depthOverlayLayer) {
 				Graphics::blit_sprite_cutout(Resources::tile.belt.upToDown, screenPos.x + 16 * tileScale, screenPos.y, tileScale, beltAnimTime);
 				Graphics::blit_sprite_cutout(Resources::tile.belt.downToUp, screenPos.x, screenPos.y, tileScale, beltAnimTime);
 			}
-		} else if (machine->type == MACHINE_BIG_ASSEMBLER) {
-			U32 beltAnimTime = animRawTime / 8 % Resources::tile.belt.downToUp.animFrames;
-			Graphics::blit_sprite_cutout(Resources::tile.belt.downToUp, screenPos.x, screenPos.y + 16 * tileScale, tileScale, beltAnimTime);
-			Graphics::blit_sprite_cutout(Resources::tile.belt.downToUp, screenPos.x + 16 * tileScale, screenPos.y + 16 * tileScale, tileScale, beltAnimTime);
-			Graphics::blit_sprite_cutout(Resources::tile.belt.downToUp, screenPos.x + 32 * tileScale, screenPos.y + 16 * tileScale, tileScale, beltAnimTime);
 		} else if (machine->type == MACHINE_SMELTER) {
 			U32 beltAnimTime = animRawTime / 8 % Resources::tile.belt.downToUp.animFrames;
 			if (machine->ioDefs[0].ioDirections & World::MACHINE_INPUT_DOWN) {

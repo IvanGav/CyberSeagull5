@@ -2488,12 +2488,12 @@ V2I apply_rotation(V2I pos, Rotation2 r, V2I bounds = {}) {
 	return pos;
 }
 
-V2I rotate_bounds(V2I bounds, Rotation2 r) {
+V2U rotate_bounds(V2U bounds, Rotation2 r) {
 	switch (r) {
 	case ROTATION2_0: break;
-	case ROTATION2_90: bounds = V2I{ bounds.y, bounds.x }; break;
+	case ROTATION2_90: bounds = V2U{ bounds.y, bounds.x }; break;
 	case ROTATION2_180: break;
-	case ROTATION2_270: bounds = V2I{ bounds.y, bounds.x }; break;
+	case ROTATION2_270: bounds = V2U{ bounds.y, bounds.x }; break;
 	}
 	return bounds;
 }
