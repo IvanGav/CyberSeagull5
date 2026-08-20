@@ -82,6 +82,7 @@ FINLINE B32 brush_uses_rotation(CreativeBrush brush) {
 	case CreativeBrush::CONVEYOR:
 	case CreativeBrush::ASSEMBLER_SMALL:
 	case CreativeBrush::ASSEMBLER_LARGE:
+	case CreativeBrush::ASSEMBLER_VERY_LARGE:
 	case CreativeBrush::VIA_OUTPUT:
 		return B32_TRUE;
 	default:
@@ -179,7 +180,12 @@ FINLINE Resources::Sprite* preview_sprite(CreativeBrush brush, Rotation2 orienta
 		default: return &Resources::tile.assembler.downOff;
 		}
 	case CreativeBrush::ASSEMBLER_VERY_LARGE:
-		return &Resources::tile.bigAssembler;
+		switch (orientation) {
+		case ROTATION2_90: return &Resources::tile.bigAssembler.leftOff;
+		case ROTATION2_180: return &Resources::tile.bigAssembler.upOff;
+		case ROTATION2_270: return &Resources::tile.bigAssembler.rightOff;
+		default: return &Resources::tile.bigAssembler.downOff;
+		}
 	case CreativeBrush::SPLITTER:
 		return &Resources::tile.splitter;
 	case CreativeBrush::JUNCTION:
@@ -206,7 +212,7 @@ FINLINE Resources::Sprite* preview_sprite(CreativeBrush brush, Rotation2 orienta
 	}
 }
 
-FINLINE V2U preview_footprint_tiles(CreativeBrush brush) {
+FINLINE V2U preview_footprint_tiles(CreativeBrush brush, Rotation2 orientation) {
 	switch (brush) {
 	case CreativeBrush::ASSEMBLER_SMALL:
 		return V2U{ 1, 1 };
@@ -214,7 +220,7 @@ FINLINE V2U preview_footprint_tiles(CreativeBrush brush) {
 	case CreativeBrush::HIVE_BIG:
 		return V2U{ 2, 2 };
 	case CreativeBrush::ASSEMBLER_VERY_LARGE:
-		return V2U{ 3,2 };
+		return rotate_bounds(V2U{ 3, 2 }, orientation);
 	default:
 		return V2U{ 1, 1 };
 	}
@@ -395,7 +401,7 @@ void render_world_preview(V2F32 currentCamera, I32 currentWorldTileScale, F64 cu
 		return;
 	}
 
-	V2U footprint = preview_footprint_tiles(selectedBrush);
+	V2U footprint = preview_footprint_tiles(selectedBrush, selectedRotation);
 	I32 tilePixels = 16 * currentWorldTileScale;
 	V2F32 screenTopLeftF = TileSpace::tile_to_world(hoveredTile) * F32(tilePixels) - currentCamera;
 	I32 screenX = I32(roundf32(screenTopLeftF.x));

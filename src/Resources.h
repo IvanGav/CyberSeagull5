@@ -143,8 +143,16 @@ struct {
 		Sprite topLeft;
 		Sprite topRight;
 	} rock;
-	Sprite bigAssembler;
-	Sprite bigAssemblerOn;
+	struct {
+		Sprite downOff;
+		Sprite downOn;
+		Sprite upOff;
+		Sprite upOn;
+		Sprite leftOff;
+		Sprite leftOn;
+		Sprite rightOff;
+		Sprite rightOn;
+	} bigAssembler;
 	Sprite furnace;
 	Sprite furnaceOn;
 	Sprite camera;
@@ -158,7 +166,7 @@ Texture winMessage;
 void load() {
 	scrung = load_texture("scrung.png"a);
 	scrungPart = Sprite{ &scrung, 128, 128, 128, 128, 1 };
-	tileset = load_texture("tileset_v11.png"a);
+	tileset = load_texture("tileset_v12.png"a);
 	tile.undef = Sprite{ &tileset, 0, 0, 16, 16, 1 };
 	tile.grass = Sprite{ &tileset, 16, 0, 16, 16, 1 };
 	tile.grassIron = Sprite{ &tileset, 15 * 16, 32, 16, 16, 4 };	// i marked them as animation frames, but they're resource richness, really
@@ -243,8 +251,14 @@ void load() {
 	tile.assembler.rightOff = Sprite{ &tileset, 192, 144, 32, 32, 1 };
 	tile.assembler.rightOn = Sprite{ &tileset, 224, 144, 32, 32, 1 };
 
-	tile.bigAssembler = Sprite{ &tileset, 192, 80, 48, 32, 1 };
-	tile.bigAssemblerOn = Sprite{ &tileset, 240, 80, 48, 32, 1 };
+	tile.bigAssembler.downOff = Sprite{ &tileset, 0, 240, 48, 32, 3 };
+	tile.bigAssembler.downOn = Sprite{ &tileset, 0, 272, 48, 32, 3 };
+	tile.bigAssembler.upOff = Sprite{ &tileset, 0, 304, 48, 32, 3 };
+	tile.bigAssembler.upOn = Sprite{ &tileset, 0, 336, 48, 32, 3 };
+	tile.bigAssembler.leftOff = Sprite{ &tileset, 144, 240, 32, 48, 3 };
+	tile.bigAssembler.leftOn = Sprite{ &tileset, 144, 288, 32, 48, 3 };
+	tile.bigAssembler.rightOff = Sprite{ &tileset, 144, 336, 32, 48, 3 };
+	tile.bigAssembler.rightOn = Sprite{ &tileset, 144, 384, 32, 48, 3 };
 	tile.furnace = Sprite{ &tileset, 17 * 16, 11 * 16, 16, 32, 1 };
 	tile.furnaceOn = Sprite{ &tileset, 18 * 16, 11 * 16, 16, 32, 1 };
 
