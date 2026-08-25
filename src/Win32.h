@@ -427,7 +427,7 @@ bool init(U32 width, U32 height, void (*keyboardCallbackIn)(Key, ButtonState), v
 	mouseCallback = mouseCallbackIn;
 	bool success = true;
 	instance = GetModuleHandleA(nullptr);
-	HANDLE icon = LoadImageA(instance, "./resources/textures/cyber_seaquell.ico", IMAGE_ICON, 0, 0, LR_DEFAULTSIZE | LR_LOADFROMFILE);
+	HANDLE icon = LoadImageA(instance, "./resources/textures/icon.ico", IMAGE_ICON, 0, 0, LR_DEFAULTSIZE | LR_LOADFROMFILE);
 	WNDCLASSEXA windowClass{};
 	windowClass.cbSize = sizeof(WNDCLASSEXA);
 	windowClass.lpfnWndProc = window_callback;
