@@ -57,11 +57,6 @@ namespace Recipe {
 		recipeList.unit = RecipeDef{
 			0, {}, {}, 0.8, nullptr // defines a 0.8 second crafting time with 0 inputs/outputs; special case for belts and such
 		};
-		recipeList.debugThreeInput = RecipeDef{
-			3, {{ITEM_IRON_ORE, 3}, {ITEM_COPPER_ORE, 3}, {ITEM_URANIUM, 1}},
-			{ITEM_LEMON_JUICE, 1 },
-			3.0,&Resources::tile.item.lemonJuice
-		};
 		recipeList.ironSmelt = RecipeDef{
 			1, {{ITEM_IRON_ORE, 2}},
 			{ITEM_IRON_PLATE, 1 },

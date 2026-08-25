@@ -131,6 +131,10 @@ struct {
 		Sprite bigHive;
 		Sprite splitter;
 		Sprite junction;
+		Sprite viaUp;
+		Sprite viaDown;
+		Sprite viaOut;
+		Sprite camera;
 	} icon;
 	struct {
 		Sprite full;
@@ -194,8 +198,8 @@ void load() {
 	tile.belt.rightToDown = Sprite{ &tileset, 64, 128, 16, 16, 3 };
 	tile.belt.upToLeft = Sprite{ &tileset, 64, 112, 16, 16, 3 };
 	tile.belt.upToRight = Sprite{ &tileset, 64, 144, 16, 16, 3 };
-	tile.via.inElevator = Sprite{ &tileset, 160, 224, 16, 16, 1 };
-	tile.via.inChute = Sprite{ &tileset, 144, 224, 16, 16, 1 };
+	tile.via.inElevator = Sprite{ &tileset, 16 * 16, 17 * 16, 16, 16, 1 };
+	tile.via.inChute = Sprite{ &tileset, 15 * 16, 17 * 16, 16, 16, 1 };
 	tile.via.outLeft = Sprite{ &tileset, 256, 112, 16, 16, 3 };
 	tile.via.outDown = Sprite{ &tileset, 256, 128, 16, 16, 3 };
 	tile.via.outRight = Sprite{ &tileset, 256, 144, 16, 16, 3 };
@@ -229,6 +233,10 @@ void load() {
 	tile.icon.bigHive = Sprite{ &tileset, 6 * 16, 14 * 16, 16, 16, 1 };
 	tile.icon.splitter = Sprite{ &tileset, 7 * 16, 14 * 16, 16, 16, 1 };
 	tile.icon.junction = Sprite{ &tileset, 8 * 16, 14 * 16, 16, 16, 1 };
+	tile.icon.viaDown = Sprite{ &tileset, 9 * 16, 14 * 16, 16, 16, 1 };
+	tile.icon.viaUp = Sprite{ &tileset, 10 * 16, 14 * 16, 16, 16, 1 };
+	tile.icon.viaOut = Sprite{ &tileset, 11 * 16, 14 * 16, 16, 16, 1 };
+	tile.icon.camera = Sprite{ &tileset, 12 * 16, 14 * 16, 16, 16, 1 };
 
 	tile.rock.topLeft = Sprite{ &tileset, 16 * 10, 11 * 16, 16, 16, 1 };
 	tile.rock.top = Sprite{ &tileset, 16 * 11, 11 * 16, 16, 16, 1 };
@@ -257,7 +265,7 @@ void load() {
 	tile.furnace = Sprite{ &tileset, 17 * 16, 11 * 16, 16, 32, 1 };
 	tile.furnaceOn = Sprite{ &tileset, 18 * 16, 11 * 16, 16, 32, 1 };
 
-	tile.camera = Sprite{ &tileset, 176, 224, 16, 16, 1 };
+	tile.camera = Sprite{ &tileset, 17 * 16, 17 * 16, 16, 16, 1 };
 
 	tile.dockSegment = Sprite{ &tileset, 240, 224, 16, 48, 1 };
 	tile.ship = Sprite{ &tileset, 256, 208, 48, 64, 1 };
