@@ -6,7 +6,7 @@
 #include <Windows.h>
 #include <timeapi.h>
 #include <hidusage.h>
-#include <commdlg.h>;
+#include <commdlg.h>
 #include "../resource.h"
 #undef near
 #undef far
