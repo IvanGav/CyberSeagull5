@@ -198,8 +198,8 @@ void load() {
 	tile.belt.rightToDown = Sprite{ &tileset, 64, 128, 16, 16, 3 };
 	tile.belt.upToLeft = Sprite{ &tileset, 64, 112, 16, 16, 3 };
 	tile.belt.upToRight = Sprite{ &tileset, 64, 144, 16, 16, 3 };
-	tile.via.inElevator = Sprite{ &tileset, 16 * 16, 17 * 16, 16, 16, 1 }; // TODO
-	tile.via.inChute = Sprite{ &tileset, 15 * 16, 17 * 16, 16, 16, 1 }; // TODO
+	tile.via.inElevator = Sprite{ &tileset, 16 * 16, 17 * 16, 16, 16, 1 };
+	tile.via.inChute = Sprite{ &tileset, 15 * 16, 17 * 16, 16, 16, 1 };
 	tile.via.outLeft = Sprite{ &tileset, 256, 112, 16, 16, 3 };
 	tile.via.outDown = Sprite{ &tileset, 256, 128, 16, 16, 3 };
 	tile.via.outRight = Sprite{ &tileset, 256, 144, 16, 16, 3 };
@@ -265,7 +265,7 @@ void load() {
 	tile.furnace = Sprite{ &tileset, 17 * 16, 11 * 16, 16, 32, 1 };
 	tile.furnaceOn = Sprite{ &tileset, 18 * 16, 11 * 16, 16, 32, 1 };
 
-	tile.camera = Sprite{ &tileset, 17 * 16, 17 * 16, 16, 16, 1 }; // TODO
+	tile.camera = Sprite{ &tileset, 17 * 16, 17 * 16, 16, 16, 1 };
 
 	tile.dockSegment = Sprite{ &tileset, 240, 224, 16, 48, 1 };
 	tile.ship = Sprite{ &tileset, 256, 208, 48, 64, 1 };

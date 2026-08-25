@@ -1367,7 +1367,7 @@ void handle_work_cycle_finished(const BeeSystem::Event& event) {
                 bee.clear_cargo();
             }
 
-            remove_conveyor_delivery_request(U32(deliveryIndex)); // TODO here
+            remove_conveyor_delivery_request(U32(deliveryIndex));
 			colony.unqueue_task_for_tile(event.task.targetTile);
             return;
         }
