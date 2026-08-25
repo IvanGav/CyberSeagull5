@@ -1367,7 +1367,8 @@ void handle_work_cycle_finished(const BeeSystem::Event& event) {
                 bee.clear_cargo();
             }
 
-            remove_conveyor_delivery_request(U32(deliveryIndex));
+            remove_conveyor_delivery_request(U32(deliveryIndex)); // TODO here
+			colony.unqueue_task_for_tile(event.task.targetTile);
             return;
         }
 
@@ -1485,10 +1486,10 @@ Resources::Sprite* creative_brush_sprite(CreativeBrush brush) {
 	case CreativeBrush::ASSEMBLER_VERY_LARGE: return &Resources::tile.icon.bigAssembler;
 	case CreativeBrush::SPLITTER: return &Resources::tile.icon.splitter;
 	case CreativeBrush::JUNCTION: return &Resources::tile.icon.junction;
-	case CreativeBrush::VIA_CHUTE: return &Resources::tile.via.inChute;
-	case CreativeBrush::VIA_ELEVATOR: return &Resources::tile.via.inElevator;
-	case CreativeBrush::VIA_OUTPUT: return &Resources::tile.via.outLeft;
-	case CreativeBrush::CAMERA: return &Resources::tile.camera;
+	case CreativeBrush::VIA_CHUTE: return &Resources::tile.icon.viaDown;
+	case CreativeBrush::VIA_ELEVATOR: return &Resources::tile.icon.viaUp;
+	case CreativeBrush::VIA_OUTPUT: return &Resources::tile.icon.viaOut;
+	case CreativeBrush::CAMERA: return &Resources::tile.icon.camera;
 	case CreativeBrush::HIVE_SMALL: return &Resources::tile.icon.hive;
 	case CreativeBrush::HIVE_BIG: return &Resources::tile.icon.bigHive;
 	default: return nullptr;

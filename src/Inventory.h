@@ -23,7 +23,7 @@ enum ItemType : U8 {
 	ITEM_URANIUM,
 	ITEM_POLLEN,
 	ITEM_HONEY,
-	ITEM_LEMON_JUICE,
+	//ITEM_LEMON_JUICE,
 	// ITEM_CONVEYOR,
     ITEM_CYBER_GULL,
 	ITEM_Count
@@ -189,7 +189,7 @@ void init() {
     itemSprite[ITEM_URANIUM] = &Resources::tile.item.uranium;
   	itemSprite[ITEM_POLLEN] = &Resources::tile.item.pollen;
 	itemSprite[ITEM_HONEY] = &Resources::tile.item.honey;
-	itemSprite[ITEM_LEMON_JUICE] = &Resources::tile.item.lemonJuice;
+	//itemSprite[ITEM_LEMON_JUICE] = &Resources::tile.item.lemonJuice;
 	// itemSprite[ITEM_CONVEYOR] = &Resources::tile.icon.belt;
     itemSprite[ITEM_CYBER_GULL] = &Resources::tile.item.cyberGull;
 
