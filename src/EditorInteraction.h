@@ -284,7 +284,7 @@ void render_item_build_menu() {
 		I32 badgeY = cellY + 4;
 		fill_rect_blended(badgeX, badgeY, badgeW, badgeH, RGBA8{ 24, 24, 24, 180 });
 		Graphics::display_num(badgeCount, badgeX + 4, badgeY + 1, 16);
-		I32 hotkeyW = 18 * (Graphics::num_digits(i+1)+1); // TODO here
+		I32 hotkeyW = 18 * (Graphics::num_digits(i+1)+1);
 		I32 hotkeyH = 18;
 		I32 hotkeyX = cellX + 4;
 		I32 hotkeyY = cellY + layout.cellSize - hotkeyH - 4;
