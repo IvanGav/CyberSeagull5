@@ -7,6 +7,7 @@
 #include <timeapi.h>
 #include <hidusage.h>
 #include <commdlg.h>;
+#include "../resource.h"
 #undef near
 #undef far
 #pragma warning(pop)
@@ -427,7 +428,7 @@ bool init(U32 width, U32 height, void (*keyboardCallbackIn)(Key, ButtonState), v
 	mouseCallback = mouseCallbackIn;
 	bool success = true;
 	instance = GetModuleHandleA(nullptr);
-	HANDLE icon = LoadImageA(instance, "./resources/textures/icon.ico", IMAGE_ICON, 0, 0, LR_DEFAULTSIZE | LR_LOADFROMFILE);
+	HANDLE icon = LoadImageA(instance, MAKEINTRESOURCE(IDI_ICON1), IMAGE_ICON, 0, 0, LR_SHARED);
 	WNDCLASSEXA windowClass{};
 	windowClass.cbSize = sizeof(WNDCLASSEXA);
 	windowClass.lpfnWndProc = window_callback;
