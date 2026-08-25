@@ -3,7 +3,11 @@
 #include "drillengine/PNG.h"
 #include "Cyber5eagull.h"
 
+#ifdef NDEBUG
+int WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, LPTSTR cmdLine, int cmdShow) {
+#else
 int main() {
+#endif
 	const U32 failToInitializeDrillLib = 2;
 	U32 result = failToInitializeDrillLib;
 	if (drill_lib_init()) {

@@ -145,7 +145,7 @@
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
     </ClCompile>
     <Link>
-      <SubSystem>Console</SubSystem>
+      <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <StackReserveSize>4194304</StackReserveSize>
       <StackCommitSize>4194304</StackCommitSize>
@@ -157,6 +157,7 @@
     <ClCompile Include="src\Entrypoint.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="resource.h" />
     <ClInclude Include="src\Bee.h" />
     <ClInclude Include="src\BeeDemo.h" />
     <ClInclude Include="src\BeeSystem.h" />
@@ -185,6 +186,7 @@
     <ClInclude Include="src\Inventory.h" />
   </ItemGroup>
   <ItemGroup>
+    <Image Include="icon1.ico" />
     <Image Include="resources\textures\bee.gif" />
     <Image Include="resources\textures\beemine.gif" />
     <Image Include="resources\textures\scrung.png" />
@@ -192,6 +194,9 @@
     <Image Include="resources\textures\tileset_v2.png" />
     <Image Include="resources\textures\tileset_v3.png" />
     <Image Include="resources\textures\tileset_v4.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="CyberSeagull5.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
