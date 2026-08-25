@@ -48,9 +48,6 @@ Sprite rotate90(Sprite& s) {
 	return Sprite{ tex, 0, 0, s.height, s.width, s.animFrames };
 }
 
-Texture scrung;
-Sprite scrungPart;
-
 Texture tileset;
 struct {
 	Sprite undef;
@@ -164,9 +161,7 @@ Texture controlsOverlay;
 Texture winMessage;
 
 void load() {
-	scrung = load_texture("scrung.png"a);
-	scrungPart = Sprite{ &scrung, 128, 128, 128, 128, 1 };
-	tileset = load_texture("tileset_v12.png"a);
+	tileset = load_texture("tileset.png"a);
 	tile.undef = Sprite{ &tileset, 0, 0, 16, 16, 1 };
 	tile.grass = Sprite{ &tileset, 16, 0, 16, 16, 1 };
 	tile.grassIron = Sprite{ &tileset, 15 * 16, 32, 16, 16, 4 };	// i marked them as animation frames, but they're resource richness, really
