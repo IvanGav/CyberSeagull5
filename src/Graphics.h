@@ -88,12 +88,8 @@ void blit_texture_cutout(Resources::Texture& tex, I32 x, I32 y, I32 scaleFactor)
 	blit_sprite_cutout(s, x, y, scaleFactor, 0);
 }
 
-void display_num(U32 text, I32 x, I32 y, I32 fontSize) {
-	DEBUG_ASSERT(fontSize % 16 == 0, "fontSize must be multiple of 16");
-	if (text == 0) {
-		blit_sprite_cutout(Resources::tile.num[0], x, y, fontSize / 16, 0);
-		return;
-	}
+
+U32 num_digits(U32 text) {
 	U32 decimal_digits = 0;
 	if (text >= 1000) {
 		decimal_digits = (U32)floorf32(log10f32((F32)text)); // i don't like this, but... yeah
@@ -104,11 +100,23 @@ void display_num(U32 text, I32 x, I32 y, I32 fontSize) {
 	else if (text >= 10) {
 		decimal_digits = 1;
 	}
-	for (U32 i = decimal_digits; text > 0; i--) {
+
+	return decimal_digits;
+}
+
+void display_num(U32 text, I32 x, I32 y, I32 fontSize) {
+	DEBUG_ASSERT(fontSize % 16 == 0, "fontSize must be multiple of 16");
+	if (text == 0) {
+		blit_sprite_cutout(Resources::tile.num[0], x, y, fontSize / 16, 0);
+		return;
+	}
+
+	for (U32 i = num_digits(text); text > 0; i--) {
 		blit_sprite_cutout(Resources::tile.num[text%10], x + i * fontSize, y, fontSize/16, 0);
 		text /= 10;
 	}
 }
+
 
 void border(I32 x, I32 y, I32 sizeX, I32 sizeY, I32 borderSize, RGBA8 color) {
 	if (!Win32::framebuffer || sizeX <= 0 || sizeY <= 0 || borderSize <= 0) {
