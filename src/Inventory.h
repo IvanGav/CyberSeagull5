@@ -106,18 +106,22 @@ I32 item_index_at_screen(V2F32 mouse) {
         return -1;
     }
 
-    I32 index = localY / stride;
-    if (index < 0 || U32(index) >= inv.size) {
-        return -1;
-    }
-
-    I32 withinRowY = localY - index * stride;
+    I32 row = localY / stride;
+    I32 withinRowY = localY - row * stride;
     if (withinRowY >= row_height()) {
         return -1;
     }
 
-    return index;
+    // The displayed row is based on item_ranks, not the item enum value.
+    for (U32 item = 0; item < inv.size; item++) {
+        if (inv[item] > 0u && item_ranks[item] == U8(row)) {
+            return I32(item);
+        }
+    }
+
+    return -1;
 }
+
 FINLINE B32 item_valid(ItemType item) {
 	return item < inv.size ? B32_TRUE : B32_FALSE;
 }
@@ -179,15 +183,15 @@ void init() {
     item_ranks.clear();
     item_ranks.resize(ITEM_Count);
 
-    // set all ranks to 0xFF aka no rank
-	for (U32 i = 0; i < ITEM_Count; i++) {
-		item_ranks[i] = 0xFF;
-	}
+    for (U32 i = 0; i < ITEM_Count; i++) {
+        item_ranks[i] = 0xFF;
+    }
 
     clear_counts();
     selectedItem = ITEM_Count;
 
-    U8 top_item_rank = 0xFF;
+    // Reset the global rank counter instead of declaring a local variable.
+    top_item_rank = 0xFF;
 
     itemSprite[ITEM_IRON_ORE] = &Resources::tile.item.ironOre;
     itemSprite[ITEM_COPPER_ORE] = &Resources::tile.item.copperOre;
@@ -200,12 +204,10 @@ void init() {
     itemSprite[ITEM_GEAR] = &Resources::tile.item.gear;
     itemSprite[ITEM_NUCLEAR_HEART] = &Resources::tile.item.nuclearHeart;
     itemSprite[ITEM_URANIUM] = &Resources::tile.item.uranium;
-  	itemSprite[ITEM_POLLEN] = &Resources::tile.item.pollen;
-	itemSprite[ITEM_HONEY] = &Resources::tile.item.honey;
-	itemSprite[ITEM_LEMON_JUICE] = &Resources::tile.item.lemonJuice;
-	// itemSprite[ITEM_CONVEYOR] = &Resources::tile.icon.belt;
+    itemSprite[ITEM_POLLEN] = &Resources::tile.item.pollen;
+    itemSprite[ITEM_HONEY] = &Resources::tile.item.honey;
+    itemSprite[ITEM_LEMON_JUICE] = &Resources::tile.item.lemonJuice;
     itemSprite[ITEM_CYBER_GULL] = &Resources::tile.item.cyberGull;
-
 }
 
 void draw_inv() {
@@ -215,16 +217,15 @@ void draw_inv() {
     I32 panelH = panel_height();
 
     for (U32 i = 0; i < inv.size; i++) {
-        if (inv[i] == 0u) {
-            continue;
-        }
-        else if (item_ranks[i] == 0xFF) {
-			top_item_rank++;
+        
+        if (item_ranks[i] == 0xFF) {
+
+            // no rank and dont have any of this item, skip it
+            if (inv[i] == 0u)
+                continue;
+            
+            top_item_rank++;
 			item_ranks[i] = top_item_rank;
-
-            // FUTURE
-			// rank by amount of items owned, item with most items gets rank 0
-
 
         }
 

@@ -245,11 +245,14 @@ void select_build_menu_index(I32 index) {
 	if (index < 0 || U32(index) >= BUILD_MENU_ITEM_COUNT) {
 		return;
 	}
+
 	const BuildMenuEntry& entry = buildMenuEntries[index];
 	if (entry.type == BuildMenuEntryType::ENTRY_BUY_BEE) {
 		BeeDemoNS::buy_bee_with_honey();
 		return;
 	}
+
+	Inventory::clear_selected_item();
 	CreativeToolkit::set_selected_brush(entry.brush, B32_FALSE);
 	CreativeToolkit::selectedRotation = ROTATION2_0;
 }
