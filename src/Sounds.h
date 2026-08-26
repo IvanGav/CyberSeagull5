@@ -5,6 +5,7 @@
 namespace Sounds {
 
 const F32 GLOBAL_VOLUME = 0.5F;
+const F32 GLOBAL_VOLUME_BUT_WHEN_MAIN_WINDOW_IS_NOT_IN_FOCUS = 20.0F;
 
 F64 audioPlaybackTime;
 
@@ -98,6 +99,11 @@ void play_sound(AudioSource& src, F32 volume = 1.0F) {
 	instances.push_back(AudioInstance{ &src, audioPlaybackTime, volume });
 }
 
+bool windowInFocus() {
+	HWND foreground = GetForegroundWindow();
+	return foreground == Win32::window;
+}
+
 void mix_into_buffer(F32* buffer, U32 numSamples, U32 numChannels, F32 timeAmount) {
 	memset(buffer, 0, numSamples * numChannels * sizeof(F32));
 	F64 time = audioPlaybackTime;
@@ -111,7 +117,7 @@ void mix_into_buffer(F32* buffer, U32 numSamples, U32 numChannels, F32 timeAmoun
 			for (U32 j = 0; j < numSamples; j++) {
 				F64 dt = F64(j) / F64(numSamples) * F64(timeAmount);
 				F64 t = (time + dt - inst.startTime) * F64(inst.src->sampleRate);
-				F32 val = U32(t) < inst.src->sampleCount ? inst.src->data[U32(t)] * inst.volume * GLOBAL_VOLUME : 0.0F;
+				F32 val = U32(t) < inst.src->sampleCount ? inst.src->data[U32(t)] * inst.volume * (windowInFocus() ? GLOBAL_VOLUME : GLOBAL_VOLUME_BUT_WHEN_MAIN_WINDOW_IS_NOT_IN_FOCUS) : 0.0F;
 				for (U32 k = 0; k < numChannels; k++) {
 					*buf++ += val;
 				}
