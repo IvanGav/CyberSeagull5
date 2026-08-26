@@ -343,7 +343,11 @@ void render_item_build_menu() {
 				I32 numberX = iconX + iconSize + 8;
 				I32 numberY = rowY + (entryHeight - numberSize) / 2;
 				Graphics::blit_sprite_cutout(*Inventory::itemSprite[costEntry.item], iconX, iconY, iconScale, 0);
-				Graphics::display_num(costEntry.count, numberX, numberY, numberSize);
+				if (Inventory::count(costEntry.item) >= costEntry.count) {
+					Graphics::display_num(costEntry.count, numberX, numberY, numberSize);
+				} else {
+					Graphics::display_num_red(costEntry.count, numberX, numberY, numberSize);
+				}
 			}
 		}
 	}

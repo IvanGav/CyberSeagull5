@@ -78,6 +78,27 @@ void blit_sprite_cutout_blue(Resources::Sprite& sprite, I32 x, I32 y, I32 scaleF
 	}
 }
 
+void blit_sprite_cutout_red(Resources::Sprite& sprite, I32 x, I32 y, I32 scaleFactor, I32 animFrame) {
+	I32 dstX = max(x, 0);
+	I32 dstY = max(y, 0);
+	I32 srcX = (x >= 0 ? 0 : -x) + (sprite.x + animFrame * sprite.width) * scaleFactor;
+	I32 srcY = (y >= 0 ? 0 : -y) + sprite.y * scaleFactor;
+	I32 sizeX = min<I32>(x + sprite.width * scaleFactor, Win32::framebufferWidth) - dstX;
+	I32 sizeY = min<I32>(y + sprite.height * scaleFactor, Win32::framebufferHeight) - dstY;
+	for (I32 blitY = 0; blitY < sizeY; blitY++) {
+		RGBA8* src = &sprite.tex->pixels[((blitY + srcY) / scaleFactor) * sprite.tex->width];
+		RGBA8* dst = &Win32::framebuffer[(blitY + dstY) * Win32::framebufferWidth] + dstX;
+		for (I32 blitX = 0; blitX < sizeX; blitX++) {
+			RGBA8 srcPx = src[(srcX + blitX) / scaleFactor];
+			srcPx.r = 0;
+			srcPx.g = 0;
+			if (srcPx.a != 0) {
+				dst[blitX] = srcPx;
+			}
+		}
+	}
+}
+
 void blit_texture(Resources::Texture& tex, I32 x, I32 y, I32 scaleFactor) {
 	Resources::Sprite s{ &tex, 0, 0, tex.width, tex.height, 1 };
 	blit_sprite(s, x, y, scaleFactor, 0);
@@ -113,6 +134,19 @@ void display_num(U32 text, I32 x, I32 y, I32 fontSize) {
 
 	for (U32 i = num_digits(text); text > 0; i--) {
 		blit_sprite_cutout(Resources::tile.num[text%10], x + i * fontSize, y, fontSize/16, 0);
+		text /= 10;
+	}
+}
+
+void display_num_red(U32 text, I32 x, I32 y, I32 fontSize) {
+	DEBUG_ASSERT(fontSize % 16 == 0, "fontSize must be multiple of 16");
+	if (text == 0) {
+		blit_sprite_cutout_red(Resources::tile.num[0], x, y, fontSize / 16, 0);
+		return;
+	}
+
+	for (U32 i = num_digits(text); text > 0; i--) {
+		blit_sprite_cutout_red(Resources::tile.num[text % 10], x + i * fontSize, y, fontSize / 16, 0);
 		text /= 10;
 	}
 }

@@ -382,22 +382,6 @@ U32 total_bee_count() {
 
 B32 consume_conveyor_item(U32 amount = 1u) {
 	return B32_TRUE; // allow free belts
-	// I'm leaving it here in case we want to return to the previous (and quite nice) way of handling belts from inventory
-	//if (amount == 0u) {
-	//	return B32_TRUE;
-	//}
-	//const BuildDefinition* def = get_build_definition(CreativeBrush::CONVEYOR);
-	//if (!def || def->stockItem != Inventory::ITEM_CONVEYOR || def->stockItemCount == 0u) {
-	//	return B32_FALSE;
-	//}
-	//U32 currentStock = Inventory::count(def->stockItem);
-	//if (currentStock < amount) {
-	//	U32 missing = amount - currentStock;
-	//	if (!craft_conveyors(missing)) {
-	//		return B32_FALSE;
-	//	}
-	//}
-	//return Inventory::try_take_item(def->stockItem, amount);
 }
 
 U32 build_available_count(CreativeBrush brush) {
