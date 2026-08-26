@@ -770,6 +770,10 @@ B32 tile_can_host_machine(V2U pos, U32 depth) {
 	case World::TILE_GRASS:
 	case World::TILE_SAND:
 		return B32_TRUE;
+	case World::TILE_GRASS_COPPER:
+	case World::TILE_GRASS_IRON:
+	case World::TILE_GRASS_FLOWERS:
+		return depth > 0;
 	default:
 		return B32_FALSE;
 	}

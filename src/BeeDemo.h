@@ -1579,7 +1579,7 @@ B32 place_structure(V2U32 topLeft, U32 depth, Factory::MachineType type, Rotatio
 				return B32_FALSE;
 			}
 			// Use refundable as indicator for "creative".. maybe a bad idea, buut should be fine
-			if (refundable && has_hive(V2U{ tile.x, tile.y })) {
+			if (depth == 0 && refundable && has_hive(V2U{ tile.x, tile.y })) {
 				return B32_FALSE; // In survival not allowed to remove hives
 			}
 		}
@@ -1612,7 +1612,7 @@ B32 ensure_conveyor_tile(V2U32 tile, U32 depth, Rotation2 orientation, B32 refun
 		return B32_FALSE;
 	}
 	// Use refundable as indicator for "creative".. maybe a bad idea, buut should be fine
-	if (refundable && has_hive(V2U{ tile.x, tile.y })) {
+	if (depth == 0 && refundable && has_hive(V2U{ tile.x, tile.y })) {
 		return B32_FALSE; // Survival menu can't break hives
 	}
 	if (refundable) {
@@ -1621,8 +1621,11 @@ B32 ensure_conveyor_tile(V2U32 tile, U32 depth, Rotation2 orientation, B32 refun
 		}
 	}
 
-	unqueue_tile_task(tile);
-	remove_hive_covering_tile(tile); // will only reach here if allowed to remove hives
+	if (depth == 0) {
+		unqueue_tile_task(tile);
+		remove_hive_covering_tile(tile); // will only reach here if allowed to remove hives
+	}
+	
 	if (Factory::place_belt(V2U{ tile.x, tile.y }, depth, orientation)) {
 		set_machine_refundable(Factory::get_machine_from_tile(V2U{ tile.x, tile.y }, depth), refundable);
 		return B32_TRUE;

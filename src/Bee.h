@@ -225,11 +225,15 @@ public:
 			velocity = V2F32{};
 			workTimerSeconds += dt;
 			pickaxeSoundTimer -= dt;
-			if (pickaxeSoundTimer <= 0.0F) {
+			static F64 lastPickaxePlayedTime = 0.0;
+			F64 time = current_time_seconds();
+			if (pickaxeSoundTimer <= 0.0F && time - 0.1 > lastPickaxePlayedTime) {
+				lastPickaxePlayedTime = time;
 				Sounds::play_sound(Sounds::pickaxe, 0.2F);
 				U32 r;
 				_rdrand32_step(&r);
 				pickaxeSoundTimer = 0.5F + (r % 10000) / 10000.0F * 0.25F;
+				lastPickaxePlayedTime += (r % 100000) / 100000.0F * 0.1F - 0.05F;
 			}
 			if (workTimerSeconds >= activeTask.workDurationSeconds) {
 				finish_work_cycle(&result);

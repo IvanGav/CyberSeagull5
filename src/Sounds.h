@@ -4,6 +4,8 @@
 
 namespace Sounds {
 
+const F32 GLOBAL_VOLUME = 0.5F;
+
 F64 audioPlaybackTime;
 
 struct AudioSource {
@@ -109,7 +111,7 @@ void mix_into_buffer(F32* buffer, U32 numSamples, U32 numChannels, F32 timeAmoun
 			for (U32 j = 0; j < numSamples; j++) {
 				F64 dt = F64(j) / F64(numSamples) * F64(timeAmount);
 				F64 t = (time + dt - inst.startTime) * F64(inst.src->sampleRate);
-				F32 val = U32(t) < inst.src->sampleCount ? inst.src->data[U32(t)] * inst.volume : 0.0F;
+				F32 val = U32(t) < inst.src->sampleCount ? inst.src->data[U32(t)] * inst.volume * GLOBAL_VOLUME : 0.0F;
 				for (U32 k = 0; k < numChannels; k++) {
 					*buf++ += val;
 				}
