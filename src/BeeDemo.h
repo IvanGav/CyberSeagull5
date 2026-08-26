@@ -1055,6 +1055,20 @@ void clear_hives_in_footprint(V2U32 topLeft, V2U32 footprint) {
 	}
 }
 
+B32 has_hive(V2U tile) {
+	for (TerrainGen::HiveDesc& hive : hives) {
+		if (hive.tile == tile) return B32_TRUE;
+		if (hive.large && (
+			tile == V2U{ hive.tile.x, hive.tile.y + 1 } ||
+			tile == V2U{ hive.tile.x + 1, hive.tile.y } ||
+			tile == V2U{ hive.tile.x + 1, hive.tile.y + 1 }
+			)) {
+			return B32_TRUE;
+		}
+	}
+	return B32_FALSE;
+}
+
 B32 can_place_hive_footprint(V2U32 topLeft, V2U32 footprint) {
 	if (topLeft.x + footprint.x > World::size.x || topLeft.y + footprint.y > World::size.y) {
 		return B32_FALSE;
@@ -1072,7 +1086,7 @@ B32 can_place_hive_footprint(V2U32 topLeft, V2U32 footprint) {
 			if (tileType == World::TILE_WATER || tileType == World::TILE_MOUNTAIN) {
 				return B32_FALSE;
 			}
-			if (Factory::has_machine(V2U{ tile.x, tile.y }, 0)) {
+			if (Factory::has_machine(tile, 0) || has_hive(tile)) {
 				return B32_FALSE;
 			}
 		}
@@ -1532,20 +1546,6 @@ B32 place_hive(V2U32 topLeft, B32 large, B32 refundable = B32_TRUE) {
 	hives.push_back(newHive);
 	hiveRefundable.push_back(refundable);
 	return B32_TRUE;
-}
-
-B32 has_hive(V2U tile) {
-	for (TerrainGen::HiveDesc& hive : hives) {
-		if (hive.tile == tile) return B32_TRUE;
-		if (hive.large && (
-			tile == V2U{ hive.tile.x, hive.tile.y + 1 } || 
-			tile == V2U{ hive.tile.x + 1, hive.tile.y } || 
-			tile == V2U{ hive.tile.x + 1, hive.tile.y + 1 }
-		)) {
-			return B32_TRUE;
-		}
-	}
-	return B32_FALSE;
 }
 
 U32 get_richness_animation_frame(U32 x, U32 y) {
