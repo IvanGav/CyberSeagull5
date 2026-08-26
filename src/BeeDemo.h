@@ -1560,7 +1560,11 @@ U32 get_richness_animation_frame(U32 x, U32 y) {
 }
 
 B32 can_place_machine_at_depth(Factory::MachineType type, U32 depth) {
-	return depth == 0 ? B32_TRUE : type == Factory::MACHINE_BELT || type == Factory::MACHINE_VIA_CHUTE || type == Factory::MACHINE_VIA_ELEVATOR || type == Factory::MACHINE_VIA_OUTPUT || type == Factory::MACHINE_SPLITTER;
+	if (depth == 0) {
+		return type != Factory::MachineType::MACHINE_VIA_ELEVATOR;
+	} else {
+		return type == Factory::MACHINE_BELT || type == Factory::MACHINE_VIA_ELEVATOR || type == Factory::MACHINE_VIA_OUTPUT || type == Factory::MACHINE_SPLITTER;
+	}
 }
 
 B32 place_structure(V2U32 topLeft, U32 depth, Factory::MachineType type, Rotation2 orientation, B32 refundable = B32_TRUE) {
