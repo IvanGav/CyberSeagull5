@@ -400,6 +400,26 @@ FINLINE void draw_rotation_marker(I32 x, I32 y, I32 width, I32 height, Rotation2
 	}
 }
 
+void draw_camera_range(I32 cameraMachineScreenX, I32 cameraMachineScreenY, I32 currentWorldTileScale) {
+	I32 seeX = Factory::CAMERA_SEE_DEPTH * 16 * currentWorldTileScale;
+	I32 seeY = Factory::CAMERA_SEE_WIDTH * 16 * currentWorldTileScale;
+	I32 seeHalfY = Factory::CAMERA_SEE_WIDTH / 2 * 16 * currentWorldTileScale;
+	Graphics::fill_rect_blended(cameraMachineScreenX - seeX, cameraMachineScreenY - seeHalfY, seeX, seeY, RGBA8 { 0, 255, 0, 100 });
+}
+
+void draw_all_camera_ranges(V2F32 currentCamera, I32 currentWorldTileScale) {
+	// Assume all cameras to be 1x1; if that's ever changing, just rewrite this function too
+	I32 tilePixels = 16 * currentWorldTileScale;
+	for (U32 i = 0; i < Factory::machineTiles.size; i++) {
+		if (Factory::machineTiles[i]->type == Factory::MACHINE_CAMERA) {
+			V2U machineTile = Factory::machineTiles[i]->pos;
+			V2F machineScreenPos = TileSpace::tile_to_world(machineTile) * F32(tilePixels) - currentCamera;
+			V2I machineScreenPosI = V2I{ I32(roundf32(machineScreenPos.x)), I32(roundf32(machineScreenPos.y)) };
+			draw_camera_range(machineScreenPosI.x, machineScreenPosI.y, currentWorldTileScale);
+		}
+	}
+}
+
 void render_world_preview(V2F32 currentCamera, I32 currentWorldTileScale, F64 currentFrameTime) {
 	if (tilesheetVisible || SelectUI::open) {
 		return;
@@ -462,6 +482,10 @@ void render_world_preview(V2F32 currentCamera, I32 currentWorldTileScale, F64 cu
 			blit_sprite_cutout_blended(*sprite, drawX, drawY, currentWorldTileScale, animFrame, RGBA8{ 255u, 50u, 50u, 175u });
 		} else {
 			blit_sprite_cutout_blended(*sprite, drawX, drawY, currentWorldTileScale, animFrame, RGBA8 { 255u, 255u, 255u, 175u });
+		}
+		if (selectedBrush == CreativeBrush::CAMERA) {
+			draw_camera_range(drawX, drawY, currentWorldTileScale);
+			draw_all_camera_ranges(currentCamera, currentWorldTileScale);
 		}
 	}
 	draw_preview_border(screenX, screenY, previewWidth, previewHeight, borderTint);
