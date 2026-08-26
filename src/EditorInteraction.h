@@ -226,10 +226,17 @@ FINLINE I32 decimal_digit_count(U32 value) {
 }
 
 FINLINE B32 build_menu_key_to_index(Win32::Key key, U32* indexOut) {
-	if (key < Win32::KEY_1 || key > Win32::KEY_9) {
-		return B32_FALSE;
+	U32 index = U32_MAX;
+	if (key >= Win32::KEY_1 && key <= Win32::KEY_9) {
+		index = U32(key - Win32::KEY_1);
+	} else if (key == Win32::KEY_0) {
+		index = 9;
+	} else if (key == Win32::KEY_DASH) {
+		index = 10;
+	} else if (key == Win32::KEY_EQUALS) {
+		index = 11;
 	}
-	U32 index = U32(key - Win32::KEY_1);
+
 	if (index >= BUILD_MENU_ITEM_COUNT) {
 		return B32_FALSE;
 	}
@@ -525,7 +532,7 @@ void keyboard_callback(Win32::Key key, Win32::ButtonState state) {
 	}
 
 	U32 hotkeyIndex = 0;
-	if (itemBuildMenuVisible && build_menu_key_to_index(key, &hotkeyIndex)) {
+	if (build_menu_key_to_index(key, &hotkeyIndex)) {
 		select_build_menu_index(I32(hotkeyIndex));
 		return;
 	}

@@ -145,7 +145,6 @@ void render() {
 		BeeDemo::render_hive_ranges(camera, worldTileScale);
 	}
 	BeeDemo::render_task_markers(camera, worldTileScale);
-	BeeDemo::render_conveyors(camera, worldTileScale, currentFrameTime);
 	BeeDemo::render_hives(camera, worldTileScale);
 	BeeDemo::render_bees(camera, worldTileScale, currentFrameTime);
 	Factory::render_ui(worldTileScale);

@@ -320,10 +320,22 @@ B32 handle_ui_click(V2F32 mousePos) {
 	return B32_TRUE;
 }
 
-FINLINE void blit_sprite_cutout_blended(Resources::Sprite& sprite, I32 x, I32 y, I32 scaleFactor, I32 animFrame, U8 alpha) {
-	if (alpha == 0) {
-		return;
-	}
+FINLINE RGBA8 blend(RGBA8 a, RGBA8 b) {
+	//return RGBA8 {
+	//	U8((F32(a.r) / 255.0f * F32(b.r) / 255.0f) * 255.0f),
+	//	U8((F32(a.g) / 255.0f * F32(b.g) / 255.0f) * 255.0f),
+	//	U8((F32(a.b) / 255.0f * F32(b.b) / 255.0f) * 255.0f),
+	//	U8((F32(a.a) / 255.0f * F32(b.a) / 255.0f) * 255.0f)
+	//};
+	return RGBA8{
+		U8((U32(a.r) * U32(b.a)) / 255u),
+		U8((U32(a.g) * U32(b.g)) / 255u),
+		U8((U32(a.b) * U32(b.b)) / 255u),
+		U8((U32(a.a) * U32(b.a)) / 255u)
+	};
+}
+
+FINLINE void blit_sprite_cutout_blended(Resources::Sprite& sprite, I32 x, I32 y, I32 scaleFactor, I32 animFrame, RGBA8 tint = {255u, 255u, 255u, 255u}) {
 	I32 dstX = max(x, 0);
 	I32 dstY = max(y, 0);
 	I32 srcX = (x >= 0 ? 0 : -x) + (I32(sprite.x) + animFrame * I32(sprite.width)) * scaleFactor;
@@ -338,19 +350,19 @@ FINLINE void blit_sprite_cutout_blended(Resources::Sprite& sprite, I32 x, I32 y,
 		RGBA8* src = &sprite.tex->pixels[((blitY + srcY) / scaleFactor) * sprite.tex->width];
 		RGBA8* dst = &Win32::framebuffer[(blitY + dstY) * Win32::framebufferWidth] + dstX;
 		for (I32 blitX = 0; blitX < sizeX; blitX++) {
-			RGBA8 srcPx = src[(srcX + blitX) / scaleFactor];
+			RGBA8 srcPx = blend(src[(srcX + blitX) / scaleFactor], tint);
 			if (srcPx.a == 0) {
 				continue;
 			}
-			U32 srcA = (U32(srcPx.a) * U32(alpha)) / 255u;
-			if (srcA == 0) {
-				continue;
-			}
-			U32 invA = 255u - srcA;
+			//U32 srcA = (U32(srcPx.a) * U32(alpha)) / 255u;
+			//if (srcA == 0) {
+			//	continue;
+			//}
+			U32 invA = 255u - srcPx.a;
 			RGBA8 dstPx = dst[blitX];
-			dst[blitX].r = U8((U32(dstPx.r) * invA + U32(srcPx.r) * srcA) / 255u);
-			dst[blitX].g = U8((U32(dstPx.g) * invA + U32(srcPx.g) * srcA) / 255u);
-			dst[blitX].b = U8((U32(dstPx.b) * invA + U32(srcPx.b) * srcA) / 255u);
+			dst[blitX].r = U8((U32(dstPx.r) * invA + U32(srcPx.r) * srcPx.a) / 255u);
+			dst[blitX].g = U8((U32(dstPx.g) * invA + U32(srcPx.g) * srcPx.a) / 255u);
+			dst[blitX].b = U8((U32(dstPx.b) * invA + U32(srcPx.b) * srcPx.a) / 255u);
 			dst[blitX].a = 255;
 		}
 	}
@@ -436,7 +448,14 @@ void render_world_preview(V2F32 currentCamera, I32 currentWorldTileScale, F64 cu
 		I32 spriteHeightPx = I32(sprite->height) * currentWorldTileScale;
 		I32 drawX = screenX + (previewWidth - spriteWidthPx) / 2;
 		I32 drawY = screenY + previewHeight - spriteHeightPx;
-		blit_sprite_cutout_blended(*sprite, drawX, drawY, currentWorldTileScale, animFrame, 140);
+		U32 placementDepth = Win32::keyboardState[Win32::KEY_CTRL] ? 1 : 0;
+		if (Cyber5eagull::BeeDemo::build_available_count(selectedBrush) == 0 || !Cyber5eagull::BeeDemo::can_place_machine_at_depth(Cyber5eagull::BeeDemo::machine_type_for_brush(selectedBrush), placementDepth)) {
+			blit_sprite_cutout_blended(*sprite, drawX, drawY, currentWorldTileScale, animFrame, RGBA8{ 50u, 50u, 255u, 175u });
+		} else if (placementDepth == 1) {
+			blit_sprite_cutout_blended(*sprite, drawX, drawY, currentWorldTileScale, animFrame, RGBA8{ 255u, 50u, 50u, 175u });
+		} else {
+			blit_sprite_cutout_blended(*sprite, drawX, drawY, currentWorldTileScale, animFrame, RGBA8 { 255u, 255u, 255u, 175u });
+		}
 	}
 	draw_preview_border(screenX, screenY, previewWidth, previewHeight, borderTint);
 	if (brush_uses_rotation(selectedBrush)) {
