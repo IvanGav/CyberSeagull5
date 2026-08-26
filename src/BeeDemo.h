@@ -1065,6 +1065,9 @@ B32 can_place_hive_footprint(V2U32 topLeft, V2U32 footprint) {
 			if (!tile_in_bounds(tile)) {
 				return B32_FALSE;
 			}
+			if (!Factory::tile_can_host_machine(tile, 0)) {
+				return B32_FALSE;
+			}
 			World::TileType tileType = TerrainGen::get_world_tile(tile);
 			if (tileType == World::TILE_WATER || tileType == World::TILE_MOUNTAIN) {
 				return B32_FALSE;
@@ -1567,7 +1570,7 @@ B32 can_place_machine_at_depth(Factory::MachineType type, U32 depth) {
 	}
 }
 
-B32 place_structure(V2U32 topLeft, U32 depth, Factory::MachineType type, Rotation2 orientation, B32 refundable = B32_TRUE) {
+B32 can_place_structure(V2U32 topLeft, U32 depth, Factory::MachineType type, Rotation2 orientation, B32 refundable = B32_TRUE) {
 	V2U32 footprint = Factory::machine_footprint(type, orientation);
 	if (topLeft.x + footprint.x > World::size.x || topLeft.y + footprint.y > World::size.y) {
 		return B32_FALSE;
@@ -1579,7 +1582,7 @@ B32 place_structure(V2U32 topLeft, U32 depth, Factory::MachineType type, Rotatio
 		for (U32 x = 0; x < footprint.x; x++) {
 			V2U32 tile{ topLeft.x + x, topLeft.y + y };
 			World::TileType tileType = TerrainGen::get_world_tile(tile);
-			if (tileType == World::TILE_WATER || tileType == World::TILE_MOUNTAIN) {
+			if (tileType == World::TILE_WATER || tileType == World::TILE_MOUNTAIN || !Factory::tile_can_host_machine(tile, depth)) {
 				return B32_FALSE;
 			}
 			// Use refundable as indicator for "creative".. maybe a bad idea, buut should be fine
@@ -1587,6 +1590,14 @@ B32 place_structure(V2U32 topLeft, U32 depth, Factory::MachineType type, Rotatio
 				return B32_FALSE; // In survival not allowed to remove hives
 			}
 		}
+	}
+	return B32_TRUE;
+}
+
+B32 place_structure(V2U32 topLeft, U32 depth, Factory::MachineType type, Rotation2 orientation, B32 refundable = B32_TRUE) {
+	V2U32 footprint = Factory::machine_footprint(type, orientation);
+	if (!can_place_structure(topLeft, depth, type, orientation, refundable)) {
+		return B32_FALSE;
 	}
 	if (depth == 0) {
 		clear_tasks_in_footprint(topLeft, footprint);
@@ -1714,21 +1725,12 @@ void apply_creative_brush(CreativeBrush brush, V2U32 tile, U32 depth, Rotation2 
 			}
 		}
 	} break;
-	case CreativeBrush::HIVE_SMALL: {
-		if (!freePlacement && !spend_for_build(brush)) {
-			break;
-		}
-		if (!place_hive(tile, B32_FALSE, freePlacement ? B32_FALSE : B32_TRUE)) {
-			if (!freePlacement) {
-				refund_build_cost(brush);
-			}
-		}
-	} break;
+	case CreativeBrush::HIVE_SMALL:
 	case CreativeBrush::HIVE_BIG: {
 		if (!freePlacement && !spend_for_build(brush)) {
 			break;
 		}
-		if (!place_hive(tile, B32_TRUE, freePlacement ? B32_FALSE : B32_TRUE)) {
+		if (!place_hive(tile, brush == CreativeBrush::HIVE_BIG, freePlacement ? B32_FALSE : B32_TRUE)) {
 			if (!freePlacement) {
 				refund_build_cost(brush);
 			}

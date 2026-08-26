@@ -449,7 +449,14 @@ void render_world_preview(V2F32 currentCamera, I32 currentWorldTileScale, F64 cu
 		I32 drawX = screenX + (previewWidth - spriteWidthPx) / 2;
 		I32 drawY = screenY + previewHeight - spriteHeightPx;
 		U32 placementDepth = Win32::keyboardState[Win32::KEY_CTRL] ? 1 : 0;
-		if (Cyber5eagull::BeeDemo::build_available_count(selectedBrush) == 0 || !Cyber5eagull::BeeDemo::can_place_machine_at_depth(Cyber5eagull::BeeDemo::machine_type_for_brush(selectedBrush), placementDepth)) {
+		B32 canPlace = B32_FALSE;
+		if (selectedBrush == CreativeBrush::HIVE_SMALL || selectedBrush == CreativeBrush::HIVE_BIG) {
+			Cyber5eagull::TerrainGen::HiveDesc hive = { hoveredTile, selectedBrush == CreativeBrush::HIVE_BIG};
+			canPlace = Cyber5eagull::BeeDemo::can_place_hive_footprint(hoveredTile, TerrainGen::hive_footprint_size_tiles(hive));
+		} else {
+			canPlace = Cyber5eagull::BeeDemo::can_place_structure(hoveredTile, placementDepth, Cyber5eagull::BeeDemo::machine_type_for_brush(selectedBrush), selectedRotation, selectedBrushFreePlacement);
+		}
+		if (Cyber5eagull::BeeDemo::build_available_count(selectedBrush) == 0 || !canPlace) {
 			blit_sprite_cutout_blended(*sprite, drawX, drawY, currentWorldTileScale, animFrame, RGBA8{ 50u, 50u, 255u, 175u });
 		} else if (placementDepth == 1) {
 			blit_sprite_cutout_blended(*sprite, drawX, drawY, currentWorldTileScale, animFrame, RGBA8{ 255u, 50u, 50u, 175u });
