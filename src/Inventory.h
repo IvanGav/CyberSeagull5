@@ -43,6 +43,9 @@ U32 y_off = 20;
 ArenaArrayList<U32> inv; // inv[item] = total amount of that item
 ItemType selectedItem = ITEM_Count;
 
+ArenaArrayList<U8> item_ranks = ArenaArrayList<U8>{ &globalArena, nullptr, 0, 0 };
+U8 top_item_rank = -1;
+
 static constexpr I32 PANEL_BORDER = 3;
 static constexpr I32 PANEL_PADDING = 8;
 static constexpr I32 ROW_GAP = 4;
@@ -173,8 +176,18 @@ FINLINE B32 try_take_item(ItemType item, U32 amount = 1) {
 void init() {
     inv.clear();
     inv.resize(ITEM_Count);
+    item_ranks.clear();
+    item_ranks.resize(ITEM_Count);
+
+    // set all ranks to 0xFF aka no rank
+	for (U32 i = 0; i < ITEM_Count; i++) {
+		item_ranks[i] = 0xFF;
+	}
+
     clear_counts();
     selectedItem = ITEM_Count;
+
+    U8 top_item_rank = 0xFF;
 
     itemSprite[ITEM_IRON_ORE] = &Resources::tile.item.ironOre;
     itemSprite[ITEM_COPPER_ORE] = &Resources::tile.item.copperOre;
@@ -202,8 +215,21 @@ void draw_inv() {
     I32 panelH = panel_height();
 
     for (U32 i = 0; i < inv.size; i++) {
+        if (inv[i] == 0u) {
+            continue;
+        }
+        else if (item_ranks[i] == 0xFF) {
+			top_item_rank++;
+			item_ranks[i] = top_item_rank;
+
+            // FUTURE
+			// rank by amount of items owned, item with most items gets rank 0
+
+
+        }
+
         I32 rowX = panelX + PANEL_BORDER + 4;
-        I32 rowY = row_y(i);
+        I32 rowY = row_y(item_ranks[i]);
         I32 rowW = panelW - PANEL_BORDER * 2 - 8;
         I32 rowH = row_height();
         RGBA8 fill = inv[i] > 0u ? RGBA8{ 150, 114, 146, 255 } : RGBA8{ 100, 70, 78, 255 };
