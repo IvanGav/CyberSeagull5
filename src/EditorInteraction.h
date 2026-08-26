@@ -540,6 +540,32 @@ void keyboard_callback(Win32::Key key, Win32::ButtonState state) {
 		return;
 	}
 
+	// WASD moves camera, including diagonal movement
+	const bool moveUp = key == Win32::KEY_W ||
+		(GetAsyncKeyState(Win32::KEY_W) & 0x8000);
+	const bool moveDown = key == Win32::KEY_S ||
+		(GetAsyncKeyState(Win32::KEY_S) & 0x8000);
+	const bool moveLeft = key == Win32::KEY_A ||
+		(GetAsyncKeyState(Win32::KEY_A) & 0x8000);
+	const bool moveRight = key == Win32::KEY_D ||
+		(GetAsyncKeyState(Win32::KEY_D) & 0x8000);
+
+	const U32 movementSpeed = 32; // pixels per key press
+
+	if (moveUp)
+		camera.y -= movementSpeed;
+
+	if (moveDown)
+		camera.y += movementSpeed;
+
+	if (moveLeft)
+		camera.x -= movementSpeed;
+
+	if (moveRight)
+		camera.x += movementSpeed;
+
+
+
 	if (key == Win32::KEY_I || key == Win32::KEY_B) {
 		Factory::recipeMenuMachine.machine = nullptr; // special case; when opening the menu, close the recipe picker
 		toggle_item_build_menu();
