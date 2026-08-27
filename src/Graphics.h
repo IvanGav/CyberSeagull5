@@ -151,6 +151,46 @@ void display_num_red(U32 text, I32 x, I32 y, I32 fontSize) {
 	}
 }
 
+// displays either lettering or numbers, but only supports 0-9 and -,= (- is one above 7 and = is one above 8 on the tilesheet)
+void display_text(const char* text, I32 x, I32 y, I32 fontSize, bool red = 0) {
+	DEBUG_ASSERT(fontSize % 16 == 0, "fontSize must be multiple of 16");
+	if (!text) return;
+
+	I32 scaleFactor = fontSize / 16;
+	for (const char* character = text; *character; character++, x += fontSize) {
+		Resources::Sprite sprite{};
+		bool supported = true;
+
+		if (*character >= '0' && *character <= '9') {
+			sprite = Resources::tile.num[*character - '0'];
+		}
+		else if (*character == '-') {
+			sprite = Resources::tile.num[7];
+			sprite.y -= 16;
+		}
+		else if (*character == '=') {
+			sprite = Resources::tile.num[8];
+			sprite.y -= 16;
+		}
+		else if (*character == ' ') {
+			continue;
+		}
+		else {
+			supported = false;
+		}
+
+		if (!supported) {
+			continue;
+		}
+
+		if (red) {
+			blit_sprite_cutout_red(sprite, x, y, scaleFactor, 0);
+		}
+		else {
+			blit_sprite_cutout(sprite, x, y, scaleFactor, 0);
+		}
+	}
+}
 
 void border(I32 x, I32 y, I32 sizeX, I32 sizeY, I32 borderSize, RGBA8 color) {
 	if (!Win32::framebuffer || sizeX <= 0 || sizeY <= 0 || borderSize <= 0) {

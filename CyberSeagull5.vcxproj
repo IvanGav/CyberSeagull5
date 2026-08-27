@@ -198,9 +198,6 @@
   <ItemGroup>
     <ResourceCompile Include="CyberSeagull5.rc" />
   </ItemGroup>
-  <ItemGroup>
-    <None Include="`src\World.h`" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

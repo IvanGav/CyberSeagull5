@@ -9,6 +9,10 @@ namespace Cyber5eagull::EditorInteraction {
 namespace BeeDemoNS = Cyber5eagull::BeeDemo;
 using CreativeBrush = BeeDemoNS::CreativeBrush;
 
+
+constexpr char BUILD_HOTKEYS[] = "1234567890-=";
+constexpr U32 BUILD_HOTKEY_COUNT = ARRAY_COUNT(BUILD_HOTKEYS) - 1;
+
 inline void fill_rect_blended(I32 x, I32 y, I32 width, I32 height, RGBA8 color) {
 	I32 startX = max(x, 0);
 	I32 startY = max(y, 0);
@@ -212,8 +216,17 @@ FINLINE BeeDemoNS::BuildCostDef build_menu_cost_def(const BuildMenuEntry& entry)
 	return entry.type == BuildMenuEntryType::ENTRY_BUY_BEE ? BeeDemoNS::bee_purchase_cost_def() : BeeDemoNS::build_cost_def(entry.brush);
 }
 
-FINLINE U32 build_menu_hotkey_number(U32 index) {
-	return index + 1u;
+
+
+// Could cause issues if called from multiple times, REMEMBER 
+FINLINE const char* build_menu_hotkey(U32 index) {
+	static thread_local char buf[2];
+
+	const char c = index < BUILD_HOTKEY_COUNT ? BUILD_HOTKEYS[index] : '\0';
+	buf[0] = c ? c : '?';
+	buf[1] = '\0';
+
+	return buf;
 }
 
 FINLINE I32 decimal_digit_count(U32 value) {
@@ -294,12 +307,12 @@ void render_item_build_menu() {
 		I32 badgeY = cellY + 4;
 		fill_rect_blended(badgeX, badgeY, badgeW, badgeH, RGBA8{ 24, 24, 24, 180 });
 		Graphics::display_num(badgeCount, badgeX + 4, badgeY + 1, 16);
-		I32 hotkeyW = 18 * (Graphics::num_digits(i+1)+1);
+		I32 hotkeyW = 18;
 		I32 hotkeyH = 18;
 		I32 hotkeyX = cellX + 4;
 		I32 hotkeyY = cellY + layout.cellSize - hotkeyH - 4;
 		fill_rect_blended(hotkeyX, hotkeyY, hotkeyW, hotkeyH, RGBA8{ 24, 24, 24, 180 });
-		Graphics::display_num(build_menu_hotkey_number(i), hotkeyX + 1, hotkeyY + 1, 16);
+		Graphics::display_text(build_menu_hotkey(i), hotkeyX + 1, hotkeyY + 1, 16);
 		if (build_menu_selected(entry)) {
 			Graphics::border(cellX, cellY, layout.cellSize, layout.cellSize, CreativeToolkit::selectBorderSize, CreativeToolkit::selectedColor);
 		}
