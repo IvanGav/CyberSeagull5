@@ -144,6 +144,15 @@ void update() {
 	clamp_camera();
 }
 
+void display_tooltip(Resources::Texture& tooltip, I32 x, I32 y) {
+	x = max(0, x - max(0, I32(x + tooltip.width * TOOLTIP_SCALE - Win32::framebufferWidth)));
+	y = max(0, y - max(0, I32(y + tooltip.height * TOOLTIP_SCALE - Win32::framebufferHeight)));
+	Graphics::blit_texture_cutout(tooltip, x, y, TOOLTIP_SCALE);
+}
+
+Resources::Texture* currentTooltip;
+V2I tooltipTopLeft;
+
 U32 tutorialIndex = 0;
 U32 gameWinIndex = 0;
 I32 tutorialScale = 3;
@@ -151,6 +160,8 @@ I32 tutorialScale = 3;
 void render() {
 	F64 currentFrameTime = current_time_seconds();
 	memset(Win32::framebuffer, 0, Win32::framebufferWidth * Win32::framebufferHeight * sizeof(RGBA8));
+	currentTooltip = nullptr;
+	tooltipTopLeft = V2I{ -1, -1 };
 	World::render(camera, worldTileScale);
 	Factory::render(worldTileScale, activeEditingLayer);
 	CreativeToolkit::render_world_preview(camera, worldTileScale, currentFrameTime);
@@ -165,6 +176,13 @@ void render() {
 	EditorInteraction::render_item_build_menu();
 	CreativeToolkit::render_ui();
 	SelectUI::draw();
+	if (currentTooltip) {
+		V2F mouse = Win32::get_mouse();
+		if (tooltipTopLeft.x == -1) {
+			tooltipTopLeft = V2I{ I32(mouse.x) + 16, I32(mouse.y) + 16 };
+		}
+		display_tooltip(*currentTooltip, tooltipTopLeft.x, tooltipTopLeft.y);
+	}
 	if (tutorialIndex < ARRAY_COUNT(Resources::tutorial)) {
 		Resources::Texture& tut = Resources::tutorial[tutorialIndex];
 		Graphics::blit_texture_cutout(tut, max(0, (I32(Win32::framebufferWidth) - I32(tut.width) * tutorialScale) / 2), max(0, I32(Win32::framebufferHeight) - I32(tut.height) * tutorialScale), tutorialScale);

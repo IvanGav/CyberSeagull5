@@ -1,6 +1,7 @@
 #pragma once
 
 #include "drillengine/DrillLib.h"
+#include "Cyber5eagull_decl.h"
 #include "Graphics.h"
 #include "Win32.h"
 #include "Resources.h"
@@ -211,11 +212,33 @@ void init() {
 	itemSprite[ITEM_CYBER_GULL] = &Resources::tile.item.cyberGull;
 }
 
+Resources::Texture* get_tooltip_from_item(ItemType item) {
+	switch (item) {
+	case ITEM_IRON_ORE: return &Resources::tooltip.ironOre;
+	case ITEM_COPPER_ORE: return &Resources::tooltip.copperOre;
+	case ITEM_GULL: return &Resources::tooltip.seagull;
+	case ITEM_COPPER_CABLE: return &Resources::tooltip.copperWire;
+	case ITEM_IRON_PLATE: return &Resources::tooltip.ironPlate;
+	case ITEM_GREEN_CIRCUIT: return &Resources::tooltip.circuit;
+	case ITEM_CAMERA: return &Resources::tooltip.camLens;
+	case ITEM_FEATHER: return &Resources::tooltip.feather;
+	case ITEM_GEAR: return &Resources::tooltip.gear;
+	case ITEM_NUCLEAR_HEART: return &Resources::tooltip.powerCore;
+	case ITEM_URANIUM: return &Resources::tooltip.uranium;
+	case ITEM_POLLEN: return &Resources::tooltip.pollen;
+	case ITEM_HONEY: return &Resources::tooltip.honey;
+	case ITEM_CYBER_GULL: return &Resources::tooltip.cyberSeagull;
+	default: break;
+	}
+	return nullptr;
+}
+
 void draw_inv() {
 	I32 panelX = I32(x_off);
 	I32 panelY = I32(y_off);
 	I32 panelW = panel_width();
 	I32 panelH = panel_height();
+	V2F mouse = Win32::get_mouse();
 
 	for (U32 i = 0; i < inv.size; i++) {
 		
@@ -243,7 +266,17 @@ void draw_inv() {
 
 		U32 digit_size = Graphics::num_digits(inv[i]);
 
-		Graphics::box(rowX - 5, rowY - 5, rowW + (digit_size * item_font_size ) + 10 , rowH + 10, PANEL_BORDER, RGBA8{ 24, 24, 24, 255 }, RGBA8{ 70, 78, 98, 255 });
+		Rng2I32 selectArea{ rowX - 5, rowY - 5 };
+		selectArea.maxX = selectArea.minX + rowW + (digit_size * item_font_size) + 10;
+		selectArea.maxY = selectArea.minY + rowH + 10;
+		if (selectArea.contains_point(V2I{ I32(mouse.x), I32(mouse.y) })) {
+			I32 padding = 4;
+			Cyber5eagull::currentTooltip = get_tooltip_from_item(ItemType(i));
+			if (Cyber5eagull::currentTooltip) {
+				Cyber5eagull::tooltipTopLeft = V2I{ selectArea.maxX + padding, I32(mouse.y - Cyber5eagull::TOOLTIP_SCALE * Cyber5eagull::currentTooltip->height / 2) };
+			}
+		}
+		Graphics::box(selectArea.minX, selectArea.minY, selectArea.width(), selectArea.height(), PANEL_BORDER, RGBA8{24, 24, 24, 255}, RGBA8{70, 78, 98, 255});
 		Graphics::box(rowX, rowY, rowW + (digit_size * item_font_size), rowH, 2, border, fill); 
 
 		I32 iconX = rowX + 4;

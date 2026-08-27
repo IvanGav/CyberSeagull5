@@ -255,6 +255,24 @@ FINLINE void draw_rotation_badge(I32 panelX, I32 panelY, I32 panelW) {
 	Graphics::box(panelX + panelW - size - 4, panelY + 4, size, size, 1, RGBA8{ 0, 0, 0, 255 }, badgeColor);
 }
 
+Resources::Texture* get_tooltip_for_brush(CreativeBrush brush) {
+	switch (brush) {
+	case CreativeBrush::CONVEYOR: return &Resources::tooltip.conveyor;
+	case CreativeBrush::ASSEMBLER_SMALL: return &Resources::tooltip.furnace;
+	case CreativeBrush::ASSEMBLER_LARGE: return &Resources::tooltip.assembler;
+	case CreativeBrush::ASSEMBLER_VERY_LARGE: return &Resources::tooltip.assemblerBig;
+	case CreativeBrush::SPLITTER: return &Resources::tooltip.splitter;
+	case CreativeBrush::VIA_CHUTE: return &Resources::tooltip.chute;
+	case CreativeBrush::VIA_ELEVATOR: return &Resources::tooltip.elevator;
+	case CreativeBrush::VIA_OUTPUT: return &Resources::tooltip.landing;
+	case CreativeBrush::CAMERA: return &Resources::tooltip.camera;
+	case CreativeBrush::HIVE_SMALL: return &Resources::tooltip.hive;
+	case CreativeBrush::HIVE_BIG: return &Resources::tooltip.hiveBig;
+	default: break;
+	}
+	return nullptr;
+}
+
 void render_ui() {
 	if (!tilesheetVisible) return;
 	I32 itemScreenSize = item_screen_size();
@@ -266,6 +284,7 @@ void render_ui() {
 	I32 panelY = borderPadding;
 	I32 beginX = panelX + borderSize;
 	I32 beginY = panelY + borderSize;
+	V2F mouse = Win32::get_mouse();
 
 	Graphics::box(panelX, panelY, panelW, panelH, borderSize, borderColor, fillColor);
 	for (U32 i = 0; i < ARRAY_COUNT(brushOrder); i++) {
@@ -274,6 +293,9 @@ void render_ui() {
 		I32 x = beginX + I32(i % U32(perRow)) * itemScreenSize;
 		I32 y = beginY + I32(i / U32(perRow)) * itemScreenSize;
 		SelectUI::draw_sprite_in_cell(*sprite, x, y, itemScreenSize);
+		if (Rng2I32{ x, y, x + itemScreenSize, y + itemScreenSize }.contains_point(V2I{ I32(mouse.x), I32(mouse.y) })) {
+			Cyber5eagull::currentTooltip = get_tooltip_for_brush(brushOrder[i]);
+		}
 		if (brushOrder[i] == CreativeBrush::ERASE) {
 			Graphics::border(x, y, itemScreenSize, itemScreenSize, 2, RGBA8{ 180, 80, 80, 255 });
 		}
