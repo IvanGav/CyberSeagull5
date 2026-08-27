@@ -412,7 +412,9 @@ void continue_conveyor_drag(V2U32 hoveredTile, U32 depth) {
 	V2U nextTile{ hoveredTile.x, hoveredTile.y };
 	Direction2 previousInput = conveyorLastInputSide;
 	if (previousInput == newDirection) {
-		return;
+		if (!Factory::set_belt_shape(conveyorLastTile, depth, DIRECTION2_OPPOSITE[newDirection], newDirection)) {
+			return;
+		}
 	}
 
 	V2U previousTile{ conveyorLastTile.x, conveyorLastTile.y };
