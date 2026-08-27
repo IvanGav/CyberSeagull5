@@ -2658,6 +2658,9 @@ struct Rng2I32 {
 	FINLINE I32 area() {
 		return (maxX - minX) * (maxY - minY);
 	}
+	FINLINE bool contains_point(V2I v) {
+		return v.x >= minX && v.x <= maxX && v.y >= minY && v.y <= maxY;
+	}
 };
 #pragma pack(pop)
 

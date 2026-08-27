@@ -18,7 +18,7 @@ static constexpr U32 BEE_COUNT = 5;
 static constexpr F32 ORE_WORK_SECONDS = 8.0F;
 static constexpr F32 FLOWER_WORK_SECONDS = 6.0F;
 static constexpr F32 SHORE_WORK_SECONDS = 1.5F;
-static constexpr U32 BIG_HIVE_TASK_RADIUS = 15u;
+static constexpr U32 BIG_HIVE_TASK_RADIUS = 20u;
 static constexpr U32 SMALL_HIVE_TASK_RADIUS = 9u;
 static constexpr U32 POLLEN_PER_HONEY = 3u;
 static constexpr F32 HONEY_CONVERSION_SECONDS = 10.0F;
@@ -657,20 +657,6 @@ B32 tile_blocks_bee_path(V2U32 tile, V2U32 startTile, V2U32 goalTile) {
 	World::TileType tileType = TerrainGen::get_world_tile(tile);
 	if (tileType == World::TILE_WATER || tileType == World::TILE_MOUNTAIN) {
 		return B32_TRUE;
-	}
-
-	Factory::Machine* machine = Factory::get_machine_from_tile(V2U{ tile.x, tile.y }, 0);
-	if (machine && !Factory::machine_is_belt(machine)) {
-		return B32_TRUE;
-	}
-
-	for (U32 i = 0; i < hives.size; i++) {
-		if (TerrainGen::tile_in_hive_footprint(tile, hives[i])) {
-			if (TerrainGen::tile_in_hive_footprint(startTile, hives[i]) || TerrainGen::tile_in_hive_footprint(goalTile, hives[i])) {
-				return B32_FALSE;
-			}
-			return B32_TRUE;
-		}
 	}
 
 	return B32_FALSE;

@@ -54,48 +54,69 @@ TileType get_tile(U32* machineId, I32 x, I32 y, I32 depth) {
 }
 
 Xoshiro256 rng;
-constexpr U32 MAX_JUNK_PER_BEACH_TILE = 5;
-constexpr U32 MAX_JUNK_DELAY = 250;
-constexpr U32 MIN_JUNK_DELAY = 30;
+constexpr U32 MAX_JUNK_PER_BEACH_TILE = 3;
+constexpr F32 MAX_JUNK_DELAY = 250.0f;
+constexpr F32 MIN_JUNK_DELAY = 30.0f;
+constexpr F32 JUNK_SHORE_LIFETIME = 100.0f;
 
-// list of floating items to render
 struct JunkInfo {
 	V2F coord;
 	Inventory::ItemType item;
+	F32 timeOnShore;
 };
 
-// list of beach tiles currently in the world + their delay before depositing a new junk
 struct BeachTileInfo {
 	V2U coord;
 	F32 delay;
 	U32 junkNum;
 	JunkInfo junkList[MAX_JUNK_PER_BEACH_TILE];
+
 	void empty() {
-		add_junk();
 		junkNum = 0;
+		U32 minDelay = U32(MIN_JUNK_DELAY);
+		U32 maxDelay = U32(MAX_JUNK_DELAY);
+		U64 delayRange = U64(maxDelay - minDelay + 1);
+		delay = F32((rng.next() % delayRange) + minDelay);
 	}
+
 	void add_junk() {
 		DEBUG_ASSERT(Inventory::inv.size != 0, "Inventory must be initialized before the world lol");
-		delay = F32((rng.next() % (MAX_JUNK_DELAY-MIN_JUNK_DELAY)) + MIN_JUNK_DELAY);
-		if (junkNum == MAX_JUNK_PER_BEACH_TILE) { return; }
+
+		U32 minDelay = U32(MIN_JUNK_DELAY);
+		U32 maxDelay = U32(MAX_JUNK_DELAY);
+		U64 delayRange = U64(maxDelay - minDelay + 1);
+
+		delay = F32((rng.next() % delayRange) + minDelay);
+		if (junkNum == MAX_JUNK_PER_BEACH_TILE) {
+			return;
+		}
 
 		static const Inventory::ItemType allowedShoreItems[] = {
+			Inventory::ITEM_FEATHER,
+			Inventory::ITEM_FEATHER,
+			Inventory::ITEM_FEATHER,
+			Inventory::ITEM_IRON_ORE,
 			Inventory::ITEM_IRON_ORE,
 			Inventory::ITEM_COPPER_ORE,
+			Inventory::ITEM_COPPER_ORE,
 			Inventory::ITEM_GULL,
-			Inventory::ITEM_FEATHER,
+			Inventory::ITEM_GULL,
 			Inventory::ITEM_GEAR,
 			Inventory::ITEM_URANIUM,
 		};
 
-		Inventory::ItemType shoreItem = allowedShoreItems[rng.next() % ARRAY_COUNT(allowedShoreItems)];
-		junkList[junkNum] = JunkInfo{ 
-			TileSpace::tile_to_world(coord) + rand01v2f(rng) - V2F{0.5,0.5},
-			shoreItem
+		Inventory::ItemType shoreItem =
+			allowedShoreItems[rng.next() % ARRAY_COUNT(allowedShoreItems)];
+
+		junkList[junkNum] = JunkInfo{
+			TileSpace::tile_to_world(coord) + rand01v2f(rng) - V2F{0.5, 0.5},
+			shoreItem,
+			JUNK_SHORE_LIFETIME
 		};
 
 		junkNum++;
 	}
+
 	Inventory::ItemType pop_junk() {
 		DEBUG_ASSERT(junkNum > 0);
 		junkNum--;
@@ -269,10 +290,24 @@ void render(V2F camera, I32 tileScale) {
 // Call every frame to update the shore tiles
 void beach_update(F32 dt) {
 	for (U32 i = 0; i < num_beach_tiles; i++) {
-		if (beach_tiles[i].delay > 0.0) {
-			beach_tiles[i].delay -= dt;
-		} else {
-			beach_tiles[i].add_junk();
+		BeachTileInfo& beach = beach_tiles[i];
+
+		beach.delay -= dt;
+		if (beach.delay <= 0.0f) {
+			beach.add_junk();
+		}
+
+		for (U32 junkIndex = 0; junkIndex < beach.junkNum;) {
+			JunkInfo& junk = beach.junkList[junkIndex];
+			junk.timeOnShore -= dt;
+
+			if (junk.timeOnShore <= 0.0f) {
+				beach.junkList[junkIndex] = beach.junkList[beach.junkNum - 1];
+				beach.junkNum--;
+			}
+			else {
+				junkIndex++;
+			}
 		}
 	}
 }

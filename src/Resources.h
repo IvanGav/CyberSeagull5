@@ -160,9 +160,39 @@ struct {
 	Sprite dockSegment;
 	Sprite ship;
 } tile;
+struct {
+	Texture assembler;
+	Texture assemblerBig;
+	Texture bee;
+	Texture camLens;
+	Texture camera;
+	Texture chute;
+	Texture circuit;
+	Texture conveyor;
+	Texture copperOre;
+	Texture copperWire;
+	Texture cyberSeagull;
+	Texture elevator;
+	Texture feather;
+	Texture furnace;
+	Texture gear;
+	Texture hive;
+	Texture hiveBig;
+	Texture honey;
+	Texture ironOre;
+	Texture ironPlate;
+	Texture landing;
+	Texture pollen;
+	Texture powerCore;
+	Texture seagull;
+	Texture splitter;
+	Texture uranium;
+} tooltip;
 Texture tutorial[9];
 Texture controlsOverlay;
 Texture winMessage;
+
+
 
 void load() {
 	tileset = load_texture("tileset.png"a);
@@ -269,6 +299,33 @@ void load() {
 
 	tile.dockSegment = Sprite{ &tileset, 240, 224, 16, 48, 1 };
 	tile.ship = Sprite{ &tileset, 256, 208, 48, 64, 1 };
+
+	tooltip.assembler = load_texture("tooltip_assembler.png"a);
+	tooltip.assemblerBig = load_texture("tooltip_assembler_big.png"a);
+	tooltip.bee = load_texture("tooltip_bee.png"a);
+	tooltip.camLens = load_texture("tooltip_cam_lens.png"a);
+	tooltip.camera = load_texture("tooltip_camera.png"a);
+	tooltip.chute = load_texture("tooltip_chute.png"a);
+	tooltip.circuit = load_texture("tooltip_circuit.png"a);
+	tooltip.conveyor = load_texture("tooltip_conveyor.png"a);
+	tooltip.copperOre = load_texture("tooltip_copper_ore.png"a);
+	tooltip.copperWire = load_texture("tooltip_copper_wire.png"a);
+	tooltip.cyberSeagull = load_texture("tooltip_cyber_seagull.png"a);
+	tooltip.elevator = load_texture("tooltip_elevator.png"a);
+	tooltip.feather = load_texture("tooltip_feather.png"a);
+	tooltip.furnace = load_texture("tooltip_furnace.png"a);
+	tooltip.gear = load_texture("tooltip_gear.png"a);
+	tooltip.hive = load_texture("tooltip_hive.png"a);
+	tooltip.hiveBig = load_texture("tooltip_hive_big.png"a);
+	tooltip.honey = load_texture("tooltip_honey.png"a);
+	tooltip.ironOre = load_texture("tooltip_iron_ore.png"a);
+	tooltip.ironPlate = load_texture("tooltip_iron_plate.png"a);
+	tooltip.landing = load_texture("tooltip_landing.png"a);
+	tooltip.pollen = load_texture("tooltip_pollen.png"a);
+	tooltip.powerCore = load_texture("tooltip_power_core.png"a);
+	tooltip.seagull = load_texture("tooltip_seagull.png"a);
+	tooltip.splitter = load_texture("tooltip_splitter.png"a);
+	tooltip.uranium = load_texture("tooltip_uranium.png"a);
 
 	for (U32 i = 0; i < ARRAY_COUNT(tutorial); i++) {
 		tutorial[i] = load_texture(strafmt(globalArena, "tutorial_%.png"a, i));
