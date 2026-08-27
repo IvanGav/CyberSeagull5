@@ -24,6 +24,7 @@ static constexpr I32 MIN_WORLD_TILE_SCALE = 1;
 static constexpr I32 MAX_WORLD_TILE_SCALE = 200;
 static constexpr F32 CAMERA_EDGE_SCROLL_PIXELS = 20.0F;
 static constexpr F32 CAMERA_SCROLL_SPEED = 500.0F;
+static constexpr F32 CAMERA_WASD_MOVE_SPEED = 1000.0F;
 static constexpr F32 SHIFT_SCROLL_PAN_TILES = 2.5F;
 static constexpr F32 MAX_OUT_OF_BOUNDS_VIEW = 250.0F;
 
@@ -127,6 +128,18 @@ void update() {
 		if (mouse.y > F32(Win32::framebufferHeight) - CAMERA_EDGE_SCROLL_PIXELS) {
 			camera.y += dt * CAMERA_SCROLL_SPEED;
 		}
+	}
+	if (Win32::keyboardState[Win32::KEY_W]) {
+		camera.y -= CAMERA_WASD_MOVE_SPEED * dt;
+	}
+	if (Win32::keyboardState[Win32::KEY_A]) {
+		camera.x -= CAMERA_WASD_MOVE_SPEED * dt;
+	}
+	if (Win32::keyboardState[Win32::KEY_S]) {
+		camera.y += CAMERA_WASD_MOVE_SPEED * dt;
+	}
+	if (Win32::keyboardState[Win32::KEY_D]) {
+		camera.x += CAMERA_WASD_MOVE_SPEED * dt;
 	}
 	clamp_camera();
 }

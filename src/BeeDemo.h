@@ -659,20 +659,6 @@ B32 tile_blocks_bee_path(V2U32 tile, V2U32 startTile, V2U32 goalTile) {
 		return B32_TRUE;
 	}
 
-	Factory::Machine* machine = Factory::get_machine_from_tile(V2U{ tile.x, tile.y }, 0);
-	if (machine && !Factory::machine_is_belt(machine)) {
-		return B32_TRUE;
-	}
-
-	for (U32 i = 0; i < hives.size; i++) {
-		if (TerrainGen::tile_in_hive_footprint(tile, hives[i])) {
-			if (TerrainGen::tile_in_hive_footprint(startTile, hives[i]) || TerrainGen::tile_in_hive_footprint(goalTile, hives[i])) {
-				return B32_FALSE;
-			}
-			return B32_TRUE;
-		}
-	}
-
 	return B32_FALSE;
 }
 
