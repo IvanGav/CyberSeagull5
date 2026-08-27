@@ -355,6 +355,9 @@ void render_item_build_menu() {
 			}
 		}
 		Cyber5eagull::currentTooltip = CreativeToolkit::get_tooltip_for_brush(hoveredEntry.brush);
+		if (hoveredEntry.type == BuildMenuEntryType::ENTRY_BUY_BEE) {
+			Cyber5eagull::currentTooltip = &Resources::tooltip.bee;
+		}
 		if (Cyber5eagull::currentTooltip) {
 			Cyber5eagull::tooltipTopLeft = V2I{ I32(Win32::get_mouse().x - Cyber5eagull::currentTooltip->width * TOOLTIP_SCALE / 2), tipY + tipH + (costDef.numEntries > 0 ? tipPadding : 0)};
 		}
