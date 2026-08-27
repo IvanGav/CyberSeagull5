@@ -320,10 +320,22 @@ B32 handle_ui_click(V2F32 mousePos) {
 	return B32_TRUE;
 }
 
-FINLINE void blit_sprite_cutout_blended(Resources::Sprite& sprite, I32 x, I32 y, I32 scaleFactor, I32 animFrame, U8 alpha) {
-	if (alpha == 0) {
-		return;
-	}
+FINLINE RGBA8 blend(RGBA8 a, RGBA8 b) {
+	//return RGBA8 {
+	//	U8((F32(a.r) / 255.0f * F32(b.r) / 255.0f) * 255.0f),
+	//	U8((F32(a.g) / 255.0f * F32(b.g) / 255.0f) * 255.0f),
+	//	U8((F32(a.b) / 255.0f * F32(b.b) / 255.0f) * 255.0f),
+	//	U8((F32(a.a) / 255.0f * F32(b.a) / 255.0f) * 255.0f)
+	//};
+	return RGBA8{
+		U8((U32(a.r) * U32(b.a)) / 255u),
+		U8((U32(a.g) * U32(b.g)) / 255u),
+		U8((U32(a.b) * U32(b.b)) / 255u),
+		U8((U32(a.a) * U32(b.a)) / 255u)
+	};
+}
+
+FINLINE void blit_sprite_cutout_blended(Resources::Sprite& sprite, I32 x, I32 y, I32 scaleFactor, I32 animFrame, RGBA8 tint = {255u, 255u, 255u, 255u}) {
 	I32 dstX = max(x, 0);
 	I32 dstY = max(y, 0);
 	I32 srcX = (x >= 0 ? 0 : -x) + (I32(sprite.x) + animFrame * I32(sprite.width)) * scaleFactor;
@@ -338,19 +350,19 @@ FINLINE void blit_sprite_cutout_blended(Resources::Sprite& sprite, I32 x, I32 y,
 		RGBA8* src = &sprite.tex->pixels[((blitY + srcY) / scaleFactor) * sprite.tex->width];
 		RGBA8* dst = &Win32::framebuffer[(blitY + dstY) * Win32::framebufferWidth] + dstX;
 		for (I32 blitX = 0; blitX < sizeX; blitX++) {
-			RGBA8 srcPx = src[(srcX + blitX) / scaleFactor];
+			RGBA8 srcPx = blend(src[(srcX + blitX) / scaleFactor], tint);
 			if (srcPx.a == 0) {
 				continue;
 			}
-			U32 srcA = (U32(srcPx.a) * U32(alpha)) / 255u;
-			if (srcA == 0) {
-				continue;
-			}
-			U32 invA = 255u - srcA;
+			//U32 srcA = (U32(srcPx.a) * U32(alpha)) / 255u;
+			//if (srcA == 0) {
+			//	continue;
+			//}
+			U32 invA = 255u - srcPx.a;
 			RGBA8 dstPx = dst[blitX];
-			dst[blitX].r = U8((U32(dstPx.r) * invA + U32(srcPx.r) * srcA) / 255u);
-			dst[blitX].g = U8((U32(dstPx.g) * invA + U32(srcPx.g) * srcA) / 255u);
-			dst[blitX].b = U8((U32(dstPx.b) * invA + U32(srcPx.b) * srcA) / 255u);
+			dst[blitX].r = U8((U32(dstPx.r) * invA + U32(srcPx.r) * srcPx.a) / 255u);
+			dst[blitX].g = U8((U32(dstPx.g) * invA + U32(srcPx.g) * srcPx.a) / 255u);
+			dst[blitX].b = U8((U32(dstPx.b) * invA + U32(srcPx.b) * srcPx.a) / 255u);
 			dst[blitX].a = 255;
 		}
 	}
@@ -385,6 +397,26 @@ FINLINE void draw_rotation_marker(I32 x, I32 y, I32 width, I32 height, Rotation2
 		BeeDemo::fill_rect_blended(x + width - markerLen, y + height / 2 - thickness / 2, markerLen, thickness, color);
 		BeeDemo::fill_rect_blended(x + width - thickness, y + height / 2 - markerLen / 2, thickness, markerLen, color);
 		break;
+	}
+}
+
+void draw_camera_range(I32 cameraMachineScreenX, I32 cameraMachineScreenY, I32 currentWorldTileScale) {
+	I32 seeX = Factory::CAMERA_SEE_DEPTH * 16 * currentWorldTileScale;
+	I32 seeY = Factory::CAMERA_SEE_WIDTH * 16 * currentWorldTileScale;
+	I32 seeHalfY = Factory::CAMERA_SEE_WIDTH / 2 * 16 * currentWorldTileScale;
+	Graphics::fill_rect_blended(cameraMachineScreenX - seeX, cameraMachineScreenY - seeHalfY, seeX, seeY, RGBA8 { 0, 255, 0, 100 });
+}
+
+void draw_all_camera_ranges(V2F32 currentCamera, I32 currentWorldTileScale) {
+	// Assume all cameras to be 1x1; if that's ever changing, just rewrite this function too
+	I32 tilePixels = 16 * currentWorldTileScale;
+	for (U32 i = 0; i < Factory::machineTiles.size; i++) {
+		if (Factory::machineTiles[i]->type == Factory::MACHINE_CAMERA) {
+			V2U machineTile = Factory::machineTiles[i]->pos;
+			V2F machineScreenPos = TileSpace::tile_to_world(machineTile) * F32(tilePixels) - currentCamera;
+			V2I machineScreenPosI = V2I{ I32(roundf32(machineScreenPos.x)), I32(roundf32(machineScreenPos.y)) };
+			draw_camera_range(machineScreenPosI.x, machineScreenPosI.y, currentWorldTileScale);
+		}
 	}
 }
 
@@ -436,7 +468,25 @@ void render_world_preview(V2F32 currentCamera, I32 currentWorldTileScale, F64 cu
 		I32 spriteHeightPx = I32(sprite->height) * currentWorldTileScale;
 		I32 drawX = screenX + (previewWidth - spriteWidthPx) / 2;
 		I32 drawY = screenY + previewHeight - spriteHeightPx;
-		blit_sprite_cutout_blended(*sprite, drawX, drawY, currentWorldTileScale, animFrame, 140);
+		U32 placementDepth = Win32::keyboardState[Win32::KEY_CTRL] ? 1 : 0;
+		B32 canPlace = B32_FALSE;
+		if (selectedBrush == CreativeBrush::HIVE_SMALL || selectedBrush == CreativeBrush::HIVE_BIG) {
+			Cyber5eagull::TerrainGen::HiveDesc hive = { hoveredTile, selectedBrush == CreativeBrush::HIVE_BIG};
+			canPlace = Cyber5eagull::BeeDemo::can_place_hive_footprint(hoveredTile, TerrainGen::hive_footprint_size_tiles(hive));
+		} else {
+			canPlace = Cyber5eagull::BeeDemo::can_place_structure(hoveredTile, placementDepth, Cyber5eagull::BeeDemo::machine_type_for_brush(selectedBrush), selectedRotation, selectedBrushFreePlacement);
+		}
+		if (Cyber5eagull::BeeDemo::build_available_count(selectedBrush) == 0 || !canPlace) {
+			blit_sprite_cutout_blended(*sprite, drawX, drawY, currentWorldTileScale, animFrame, RGBA8{ 50u, 50u, 255u, 175u });
+		} else if (placementDepth == 1) {
+			blit_sprite_cutout_blended(*sprite, drawX, drawY, currentWorldTileScale, animFrame, RGBA8{ 255u, 50u, 50u, 175u });
+		} else {
+			blit_sprite_cutout_blended(*sprite, drawX, drawY, currentWorldTileScale, animFrame, RGBA8 { 255u, 255u, 255u, 175u });
+		}
+		if (selectedBrush == CreativeBrush::CAMERA) {
+			draw_camera_range(drawX, drawY, currentWorldTileScale);
+			draw_all_camera_ranges(currentCamera, currentWorldTileScale);
+		}
 	}
 	draw_preview_border(screenX, screenY, previewWidth, previewHeight, borderTint);
 	if (brush_uses_rotation(selectedBrush)) {

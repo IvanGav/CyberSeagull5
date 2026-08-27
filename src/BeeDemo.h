@@ -382,22 +382,6 @@ U32 total_bee_count() {
 
 B32 consume_conveyor_item(U32 amount = 1u) {
 	return B32_TRUE; // allow free belts
-	// I'm leaving it here in case we want to return to the previous (and quite nice) way of handling belts from inventory
-	//if (amount == 0u) {
-	//	return B32_TRUE;
-	//}
-	//const BuildDefinition* def = get_build_definition(CreativeBrush::CONVEYOR);
-	//if (!def || def->stockItem != Inventory::ITEM_CONVEYOR || def->stockItemCount == 0u) {
-	//	return B32_FALSE;
-	//}
-	//U32 currentStock = Inventory::count(def->stockItem);
-	//if (currentStock < amount) {
-	//	U32 missing = amount - currentStock;
-	//	if (!craft_conveyors(missing)) {
-	//		return B32_FALSE;
-	//	}
-	//}
-	//return Inventory::try_take_item(def->stockItem, amount);
 }
 
 U32 build_available_count(CreativeBrush brush) {
@@ -453,6 +437,22 @@ FINLINE CreativeBrush brush_for_machine_type(const Factory::Machine* machine) {
 	case Factory::MACHINE_VIA_OUTPUT: return CreativeBrush::VIA_OUTPUT;
 	case Factory::MACHINE_CAMERA: return CreativeBrush::CAMERA;
 	default: return CreativeBrush::TASK_SELECT;
+	}
+}
+
+FINLINE Factory::MachineType machine_type_for_brush(CreativeBrush brush) {
+	switch (brush) {
+	case CreativeBrush::CONVEYOR: return Factory::MACHINE_BELT;
+	case CreativeBrush::ASSEMBLER_SMALL: return Factory::MACHINE_SMELTER;
+	case CreativeBrush::ASSEMBLER_LARGE: return Factory::MACHINE_ASSEMBLER;
+	case CreativeBrush::ASSEMBLER_VERY_LARGE: return Factory::MACHINE_BIG_ASSEMBLER;
+	case CreativeBrush::SPLITTER: return Factory::MACHINE_SPLITTER;
+	case CreativeBrush::JUNCTION: return Factory::MACHINE_JUNCTION;
+	case CreativeBrush::VIA_CHUTE: return Factory::MACHINE_VIA_CHUTE;
+	case CreativeBrush::VIA_ELEVATOR: return Factory::MACHINE_VIA_ELEVATOR;
+	case CreativeBrush::VIA_OUTPUT: return Factory::MACHINE_VIA_OUTPUT;
+	case CreativeBrush::CAMERA: return Factory::MACHINE_CAMERA;
+	default: return Factory::MACHINE_NONE;
 	}
 }
 
@@ -1055,6 +1055,20 @@ void clear_hives_in_footprint(V2U32 topLeft, V2U32 footprint) {
 	}
 }
 
+B32 has_hive(V2U tile) {
+	for (TerrainGen::HiveDesc& hive : hives) {
+		if (hive.tile == tile) return B32_TRUE;
+		if (hive.large && (
+			tile == V2U{ hive.tile.x, hive.tile.y + 1 } ||
+			tile == V2U{ hive.tile.x + 1, hive.tile.y } ||
+			tile == V2U{ hive.tile.x + 1, hive.tile.y + 1 }
+			)) {
+			return B32_TRUE;
+		}
+	}
+	return B32_FALSE;
+}
+
 B32 can_place_hive_footprint(V2U32 topLeft, V2U32 footprint) {
 	if (topLeft.x + footprint.x > World::size.x || topLeft.y + footprint.y > World::size.y) {
 		return B32_FALSE;
@@ -1065,11 +1079,14 @@ B32 can_place_hive_footprint(V2U32 topLeft, V2U32 footprint) {
 			if (!tile_in_bounds(tile)) {
 				return B32_FALSE;
 			}
+			if (!Factory::tile_can_host_machine(tile, 0)) {
+				return B32_FALSE;
+			}
 			World::TileType tileType = TerrainGen::get_world_tile(tile);
 			if (tileType == World::TILE_WATER || tileType == World::TILE_MOUNTAIN) {
 				return B32_FALSE;
 			}
-			if (Factory::has_machine(V2U{ tile.x, tile.y }, 0)) {
+			if (Factory::has_machine(tile, 0) || has_hive(tile)) {
 				return B32_FALSE;
 			}
 		}
@@ -1531,20 +1548,6 @@ B32 place_hive(V2U32 topLeft, B32 large, B32 refundable = B32_TRUE) {
 	return B32_TRUE;
 }
 
-B32 has_hive(V2U tile) {
-	for (TerrainGen::HiveDesc& hive : hives) {
-		if (hive.tile == tile) return B32_TRUE;
-		if (hive.large && (
-			tile == V2U{ hive.tile.x, hive.tile.y + 1 } || 
-			tile == V2U{ hive.tile.x + 1, hive.tile.y } || 
-			tile == V2U{ hive.tile.x + 1, hive.tile.y + 1 }
-		)) {
-			return B32_TRUE;
-		}
-	}
-	return B32_FALSE;
-}
-
 U32 get_richness_animation_frame(U32 x, U32 y) {
 	U32 resourceLeft;
 	switch (TerrainGen::get_world_tile({x,y})) {
@@ -1560,10 +1563,14 @@ U32 get_richness_animation_frame(U32 x, U32 y) {
 }
 
 B32 can_place_machine_at_depth(Factory::MachineType type, U32 depth) {
-	return depth == 0 ? B32_TRUE : type == Factory::MACHINE_BELT || type == Factory::MACHINE_VIA_CHUTE || type == Factory::MACHINE_VIA_ELEVATOR || type == Factory::MACHINE_VIA_OUTPUT || type == Factory::MACHINE_SPLITTER;
+	if (depth == 0) {
+		return type != Factory::MachineType::MACHINE_VIA_ELEVATOR;
+	} else {
+		return type == Factory::MACHINE_BELT || type == Factory::MACHINE_VIA_ELEVATOR || type == Factory::MACHINE_VIA_OUTPUT || type == Factory::MACHINE_SPLITTER;
+	}
 }
 
-B32 place_structure(V2U32 topLeft, U32 depth, Factory::MachineType type, Rotation2 orientation, B32 refundable = B32_TRUE) {
+B32 can_place_structure(V2U32 topLeft, U32 depth, Factory::MachineType type, Rotation2 orientation, B32 refundable = B32_TRUE) {
 	V2U32 footprint = Factory::machine_footprint(type, orientation);
 	if (topLeft.x + footprint.x > World::size.x || topLeft.y + footprint.y > World::size.y) {
 		return B32_FALSE;
@@ -1575,7 +1582,7 @@ B32 place_structure(V2U32 topLeft, U32 depth, Factory::MachineType type, Rotatio
 		for (U32 x = 0; x < footprint.x; x++) {
 			V2U32 tile{ topLeft.x + x, topLeft.y + y };
 			World::TileType tileType = TerrainGen::get_world_tile(tile);
-			if (tileType == World::TILE_WATER || tileType == World::TILE_MOUNTAIN) {
+			if (tileType == World::TILE_WATER || tileType == World::TILE_MOUNTAIN || !Factory::tile_can_host_machine(tile, depth)) {
 				return B32_FALSE;
 			}
 			// Use refundable as indicator for "creative".. maybe a bad idea, buut should be fine
@@ -1583,6 +1590,14 @@ B32 place_structure(V2U32 topLeft, U32 depth, Factory::MachineType type, Rotatio
 				return B32_FALSE; // In survival not allowed to remove hives
 			}
 		}
+	}
+	return B32_TRUE;
+}
+
+B32 place_structure(V2U32 topLeft, U32 depth, Factory::MachineType type, Rotation2 orientation, B32 refundable = B32_TRUE) {
+	V2U32 footprint = Factory::machine_footprint(type, orientation);
+	if (!can_place_structure(topLeft, depth, type, orientation, refundable)) {
+		return B32_FALSE;
 	}
 	if (depth == 0) {
 		clear_tasks_in_footprint(topLeft, footprint);
@@ -1692,113 +1707,30 @@ void apply_creative_brush(CreativeBrush brush, V2U32 tile, U32 depth, Rotation2 
 		ensure_conveyor_tile(tile, 0, orientation, freePlacement ? B32_FALSE : B32_TRUE);
 	} break;
 
-	case CreativeBrush::ASSEMBLER_SMALL: {
-		if (!freePlacement && !spend_for_build(brush)) {
-			break;
-		}
-		if (!place_structure(tile, depth, Factory::MACHINE_SMELTER, orientation, freePlacement ? B32_FALSE : B32_TRUE)) {
-			if (!freePlacement) {
-				refund_build_cost(brush);
-			}
-		}
-	} break;
-
-	case CreativeBrush::ASSEMBLER_LARGE: {
-		if (!freePlacement && !spend_for_build(brush)) {
-			break;
-		}
-		if (!place_structure(tile, depth, Factory::MACHINE_ASSEMBLER, orientation, freePlacement ? B32_FALSE : B32_TRUE)) {
-			if (!freePlacement) {
-				refund_build_cost(brush);
-			}
-		}
-	} break;
-
-	case CreativeBrush::ASSEMBLER_VERY_LARGE: {
-		if (!freePlacement && !spend_for_build(brush)) {
-			break;
-		}
-		if (!place_structure(tile, depth, Factory::MACHINE_BIG_ASSEMBLER, orientation, freePlacement ? B32_FALSE : B32_TRUE)) {
-			if (!freePlacement) {
-				refund_build_cost(brush);
-			}
-		}
-	} break;
-	case CreativeBrush::SPLITTER: {
-		if (!freePlacement && !spend_for_build(brush)) {
-			break;
-		}
-		if (!place_structure(tile, depth, Factory::MACHINE_SPLITTER, orientation, freePlacement ? B32_FALSE : B32_TRUE)) {
-			if (!freePlacement) {
-				refund_build_cost(brush);
-			}
-		}
-	} break;
-	case CreativeBrush::JUNCTION: {
-		if (!freePlacement && !spend_for_build(brush)) {
-			break;
-		}
-		if (!place_structure(tile, depth, Factory::MACHINE_JUNCTION, orientation, freePlacement ? B32_FALSE : B32_TRUE)) {
-			if (!freePlacement) {
-				refund_build_cost(brush);
-			}
-		}
-	} break;
-	case CreativeBrush::VIA_CHUTE: {
-		if (!freePlacement && !spend_for_build(brush)) {
-			break;
-		}
-		if (!place_structure(tile, depth, Factory::MACHINE_VIA_CHUTE, orientation, freePlacement ? B32_FALSE : B32_TRUE)) {
-			if (!freePlacement) {
-				refund_build_cost(brush);
-			}
-		}
-	} break;
-	case CreativeBrush::VIA_ELEVATOR: {
-		if (!freePlacement && !spend_for_build(brush)) {
-			break;
-		}
-		if (!place_structure(tile, depth, Factory::MACHINE_VIA_ELEVATOR, orientation, freePlacement ? B32_FALSE : B32_TRUE)) {
-			if (!freePlacement) {
-				refund_build_cost(brush);
-			}
-		}
-	} break;
-	case CreativeBrush::VIA_OUTPUT: {
-		if (!freePlacement && !spend_for_build(brush)) {
-			break;
-		}
-		if (!place_structure(tile, depth, Factory::MACHINE_VIA_OUTPUT, orientation, freePlacement ? B32_FALSE : B32_TRUE)) {
-			if (!freePlacement) {
-				refund_build_cost(brush);
-			}
-		}
-	} break;
+	case CreativeBrush::ASSEMBLER_SMALL:
+	case CreativeBrush::ASSEMBLER_LARGE:
+	case CreativeBrush::ASSEMBLER_VERY_LARGE:
+	case CreativeBrush::SPLITTER:
+	case CreativeBrush::JUNCTION:
+	case CreativeBrush::VIA_CHUTE:
+	case CreativeBrush::VIA_ELEVATOR:
+	case CreativeBrush::VIA_OUTPUT:
 	case CreativeBrush::CAMERA: {
 		if (!freePlacement && !spend_for_build(brush)) {
 			break;
 		}
-		if (!place_structure(tile, depth, Factory::MACHINE_CAMERA, orientation, freePlacement ? B32_FALSE : B32_TRUE)) {
+		if (!place_structure(tile, depth, machine_type_for_brush(brush), orientation, freePlacement ? B32_FALSE : B32_TRUE)) {
 			if (!freePlacement) {
 				refund_build_cost(brush);
 			}
 		}
 	} break;
-	case CreativeBrush::HIVE_SMALL: {
-		if (!freePlacement && !spend_for_build(brush)) {
-			break;
-		}
-		if (!place_hive(tile, B32_FALSE, freePlacement ? B32_FALSE : B32_TRUE)) {
-			if (!freePlacement) {
-				refund_build_cost(brush);
-			}
-		}
-	} break;
+	case CreativeBrush::HIVE_SMALL:
 	case CreativeBrush::HIVE_BIG: {
 		if (!freePlacement && !spend_for_build(brush)) {
 			break;
 		}
-		if (!place_hive(tile, B32_TRUE, freePlacement ? B32_FALSE : B32_TRUE)) {
+		if (!place_hive(tile, brush == CreativeBrush::HIVE_BIG, freePlacement ? B32_FALSE : B32_TRUE)) {
 			if (!freePlacement) {
 				refund_build_cost(brush);
 			}
@@ -1998,9 +1930,6 @@ void render_hives(V2F32 camera, I32 worldTileScale) {
 		Graphics::blit_sprite_cutout(hiveSprite, I32(roundf32(screenTopLeft.x)), I32(roundf32(screenTopLeft.y)), spriteScale, 0);
 	}
 	render_main_hive_status(camera, worldTileScale);
-}
-
-void render_conveyors(V2F32, I32, F64) {
 }
 
 void render_bee_progress_bar(const Bee::Bee& bee, V2F32 camera, I32 worldTileScale) {
