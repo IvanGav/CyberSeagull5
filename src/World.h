@@ -227,6 +227,61 @@ FINLINE B32 tile_is_mountain(I32 x, I32 y) {
 	return tiles[y * size.x + x] == TILE_MOUNTAIN ? B32_TRUE : B32_FALSE;
 }
 
+FINLINE B32 tile_is_beach(I32 x, I32 y) {
+	if (x < 0 || y < 0 || x >= I32(size.x) || y >= I32(size.y)) {
+		return B32_FALSE;
+	}
+	return (tiles[y * size.x + x] == TILE_BEACH) || (tiles[y * size.x + x] == TILE_SAND) ? B32_TRUE : B32_FALSE;
+}
+
+FINLINE B32 tile_is_water(I32 x, I32 y) {
+	if (x < 0 || y < 0 || x >= I32(size.x) || y >= I32(size.y)) {
+		return B32_TRUE;
+	}
+	// check if tile is water or out of bounds
+	return (tiles[y * size.x + x] == TILE_WATER) ? B32_TRUE : B32_FALSE;
+}
+
+struct BeachRenderInfo {
+	U32 frame;
+	U32 rotation;
+	B32 flipX;
+};
+
+BeachRenderInfo beach_render_info_for_tile(I32 x, I32 y) {
+	if (!tile_is_beach(x, y)) {
+		return BeachRenderInfo{ 0u, 0u, 0u };
+	}
+
+	B32 beachAbove = tile_is_beach(x, y - 1);
+	B32 beachBelow = tile_is_beach(x, y + 1);
+
+	if (beachAbove == beachBelow) {
+		return BeachRenderInfo{ 0u, 0u, 0u };
+	}
+
+	// The water side determines which handed L-corner is needed.
+	B32 waterOnMissingSide = beachAbove
+		? tile_is_water(x, y + 1)
+		: tile_is_water(x, y - 1);
+
+	if (beachAbove) {
+		// Shore continues above and steps below.
+		return BeachRenderInfo{
+			1u,
+			waterOnMissingSide ? 0u : 3u,
+			0u
+		};
+	}
+
+	// Shore continues below and steps above.
+	return BeachRenderInfo{
+		1u,
+		waterOnMissingSide ? 2u : 0u,
+	    waterOnMissingSide ? 1u : 0u
+	};
+}
+
 Resources::Sprite* mountain_sprite_for_tile(I32 x, I32 y) {
 	B32 mountainAbove = tile_is_mountain(x, y - 1);
 	B32 mountainLeft = tile_is_mountain(x - 1, y);
@@ -282,13 +337,13 @@ U32 grass_decoration_frame(I32 x, I32 y) {
 			U32 frame = 0;
 
 			// Frame 1 is common, frame 2 is rarer, frame 3 is rarest.
-			if (rarity < 5u) {
+			if (rarity < 20u) {
 				frame = 1;
 			}
-			else if (rarity < 10u) {
+			else if (rarity < 45u) {
 				frame = 2;
 			}
-			else if (rarity < 15u) {
+			else if (rarity < 70u) {
 				frame = 3;
 			}
 			else {
@@ -330,11 +385,32 @@ void render(V2F camera, I32 tileScale) {
 			I32 drawX = x * tileSize - camStartX;
 			I32 drawY = y * tileSize - camStartY;
 			TileType tile = tiles[y * size.x + x];
-			Resources::Sprite* sprite = tile == TILE_MOUNTAIN ? mountain_sprite_for_tile(x, y) : tileSprite[tile];
-			U32 richness = Cyber5eagull::BeeDemo::get_richness_animation_frame(x, y);
+			Resources::Sprite* sprite = tile == TILE_MOUNTAIN ? mountain_sprite_for_tile(x, y) : tileSprite[tile]; U32 richness = Cyber5eagull::BeeDemo::get_richness_animation_frame(x, y);
 			U32 grassFrame = tile == TILE_GRASS ? grass_decoration_frame(x, y) : 0;
-			U32 animationFrame = tile == TILE_GRASS ? grassFrame : richness;
-			Graphics::blit_sprite(*sprite, drawX, drawY, tileScale, animationFrame);
+
+			U32 animationFrame = 0;
+			BeachRenderInfo beachInfo = tile == TILE_BEACH
+				? beach_render_info_for_tile(x, y)
+				: BeachRenderInfo{ 0u, 0u };
+
+			if (tile == TILE_BEACH && beachInfo.frame != 0u) {
+				Graphics::blit_sprite_rotated_cutout(
+					*sprite,
+					drawX,
+					drawY,
+					tileScale,
+					beachInfo.frame,
+					beachInfo.rotation,
+					beachInfo.flipX
+				);
+			}
+			else {
+				U32 richness = Cyber5eagull::BeeDemo::get_richness_animation_frame(x, y);
+				U32 grassFrame = tile == TILE_GRASS ? grass_decoration_frame(x, y) : 0;
+				U32 animationFrame = tile == TILE_GRASS ? grassFrame : richness;
+
+				Graphics::blit_sprite(*sprite, drawX, drawY, tileScale, animationFrame);
+			}
 		}
 	}
 	render_beach(camera, tileScale);

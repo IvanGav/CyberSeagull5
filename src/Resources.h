@@ -58,6 +58,7 @@ struct {
 	Sprite grassFlowers;
 	Sprite sand;
 	Sprite beach;
+	Sprite sandxgrass;
 	Sprite water;
 	Sprite mountain;
 	Sprite oil;
@@ -204,8 +205,8 @@ void load() {
 	tile.grassCopper = Sprite{ &tileset, 15 * 16, 16, 16, 16, 4 };
 	tile.grassFlowers = Sprite{ &tileset, 15 * 16, 0, 16, 16, 4 };
 	tile.sand = Sprite{ &tileset, 0, 16, 16, 16, 1 };
-	tile.beach = Sprite{ &tileset, 16, 16, 16, 16, 1 };
-	tile.water = Sprite{ &tileset, 0, 8 * 16, 16, 16, 2 };
+	tile.beach = Sprite{ &tileset, 15 * 16, 16 * 4, 16, 16, 2 };
+	tile.water = Sprite{ &tileset, 0, 2 * 16, 16, 16, 1 };
 	tile.mountain = Sprite{ &tileset, 11 * 16, 13 * 16, 16, 16, 1 };
 	tile.oil = Sprite{ &tileset,3 * 16, 5 * 16, 16, 16, 2 };
 	tile.assemblerSmall = Sprite{ &tileset, 16, 48, 16, 16, 1 };

@@ -109,6 +109,70 @@ void blit_texture_cutout(Resources::Texture& tex, I32 x, I32 y, I32 scaleFactor)
 	blit_sprite_cutout(s, x, y, scaleFactor, 0);
 }
 
+void blit_sprite_rotated_cutout(
+	Resources::Sprite& sprite,
+	I32 x,
+	I32 y,
+	I32 scaleFactor,
+	U32 animFrame,
+	U32 rotation,
+	B32 flipX = B32_FALSE
+) {
+	I32 width = sprite.width;
+	I32 height = sprite.height;
+	I32 scaledWidth = width * scaleFactor;
+	I32 scaledHeight = height * scaleFactor;
+
+	for (I32 pixelY = 0; pixelY < scaledHeight; pixelY++) {
+		I32 screenY = y + pixelY;
+		if (screenY < 0 || screenY >= Win32::framebufferHeight) {
+			continue;
+		}
+
+		for (I32 pixelX = 0; pixelX < scaledWidth; pixelX++) {
+			I32 screenX = x + pixelX;
+			if (screenX < 0 || screenX >= Win32::framebufferWidth) {
+				continue;
+			}
+
+			I32 sourceX = pixelX / scaleFactor;
+			I32 sourceY = pixelY / scaleFactor;
+
+			switch (rotation & 3u) {
+			case 1u: {
+				I32 rotatedX = sourceX;
+				sourceX = sourceY;
+				sourceY = width - 1 - rotatedX;
+				break;
+			}
+			case 2u:
+				sourceX = width - 1 - sourceX;
+				sourceY = height - 1 - sourceY;
+				break;
+			case 3u: {
+				I32 rotatedX = sourceX;
+				sourceX = height - 1 - sourceY;
+				sourceY = rotatedX;
+				break;
+			}
+			default:
+				break;
+			}
+
+			if (flipX) {
+				sourceX = width - 1 - sourceX;
+			}
+
+			I32 textureX = sprite.x + I32(animFrame) * width + sourceX;
+			I32 textureY = sprite.y + sourceY;
+			RGBA8 sourcePixel = sprite.tex->pixels[textureY * sprite.tex->width + textureX];
+
+			if (sourcePixel.a != 0) {
+				Win32::framebuffer[screenY * Win32::framebufferWidth + screenX] = sourcePixel;
+			}
+		}
+	}
+}
 
 U32 num_digits(U32 text) {
 	U32 decimal_digits = 0;
