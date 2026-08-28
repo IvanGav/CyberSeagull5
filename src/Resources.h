@@ -93,6 +93,7 @@ struct {
 		Sprite outUp;
 	} via;
 	Sprite num[10];
+	Sprite letters[26];
 	struct {
 		Sprite ironOre;
 		Sprite copperOre;
@@ -237,6 +238,12 @@ void load() {
 	for (U32 i = 0; i < 10; i++) {
 		tile.num[i] = Sprite{&tileset, 16*i, 12*16, 16, 16, 1};
 	}
+
+	//Starts at 23 tiles down, and 9 tiles across, having to mod by 9 to not go to far right
+	for (U32 i = 0; i < 26; i++) {
+		tile.letters[i] = Sprite{ &tileset, 16 * (i % 9), 23 * 16 + (i / 9) * 16, 16, 16, 1 };
+	}
+
 	tile.item.ironOre = Sprite{ &tileset, 0, 13 * 16, 16, 16, 1 };
 	tile.item.copperOre = Sprite{ &tileset, 16, 13 * 16, 16, 16, 1 };
 	tile.item.gull = Sprite{ &tileset, 2*16, 13 * 16, 16, 16, 1 };

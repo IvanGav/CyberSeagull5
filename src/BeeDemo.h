@@ -1933,6 +1933,50 @@ void render_bee_progress_bar(const Bee::Bee& bee, V2F32 camera, I32 worldTileSca
 	fill_rect(x, y, I32(roundf32(F32(barWidth) * progress)), barHeight, RGBA8{ 40, 220, 80, 255 });
 }
 
+void render_bee_bzz(const Bee::Bee& bee, V2F32 camera, I32 worldTileScale) {
+	if (!bee.is_bzzing()) {
+		return;
+	}
+
+	constexpr char text[] = "BZZ";
+	constexpr I32 letterCount = 3;
+
+	I32 letterScale = max(worldTileScale / 3, 1);
+	I32 textWidth = 0;
+	I32 textHeight = 0;
+
+	for (I32 i = 0; i < letterCount; i++) {
+		Resources::Sprite& letter =
+			Resources::tile.letters[text[i] - 'A'];
+
+		textWidth += I32(letter.width) * letterScale;
+		textHeight = max(textHeight, I32(letter.height) * letterScale);
+	}
+
+	V2F32 beeScreenCenter = world_to_screen(bee.position, camera, worldTileScale);
+
+	I32 x = I32(roundf32(beeScreenCenter.x)) - textWidth / 2;
+	I32 y = I32(roundf32(beeScreenCenter.y)) - textHeight * 3;
+
+	// box scales with the rendered text now!!!! : )))))
+	fill_rect_blended(x, y, textWidth, textHeight, RGBA8{ 24, 24, 24, 180 });
+
+	I32 textX = x;
+	for (I32 i = 0; i < letterCount; i++) {
+		Resources::Sprite& letter =
+			Resources::tile.letters[text[i] - 'A'];
+
+		Graphics::blit_sprite_cutout(
+			letter,
+			textX,
+			y,
+			letterScale,
+			0
+		);
+
+		textX += I32(letter.width) * letterScale;
+	}
+}
 void render_bee(const Bee::Bee& bee, V2F32 camera, I32 worldTileScale, F64 frameTimeSeconds) {
 	if (bee.inside_hive()) {
 		return;
@@ -1951,7 +1995,7 @@ void render_bee(const Bee::Bee& bee, V2F32 camera, I32 worldTileScale, F64 frame
 	V2F32 beeScreenTopLeft = beeScreenCenter - V2F32{ F32(beeSprite->width * worldTileScale) * 0.5F, F32(beeSprite->height * worldTileScale) * 0.5F };
 	Graphics::blit_sprite_cutout(*beeSprite, I32(roundf32(beeScreenTopLeft.x)), I32(roundf32(beeScreenTopLeft.y)), worldTileScale, animFrame);
 
-
+	render_bee_bzz(bee, camera, worldTileScale);
 	render_bee_progress_bar(bee, camera, worldTileScale);
 }
 
