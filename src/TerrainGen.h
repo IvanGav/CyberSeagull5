@@ -20,6 +20,7 @@ struct WorldGenerationState {
 	U32 seed = 0u;
 	U8 resourceClaimMask[MAX_WORLD_MAP_TILES]{};
 	U8 resourceBlockMask[MAX_WORLD_MAP_TILES]{};
+	U16 resourceClumpBonus[MAX_WORLD_MAP_TILES]{};
 };
 
 FINLINE B32 tile_in_bounds(V2U32 tile) {
@@ -108,6 +109,7 @@ void clear_resource_masks(WorldGenerationState* state) {
 	U32 tileCount = min(world_tile_count(), MAX_WORLD_MAP_TILES);
 	memset(state->resourceClaimMask, 0, tileCount * sizeof(state->resourceClaimMask[0]));
 	memset(state->resourceBlockMask, 0, tileCount * sizeof(state->resourceBlockMask[0]));
+	memset(state->resourceClumpBonus, 0, tileCount * sizeof(state->resourceClumpBonus[0]));
 }
 
 void mark_resource_padding(WorldGenerationState* state, V2U32 tile, I32 radius) {
@@ -233,6 +235,53 @@ B32 try_grow_irregular_patch(WorldGenerationState* state, const ArenaArrayList<H
 		if (!expanded) {
 			frontier[baseIndex] = frontier[frontierCount - 1u];
 			frontierCount--;
+		}
+	}
+
+	if (type == World::TILE_GRASS_IRON ||
+		type == World::TILE_GRASS_COPPER ||
+		type == World::TILE_GRASS_FLOWERS) {
+		F32 centerX = 0.0F;
+		F32 centerY = 0.0F;
+
+		for (U32 i = 0; i < placedCount; i++) {
+			centerX += F32(placed[i].x);
+			centerY += F32(placed[i].y);
+		}
+
+		centerX /= F32(max(placedCount, 1u));
+		centerY /= F32(max(placedCount, 1u));
+
+		F32 maxDistanceSq = 0.0F;
+		for (U32 i = 0; i < placedCount; i++) {
+			F32 dx = F32(placed[i].x) - centerX;
+			F32 dy = F32(placed[i].y) - centerY;
+			maxDistanceSq = max(maxDistanceSq, dx * dx + dy * dy);
+		}
+
+		for (U32 i = 0; i < placedCount; i++) {
+			F32 dx = F32(placed[i].x) - centerX;
+			F32 dy = F32(placed[i].y) - centerY;
+			F32 distanceSq = dx * dx + dy * dy;
+
+			
+			F32 centerFactor = maxDistanceSq > 0.01F
+				? 1.0F - min(distanceSq / maxDistanceSq, 1.0F)
+				: 1.0F;
+
+			// Stronger bonus toward the center of the clump.
+			F32 centerBonus = centerFactor * centerFactor * 220.0F;
+
+			// Small deterministic variation per tile.
+			U32 tileHash = hash32(
+				seed ^
+				(placed[i].x * 0x9E3779B9u) ^
+				(placed[i].y * 0x85EBCA6Bu)
+			);
+			F32 randomBonus = F32((tileHash >> 24) % 21u) - 10.0F; // Range: -10.0 to +10.0
+
+			F32 totalBonus = max(centerBonus + randomBonus, 0.0F);
+			state->resourceClumpBonus[world_tile_index(placed[i])] = U16(totalBonus);
 		}
 	}
 

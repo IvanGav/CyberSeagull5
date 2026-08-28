@@ -257,6 +257,62 @@ Resources::Sprite* mountain_sprite_for_tile(I32 x, I32 y) {
 	return &Resources::tile.rock.full;
 }
 
+U32 grass_decoration_frame(I32 x, I32 y) {
+	if (tiles[y * size.x + x] != TILE_GRASS) {
+		return 0;
+	}
+
+	U32 selectedFrame = 0;
+
+	// Check nearby tiles for deterministic clump anchors
+	// This is a bit of a hack, but it works well enough for now
+	for (I32 anchorY = max(y - 2, 0); anchorY <= y; anchorY++) {
+		for (I32 anchorX = max(x - 2, 0); anchorX <= x; anchorX++) {
+			if (tiles[anchorY * size.x + anchorX] != TILE_GRASS) {
+				continue;
+			}
+
+			U32 hash = hash32(
+				0x6A09E667u ^
+				(U32(anchorX) * 0x9E3779B9u) ^
+				(U32(anchorY) * 0x85EBCA6Bu)
+			);
+
+			U32 rarity = hash & 255u; // 0-255, lower is rarer
+			U32 frame = 0;
+
+			// Frame 1 is common, frame 2 is rarer, frame 3 is rarest.
+			if (rarity < 5u) {
+				frame = 1;
+			}
+			else if (rarity < 10u) {
+				frame = 2;
+			}
+			else if (rarity < 15u) {
+				frame = 3;
+			}
+			else {
+				continue;
+			}
+
+			U32 clumpSize = 1u + ((hash >> 8) % 2u); // 1, 2, or 3 
+			B32 horizontal = ((hash >> 10) & 1u) ? B32_TRUE : B32_FALSE; // horizontal or vertical clump
+
+			for (U32 clumpIndex = 0; clumpIndex < clumpSize; clumpIndex++) {
+				I32 clumpX = anchorX + (horizontal ? I32(clumpIndex) : 0);
+				I32 clumpY = anchorY + (horizontal ? 0 : I32(clumpIndex));
+
+				if (clumpX == x && clumpY == y) {
+					selectedFrame = max(selectedFrame, frame);
+				}
+			}
+		}
+	}
+
+	return selectedFrame;
+}
+
+
 void render(V2F camera, I32 tileScale) {
 	I32 tileSize = tileScale * 16;
 	I32 camStartX = I32(floorf32(camera.x));
@@ -276,7 +332,9 @@ void render(V2F camera, I32 tileScale) {
 			TileType tile = tiles[y * size.x + x];
 			Resources::Sprite* sprite = tile == TILE_MOUNTAIN ? mountain_sprite_for_tile(x, y) : tileSprite[tile];
 			U32 richness = Cyber5eagull::BeeDemo::get_richness_animation_frame(x, y);
-			Graphics::blit_sprite(*sprite, drawX, drawY, tileScale, richness);
+			U32 grassFrame = tile == TILE_GRASS ? grass_decoration_frame(x, y) : 0;
+			U32 animationFrame = tile == TILE_GRASS ? grassFrame : richness;
+			Graphics::blit_sprite(*sprite, drawX, drawY, tileScale, animationFrame);
 		}
 	}
 	render_beach(camera, tileScale);
@@ -370,6 +428,5 @@ B32 pop_beach_junk(V2U tile, Inventory::ItemType* outItem) {
 	*outItem = beach->pop_junk();
 	return B32_TRUE;
 }
-
 
 }

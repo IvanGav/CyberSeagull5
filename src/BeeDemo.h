@@ -1096,14 +1096,33 @@ void clear_tile_resource_runtime(V2U32 tile) {
 
 void reset_tile_resource_runtime(V2U32 tile) {
 	clear_tile_resource_runtime(tile);
+
+	U32 index = tile_resource_index(tile);
+	U32 clumpBonus = worldGeneration.resourceClumpBonus[index];
+
 	switch (TerrainGen::get_world_tile(tile)) {
-	case World::TILE_GRASS_IRON:   ironRemaining[tile_resource_index(tile)] = STARTING_IRON_PER_TILE + U16(additional_richness(tile) * 1.5F); break;
-	case World::TILE_GRASS_COPPER: copperRemaining[tile_resource_index(tile)] = STARTING_COPPER_PER_TILE + U16(additional_richness(tile)); break;
-	case World::TILE_GRASS_FLOWERS: flowerRemaining[tile_resource_index(tile)] = STARTING_FLOWER_PER_TILE + U16(additional_richness(tile) * 0.5F); break;
-	default: break;
+	case World::TILE_GRASS_IRON:
+		ironRemaining[index] =
+			STARTING_IRON_PER_TILE +
+			U16(clumpBonus);
+		break;
+
+	case World::TILE_GRASS_COPPER:
+		copperRemaining[index] =
+			STARTING_COPPER_PER_TILE +
+			U16(clumpBonus);
+		break;
+
+	case World::TILE_GRASS_FLOWERS:
+		flowerRemaining[index] =
+			STARTING_FLOWER_PER_TILE +
+			U16(clumpBonus);
+		break;
+
+	default:
+		break;
 	}
 }
-
 void rebuild_resource_runtime() {
 	memset(ironRemaining, 0, sizeof(ironRemaining));
 	memset(copperRemaining, 0, sizeof(copperRemaining));

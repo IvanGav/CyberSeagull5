@@ -150,6 +150,7 @@ void display_tooltip(Resources::Texture& tooltip, I32 x, I32 y) {
 	Graphics::blit_texture_cutout(tooltip, x, y, TOOLTIP_SCALE);
 }
 
+
 Resources::Texture* currentTooltip;
 V2I tooltipTopLeft;
 
