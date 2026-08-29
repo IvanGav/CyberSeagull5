@@ -705,15 +705,6 @@ void mouse_callback(Win32::MouseButton button, Win32::MouseValue state) {
 			}
 			return;
 		}
-		if (!CreativeToolkit::tilesheetVisible && !SelectUI::open && !Win32::keyboardState[Win32::KEY_SHIFT]) {
-			V2U32 tile{};
-			if (mouse_to_tile(&tile) && BeeDemoNS::queue_conveyor_pickup(tile, 1)) {
-				suppressRightDragUntilRelease = B32_TRUE;
-				hasLastDraggedTile = B32_FALSE;
-				conveyorDragActive = B32_FALSE;
-				return;
-			}
-		}
 	}
 
 	if ((button == Win32::MOUSE_BUTTON_LEFT || button == Win32::MOUSE_BUTTON_RIGHT) && state.state == Win32::BUTTON_STATE_UP) {

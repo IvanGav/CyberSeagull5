@@ -875,10 +875,11 @@ void remove_machine(Machine* machine) {
 	if (!machine || machine->generation == 0) {
 		return;
 	}
-	for (U32 i = 0; i < machine->selectedRecipe.def->numInputs; i++) {
-		Inventory::inv[machine->inventory[i].item] += machine->inventory[i].count;
+	for (U32 i = 0; i < Recipe::MAX_UNIQUE_INPUTS; i++) {
+		Inventory::inv[machine->inventory[i].item] += machine->inventory[i].count; // unused slots will be 0'd, so it's ok to go over all of them
 	}
 	Inventory::inv[machine->outputBuf.item] += machine->outputBuf.count;
+	Inventory::inv[machine->secondaryOutputBuf.item] += machine->secondaryOutputBuf.count;
 	machineIdToMachine[machine->id] = nullptr;
 	freeMachineIds.push_back(machine->id);
 	World::set_machine(Rng2I32{ I32(machine->pos.x), I32(machine->pos.y), I32(machine->pos.x + machine->size.x - 1), I32(machine->pos.y + machine->size.y - 1) }, I32(machine->depth), World::MACHINE_NULL_ID);
