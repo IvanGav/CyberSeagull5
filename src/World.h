@@ -313,34 +313,79 @@ BeachRenderInfo beach_render_info_for_tile(I32 x, I32 y) {
 	};
 }
 
-Resources::Sprite* mountain_sprite_for_tile(I32 x, I32 y) {
-	B32 mountainAbove = tile_is_mountain(x, y - 1);
-	B32 mountainLeft = tile_is_mountain(x - 1, y);
-	B32 mountainRight = tile_is_mountain(x + 1, y);
+struct MountainRenderInfo {
+	Resources::Sprite* sprite;
+	U32 rotation;
+};
 
-	if (!mountainAbove) {
-		if (!mountainLeft && !mountainRight) {
-			return &Resources::tile.rock.top;
-		}
-		if (!mountainLeft) {
-			return &Resources::tile.rock.topLeft;
-		}
-		if (!mountainRight) {
-			return &Resources::tile.rock.topRight;
-		}
-		return &Resources::tile.rock.top;
+MountainRenderInfo mountain_sprite_for_tile(I32 x, I32 y) {
+	B32 above = tile_is_mountain(x, y - 1);
+	B32 right = tile_is_mountain(x + 1, y);
+	B32 below = tile_is_mountain(x, y + 1);
+	B32 left = tile_is_mountain(x - 1, y);
+
+	U32 mountainMask =
+		(above ? 1u : 0u) |
+		(right ? 2u : 0u) |
+		(below ? 4u : 0u) |
+		(left ? 8u : 0u);
+
+	switch (mountainMask) {
+	case 0u:
+		return { &Resources::tile.rock.full, 0u };
+
+		// Lone neighboring mountain pieces use the top sprite.
+	case 1u: // Top
+		return { &Resources::tile.rock.top, 0u };
+
+	case 2u: // Right
+		return { &Resources::tile.rock.top, 1u };
+
+	case 4u: // Bottom
+		return { &Resources::tile.rock.top, 2u };
+
+	case 8u: // Left
+		return { &Resources::tile.rock.top, 3u };
+
+		// Straight horizontal connection
+	case 10u: // Left + right
+		return { &Resources::tile.rock.top, 0u };
+
+		// Straight vertical connection
+	case 5u: // Top + bottom
+		return { &Resources::tile.rock.right, 0u };
+
+		// Corners.
+	case 3u: // Top + right
+		return { &Resources::tile.rock.topRight, 0u };
+
+	case 6u: // Right + bottom
+		return { &Resources::tile.rock.topRight, 1u };
+
+	case 12u: // Bottom + left
+		return { &Resources::tile.rock.topRight, 2u };
+
+	case 9u: // Left + top
+		return { &Resources::tile.rock.topRight, 3u };
+
+		// Three neighbor side use the right sprite : )
+	case 7u: // Top + right + bottom
+		return { &Resources::tile.rock.right, 0u };
+
+	case 14u: // Right + bottom + left
+		return { &Resources::tile.rock.right, 1u };
+
+	case 13u: // Bottom + left + top
+		return { &Resources::tile.rock.right, 2u };
+
+	case 11u: // Left + top + right
+		return { &Resources::tile.rock.right, 3u };
+
+	case 15u:
+		return { &Resources::tile.rock.full, 0u };
 	}
 
-	if (!mountainLeft && !mountainRight) {
-		return &Resources::tile.rock.full;
-	}
-	if (!mountainLeft) {
-		return &Resources::tile.rock.left;
-	}
-	if (!mountainRight) {
-		return &Resources::tile.rock.right;
-	}
-	return &Resources::tile.rock.full;
+	return { &Resources::tile.rock.full, 0u };
 }
 
 U32 grass_decoration_frame(I32 x, I32 y) {
@@ -438,9 +483,14 @@ void render(V2F camera, I32 tileScale) {
 			I32 drawY = y * tileSize - camStartY;
 			TileType tile = tiles[y * size.x + x];
 
+			MountainRenderInfo mountainInfo{
+				&Resources::tile.rock.full,
+				0u
+			};
+
 			Resources::Sprite* sprite =
 				tile == TILE_MOUNTAIN
-				? mountain_sprite_for_tile(x, y)
+				? (mountainInfo = mountain_sprite_for_tile(x, y)).sprite
 				: tileSprite[tile];
 
 			U32 richness =
@@ -558,7 +608,17 @@ void render(V2F camera, I32 tileScale) {
 				? beach_render_info_for_tile(x, y)
 				: BeachRenderInfo{ 0u, 0u, B32_FALSE };
 
-			if (tile == TILE_BEACH && beachInfo.frame != 0u) {
+			if (tile == TILE_MOUNTAIN) {
+				Graphics::blit_sprite_rotated_cutout(
+					*mountainInfo.sprite,
+					drawX,
+					drawY,
+					tileScale,
+					0u,
+					mountainInfo.rotation
+				);
+			}
+			else if (tile == TILE_BEACH && beachInfo.frame != 0u) {
 				Graphics::blit_sprite_rotated_cutout(
 					*sprite,
 					drawX,
@@ -568,8 +628,7 @@ void render(V2F camera, I32 tileScale) {
 					beachInfo.rotation,
 					beachInfo.flipX
 				);
-			}
-			else {
+			}else {
 				U32 animationFrame =
 					tile == TILE_SAND
 					? sandFrame

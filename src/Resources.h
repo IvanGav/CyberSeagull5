@@ -143,9 +143,8 @@ struct {
 	struct {
 		Sprite full;
 		Sprite top;
-		Sprite left;
 		Sprite right;
-		Sprite topLeft;
+		Sprite topRightBottem;
 		Sprite topRight;
 	} rock;
 	struct {
@@ -279,12 +278,11 @@ void load() {
 	tile.icon.viaOut = Sprite{ &tileset, 11 * 16, 14 * 16, 16, 16, 1 };
 	tile.icon.camera = Sprite{ &tileset, 12 * 16, 14 * 16, 16, 16, 1 };
 
-	tile.rock.topLeft = Sprite{ &tileset, 16 * 10, 11 * 16, 16, 16, 1 };
+	tile.rock.topRight = Sprite{ &tileset, 16 * 10, 11 * 16, 16, 16, 1 };
 	tile.rock.top = Sprite{ &tileset, 16 * 11, 11 * 16, 16, 16, 1 };
-	tile.rock.topRight = Sprite{ &tileset, 16 * 12, 11 * 16, 16, 16, 1 };
-	tile.rock.left = Sprite{ &tileset, 16 * 10, 12 * 16, 16, 16, 1 };
+	tile.rock.right = Sprite{ &tileset, 16 * 10, 12 * 16, 16, 16, 1 };
 	tile.rock.full = Sprite{ &tileset, 16 * 11, 12 * 16, 16, 16, 1 };
-	tile.rock.right = Sprite{ &tileset, 16 * 12, 12 * 16, 16, 16, 1 };
+	tile.rock.topRightBottem = Sprite{ &tileset, 16 * 12, 12 * 16, 16, 16, 1 };
 
 	tile.assembler.downOff = Sprite{ &tileset, 128, 112, 32, 32, 1 };
 	tile.assembler.downOn = Sprite{ &tileset, 160, 112, 32, 32, 1 };
