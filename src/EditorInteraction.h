@@ -648,10 +648,6 @@ void mouse_callback(Win32::MouseButton button, Win32::MouseValue state) {
 	V2F32 mouse = Win32::get_mouse();
 
 	if (button == Win32::MOUSE_BUTTON_RIGHT && state.state == Win32::BUTTON_STATE_DOWN) {
-		if (itemBuildMenuVisible && !build_menu_contains(mouse)) {
-			close_item_build_menu();
-		}
-
 		if (!CreativeToolkit::tilesheetVisible) {
 			V2U32 tile{};
 			if (mouse_to_tile(&tile)) {
