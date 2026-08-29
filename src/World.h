@@ -227,35 +227,244 @@ FINLINE B32 tile_is_mountain(I32 x, I32 y) {
 	return tiles[y * size.x + x] == TILE_MOUNTAIN ? B32_TRUE : B32_FALSE;
 }
 
-Resources::Sprite* mountain_sprite_for_tile(I32 x, I32 y) {
-	B32 mountainAbove = tile_is_mountain(x, y - 1);
-	B32 mountainLeft = tile_is_mountain(x - 1, y);
-	B32 mountainRight = tile_is_mountain(x + 1, y);
-
-	if (!mountainAbove) {
-		if (!mountainLeft && !mountainRight) {
-			return &Resources::tile.rock.top;
-		}
-		if (!mountainLeft) {
-			return &Resources::tile.rock.topLeft;
-		}
-		if (!mountainRight) {
-			return &Resources::tile.rock.topRight;
-		}
-		return &Resources::tile.rock.top;
+FINLINE B32 tile_is_beach(I32 x, I32 y) {
+	if (x < 0 || y < 0 || x >= I32(size.x) || y >= I32(size.y)) {
+		return B32_FALSE;
 	}
-
-	if (!mountainLeft && !mountainRight) {
-		return &Resources::tile.rock.full;
-	}
-	if (!mountainLeft) {
-		return &Resources::tile.rock.left;
-	}
-	if (!mountainRight) {
-		return &Resources::tile.rock.right;
-	}
-	return &Resources::tile.rock.full;
+	return (tiles[y * size.x + x] == TILE_BEACH) || (tiles[y * size.x + x] == TILE_SAND) ? B32_TRUE : B32_FALSE;
 }
+
+FINLINE B32 tile_is_water(I32 x, I32 y) {
+	if (x < 0 || y < 0 || x >= I32(size.x) || y >= I32(size.y)) {
+		return B32_TRUE;
+	}
+	// check if tile is water or out of bounds
+	return (tiles[y * size.x + x] == TILE_WATER) ? B32_TRUE : B32_FALSE;
+}
+FINLINE B32 tile_is_grass(I32 x, I32 y) {
+	if (x < 0 || y < 0 || x >= I32(size.x) || y >= I32(size.y)) {
+		return B32_FALSE;
+	}
+
+	TileType tile = tiles[y * size.x + x];
+	return tile == TILE_GRASS ||
+		tile == TILE_GRASS_IRON ||
+		tile == TILE_GRASS_COPPER ||
+		tile == TILE_GRASS_FLOWERS
+		? B32_TRUE
+		: B32_FALSE;
+}
+
+U32 sand_render_frame(I32 x, I32 y) {
+	if (!tile_is_grass(x + 1, y)) {
+		return 0u;
+	}
+
+	B32 grassAbove = tile_is_grass(x, y - 1);
+	B32 grassBelow = tile_is_grass(x, y + 1);
+
+	if (grassAbove && grassBelow) {
+		return 3u;
+	}
+
+	if (grassAbove) {
+		return 2u;
+	}
+
+	return 1u;
+}
+struct BeachRenderInfo {
+	U32 frame;
+	U32 rotation;
+	B32 flipX;
+};
+
+BeachRenderInfo beach_render_info_for_tile(I32 x, I32 y) {
+	if (!tile_is_beach(x, y)) {
+		return BeachRenderInfo{ 0u, 0u, 0u };
+	}
+
+	B32 beachAbove = tile_is_beach(x, y - 1);
+	B32 beachBelow = tile_is_beach(x, y + 1);
+
+	if (beachAbove == beachBelow) {
+		return BeachRenderInfo{ 0u, 0u, 0u };
+	}
+
+	// The water side determines which handed L-corner is needed.
+	B32 waterOnMissingSide = beachAbove
+		? tile_is_water(x, y + 1)
+		: tile_is_water(x, y - 1);
+
+	if (beachAbove) {
+		// Shore continues above and steps below.
+		return BeachRenderInfo{
+			1u,
+			waterOnMissingSide ? 0u : 3u,
+			0u
+		};
+	}
+
+	// Shore continues below and steps above.
+	return BeachRenderInfo{
+		1u,
+		waterOnMissingSide ? 2u : 0u,
+	    waterOnMissingSide ? 1u : 0u
+	};
+}
+
+struct MountainRenderInfo {
+	Resources::Sprite* sprite;
+	U32 rotation;
+};
+
+MountainRenderInfo mountain_sprite_for_tile(I32 x, I32 y) {
+	B32 above = tile_is_mountain(x, y - 1);
+	B32 right = tile_is_mountain(x + 1, y);
+	B32 below = tile_is_mountain(x, y + 1);
+	B32 left = tile_is_mountain(x - 1, y);
+
+	U32 mountainMask =
+		(above ? 1u : 0u) |
+		(right ? 2u : 0u) |
+		(below ? 4u : 0u) |
+		(left ? 8u : 0u);
+
+	switch (mountainMask) {
+	case 0u:
+		return { &Resources::tile.rock.full, 0u };
+
+		// Lone neighboring mountain pieces use the top sprite.
+	case 1u: // Top
+		return { &Resources::tile.rock.top, 0u };
+
+	case 2u: // Right
+		return { &Resources::tile.rock.top, 1u };
+
+	case 4u: // Bottom
+		return { &Resources::tile.rock.top, 2u };
+
+	case 8u: // Left
+		return { &Resources::tile.rock.top, 3u };
+
+		// Straight horizontal connection
+	case 10u: // Left + right
+		return { &Resources::tile.rock.top, 0u };
+
+		// Straight vertical connection
+	case 5u: // Top + bottom
+		return { &Resources::tile.rock.right, 0u };
+
+		// Corners.
+	case 3u: // Top + right
+		return { &Resources::tile.rock.topRight, 0u };
+
+	case 6u: // Right + bottom
+		return { &Resources::tile.rock.topRight, 1u };
+
+	case 12u: // Bottom + left
+		return { &Resources::tile.rock.topRight, 2u };
+
+	case 9u: // Left + top
+		return { &Resources::tile.rock.topRight, 3u };
+
+		// Three neighbor side use the right sprite : )
+	case 7u: // Top + right + bottom
+		return { &Resources::tile.rock.right, 0u };
+
+	case 14u: // Right + bottom + left
+		return { &Resources::tile.rock.right, 1u };
+
+	case 13u: // Bottom + left + top
+		return { &Resources::tile.rock.right, 2u };
+
+	case 11u: // Left + top + right
+		return { &Resources::tile.rock.right, 3u };
+
+	case 15u:
+		return { &Resources::tile.rock.full, 0u };
+	}
+
+	return { &Resources::tile.rock.full, 0u };
+}
+
+U32 grass_decoration_frame(I32 x, I32 y) {
+	if (tiles[y * size.x + x] != TILE_GRASS) {
+		return 0;
+	}
+
+	// Spread the three base grass textures evenly across the world
+	U32 selectedFrame = hash32(
+		0x6A09E667u ^
+		(U32(x) * 0x9E3779B9u) ^
+		(U32(y) * 0x85EBCA6Bu)
+	) % 3u;
+
+	// Check nearby tiles for deterministic clump anchors
+	for (I32 anchorY = max(y - 2, 0); anchorY <= y; anchorY++) {
+		for (I32 anchorX = max(x - 2, 0); anchorX <= x; anchorX++) {
+			if (tiles[anchorY * size.x + anchorX] != TILE_GRASS) {
+				continue;
+			}
+
+			U32 hash = hash32(
+				0x6A09E667u ^
+				(U32(anchorX) * 0x9E3779B9u) ^
+				(U32(anchorY) * 0x85EBCA6Bu)
+			);
+
+			U32 rarity = hash & 255u;
+			U32 frame = 0;
+
+			if (rarity < 10u) {
+				frame = 3;
+			}
+			else if (rarity < 25u) {
+				frame = 4;
+			}
+			else if (rarity < 40u) {
+				frame = 5;
+			}
+			else {
+				continue;
+			}
+
+			U32 clumpSize = 1u + ((hash >> 8) % 2u); // 1 or 2
+			B32 horizontal = ((hash >> 10) & 1u) ? B32_TRUE : B32_FALSE;
+
+			for (U32 clumpIndex = 0; clumpIndex < clumpSize; clumpIndex++) {
+				I32 clumpX = anchorX + (horizontal ? I32(clumpIndex) : 0);
+				I32 clumpY = anchorY + (horizontal ? 0 : I32(clumpIndex));
+
+				if (clumpX == x && clumpY == y) {
+					selectedFrame = max(selectedFrame, frame);
+				}
+			}
+		}
+	}
+
+	return selectedFrame;
+}
+
+U32 grass_misc_decoration_frame(I32 x, I32 y) {
+	if (tiles[y * size.x + x] != TILE_GRASS) {
+		return 0u;
+	}
+
+	U32 hash = hash32(
+		0xC0FFEE12u ^
+		(U32(x) * 0x9E3779B9u) ^
+		(U32(y) * 0x85EBCA6Bu)
+	);
+
+	if ((hash & 255u) >= 16u) {  
+		return 0u;
+	}
+
+	// Select one of the Grassmisc frames.
+	return 1u + ((hash >> 8) % Resources::tile.grassMisc.animFrames);
+}
+
 
 void render(V2F camera, I32 tileScale) {
 	I32 tileSize = tileScale * 16;
@@ -268,22 +477,231 @@ void render(V2F camera, I32 tileScale) {
 	I32 tileEndX = (camEndX + tileSize - 1) / tileSize;
 	I32 tileEndY = (camEndY + tileSize - 1) / tileSize;
 
-	// Changed this to fix black like grid zooming glitch
 	for (I32 y = max(tileStartY, 0); y < min(tileEndY, I32(size.y)); y++) {
 		for (I32 x = max(tileStartX, 0); x < min(tileEndX, I32(size.x)); x++) {
 			I32 drawX = x * tileSize - camStartX;
 			I32 drawY = y * tileSize - camStartY;
 			TileType tile = tiles[y * size.x + x];
-			Resources::Sprite* sprite = tile == TILE_MOUNTAIN ? mountain_sprite_for_tile(x, y) : tileSprite[tile];
-			U32 richness = Cyber5eagull::BeeDemo::get_richness_animation_frame(x, y);
-			Graphics::blit_sprite(*sprite, drawX, drawY, tileScale, richness);
+
+			MountainRenderInfo mountainInfo{
+				&Resources::tile.rock.full,
+				0u
+			};
+
+			Resources::Sprite* sprite =
+				tile == TILE_MOUNTAIN
+				? (mountainInfo = mountain_sprite_for_tile(x, y)).sprite
+				: tileSprite[tile];
+
+			U32 richness =
+				Cyber5eagull::BeeDemo::get_richness_animation_frame(x, y);
+
+			U32 grassFrame =
+				tile == TILE_GRASS
+				? grass_decoration_frame(x, y)
+				: 0u;
+
+			U32 sandFrame = 0u;
+			U32 sandRotation = 0u;
+
+			if (tile == TILE_SAND) {
+				B32 grassAbove = tile_is_grass(x, y - 1);
+				B32 grassRight = tile_is_grass(x + 1, y);
+				B32 grassBelow = tile_is_grass(x, y + 1);
+				B32 grassLeft = tile_is_grass(x - 1, y);
+
+				U32 grassMask =
+					(grassAbove ? 1u : 0u) |
+					(grassRight ? 2u : 0u) |
+					(grassBelow ? 4u : 0u) |
+					(grassLeft ? 8u : 0u);
+
+				switch (grassMask) {
+				case 0u:
+					// Plain sand.
+					sandFrame = 0u;
+					break;
+
+				// One grass edge: frame 1 rotated into position.
+				case 1u: // Top
+					sandFrame = 1u;
+					sandRotation = 3u;
+					break;
+
+				case 2u: // Right
+					sandFrame = 1u;
+					sandRotation = 0u;
+					break;
+
+				case 4u: // Bottom
+					sandFrame = 1u;
+					sandRotation = 1u;
+					break;
+
+				case 8u: // Left
+					sandFrame = 1u;
+					sandRotation = 2u;
+					break;
+
+				// Two adjacent grass edges: frame 2 rotated into position.
+				case 3u: // Top + right
+					sandFrame = 2u;
+					sandRotation = 0u;
+					break;
+
+				case 6u: // Right + bottom
+					sandFrame = 2u;
+					sandRotation = 1u;
+					break;
+
+				case 12u: // Bottom + left
+					sandFrame = 2u;
+					sandRotation = 2u;
+					break;
+
+				case 9u: // Left + top
+					sandFrame = 2u;
+					sandRotation = 3u;
+					break;
+
+				// Three grass edges: frame 3 rotated into position.
+				case 7u: // Top + right + bottom
+					sandFrame = 3u;
+					sandRotation = 0u;
+					break;
+
+				case 14u: // Right + bottom + left
+					sandFrame = 3u;
+					sandRotation = 1u;
+					break;
+
+				case 13u: // Bottom + left + top
+					sandFrame = 3u;
+					sandRotation = 2u;
+					break;
+
+				case 11u: // Left + top + right
+					sandFrame = 3u;
+					sandRotation = 3u;
+					break;
+
+				// No exact textures exist for opposite/all four sides.
+				case 5u: // Top + bottom
+					sandFrame = 1u;
+					sandRotation = 3u;
+					break;
+
+				case 10u: // Left + right
+					sandFrame = 1u;
+					sandRotation = 0u;
+					break;
+
+				case 15u: // All four sides
+					sandFrame = 3u;
+					sandRotation = 0u;
+					break;
+				}
+			}
+
+			BeachRenderInfo beachInfo =
+				tile == TILE_BEACH
+				? beach_render_info_for_tile(x, y)
+				: BeachRenderInfo{ 0u, 0u, B32_FALSE };
+
+			if (tile == TILE_MOUNTAIN) {
+				Graphics::blit_sprite_rotated_cutout(
+					*mountainInfo.sprite,
+					drawX,
+					drawY,
+					tileScale,
+					0u,
+					mountainInfo.rotation
+				);
+			}
+			else if (tile == TILE_BEACH && beachInfo.frame != 0u) {
+				Graphics::blit_sprite_rotated_cutout(
+					*sprite,
+					drawX,
+					drawY,
+					tileScale,
+					beachInfo.frame,
+					beachInfo.rotation,
+					beachInfo.flipX
+				);
+			}else {
+				U32 animationFrame =
+					tile == TILE_SAND
+					? sandFrame
+					: tile == TILE_GRASS
+					? grassFrame
+					: richness;
+
+				if (tile == TILE_SAND && sandFrame != 0u) {
+					Graphics::blit_sprite_rotated_cutout(
+						*sprite,
+						drawX,
+						drawY,
+						tileScale,
+						animationFrame,
+						sandRotation
+					);
+				}
+				else if (tile == TILE_SAND) {
+					U32 rotationHash = hash32(
+						0xBADC0DEu ^
+						(U32(x) * 0x9E3779B9u) ^
+						(U32(y) * 0x85EBCA6Bu)
+					);
+
+					Graphics::blit_sprite_rotated_cutout(
+						*sprite,
+						drawX,
+						drawY,
+						tileScale,
+						animationFrame,
+						rotationHash & 3u
+					);
+				}
+				else {
+					Graphics::blit_sprite(
+						*sprite,
+						drawX,
+						drawY,
+						tileScale,
+						animationFrame
+					);
+				}
+			}
+			U32 grassMiscFrame =
+				tile == TILE_GRASS
+				? grass_misc_decoration_frame(x, y)
+				: 0u;
+
+			if (grassMiscFrame != 0u) {
+				Graphics::blit_sprite_cutout(
+					Resources::tile.grassMisc,
+					drawX,
+					drawY,
+					tileScale,
+					grassMiscFrame - 1u
+				);
+			}
 		}
 	}
+
 	render_beach(camera, tileScale);
+
 	for (U32 x = 1; x < 7; x++) {
 		I32 drawX = x * tileSize - camStartX;
 		I32 drawY = World::size.y / 2 * tileSize - camStartY;
-		Graphics::blit_sprite_cutout(Resources::tile.dockSegment, drawX, drawY, tileScale, 0);
+
+		Graphics::blit_sprite_cutout(
+			Resources::tile.dockSegment,
+			drawX,
+			drawY,
+			tileScale,
+			0
+		);
 	}
 }
 
@@ -370,6 +788,5 @@ B32 pop_beach_junk(V2U tile, Inventory::ItemType* outItem) {
 	*outItem = beach->pop_junk();
 	return B32_TRUE;
 }
-
 
 }

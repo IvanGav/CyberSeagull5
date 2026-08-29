@@ -95,6 +95,10 @@ public:
 		speedJitterSeed = hash01(spawnHomeTile.x * 0xC2B2AE35u ^ spawnHomeTile.y * 0x27D4EB2Fu ^ 0xB5297A4Du);
 	}
 
+	B32 is_bzzing() const {
+		return bzzTimerSeconds > 0.0F ? B32_TRUE : B32_FALSE;
+	}
+
 	void set_home(V2U32 newHomeTile) {
 		homeTile = newHomeTile;
 		invalidate_navigation_path();
@@ -183,6 +187,13 @@ public:
 		UpdateResult result{};
 		F32 dt = max(dtSeconds, 0.0F);
 
+		bzzTimerSeconds = max(bzzTimerSeconds - dt, 0.0F);
+		bzzPeriodTimerSeconds -= dt;
+
+		if (busy() && bzzPeriodTimerSeconds <= 0.0F) {
+			bzz();
+		}
+
 		switch (state) {
 		case State::STATE_IDLE: {
 			velocity = V2F32{};
@@ -250,7 +261,6 @@ public:
 				invalidate_navigation_path();
 
 				if (hasTask && activeTask.persistent) {
-					Sounds::play_sound(Sounds::bees);
 					state = State::STATE_TRAVEL_TO_TARGET;
 				}
 				else {
@@ -517,10 +527,21 @@ private:
 		}
 	}
 
+	F32 bzzTimerSeconds = 0.0F;
+	F32 bzzPeriodTimerSeconds = 2.0F;
+	void bzz() {
+		bzzTimerSeconds = 0.8F;
+		bzzPeriodTimerSeconds = 4.0F;
+
+		Sounds::play_sound(Sounds::bees);
+	}
+
+
 	void finish_work_cycle(UpdateResult* result) {
 		result->finishedWork = B32_TRUE;
 		workTimerSeconds = 0.0F;
 		invalidate_navigation_path();
+		bzz();
 
 		if (activeTask.returnHomeAfterWork) {
 			state = State::STATE_TRAVEL_HOME;

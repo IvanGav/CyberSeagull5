@@ -109,6 +109,70 @@ void blit_texture_cutout(Resources::Texture& tex, I32 x, I32 y, I32 scaleFactor)
 	blit_sprite_cutout(s, x, y, scaleFactor, 0);
 }
 
+void blit_sprite_rotated_cutout(
+	Resources::Sprite& sprite,
+	I32 x,
+	I32 y,
+	I32 scaleFactor,
+	U32 animFrame,
+	U32 rotation,
+	B32 flipX = B32_FALSE
+) {
+	I32 width = sprite.width;
+	I32 height = sprite.height;
+	I32 scaledWidth = width * scaleFactor;
+	I32 scaledHeight = height * scaleFactor;
+
+	for (I32 pixelY = 0; pixelY < scaledHeight; pixelY++) {
+		I32 screenY = y + pixelY;
+		if (screenY < 0 || screenY >= Win32::framebufferHeight) {
+			continue;
+		}
+
+		for (I32 pixelX = 0; pixelX < scaledWidth; pixelX++) {
+			I32 screenX = x + pixelX;
+			if (screenX < 0 || screenX >= Win32::framebufferWidth) {
+				continue;
+			}
+
+			I32 sourceX = pixelX / scaleFactor;
+			I32 sourceY = pixelY / scaleFactor;
+
+			switch (rotation & 3u) {
+			case 1u: {
+				I32 rotatedX = sourceX;
+				sourceX = sourceY;
+				sourceY = width - 1 - rotatedX;
+				break;
+			}
+			case 2u:
+				sourceX = width - 1 - sourceX;
+				sourceY = height - 1 - sourceY;
+				break;
+			case 3u: {
+				I32 rotatedX = sourceX;
+				sourceX = height - 1 - sourceY;
+				sourceY = rotatedX;
+				break;
+			}
+			default:
+				break;
+			}
+
+			if (flipX) {
+				sourceX = width - 1 - sourceX;
+			}
+
+			I32 textureX = sprite.x + I32(animFrame) * width + sourceX;
+			I32 textureY = sprite.y + sourceY;
+			RGBA8 sourcePixel = sprite.tex->pixels[textureY * sprite.tex->width + textureX];
+
+			if (sourcePixel.a != 0) {
+				Win32::framebuffer[screenY * Win32::framebufferWidth + screenX] = sourcePixel;
+			}
+		}
+	}
+}
 
 U32 num_digits(U32 text) {
 	U32 decimal_digits = 0;
@@ -151,6 +215,46 @@ void display_num_red(U32 text, I32 x, I32 y, I32 fontSize) {
 	}
 }
 
+// displays either lettering or numbers, but only supports 0-9 and -,= (- is one above 7 and = is one above 8 on the tilesheet)
+void display_text(const char* text, I32 x, I32 y, I32 fontSize, bool red = 0) {
+	DEBUG_ASSERT(fontSize % 16 == 0, "fontSize must be multiple of 16");
+	if (!text) return;
+
+	I32 scaleFactor = fontSize / 16;
+	for (const char* character = text; *character; character++, x += fontSize) {
+		Resources::Sprite sprite{};
+		bool supported = true;
+
+		if (*character >= '0' && *character <= '9') {
+			sprite = Resources::tile.num[*character - '0'];
+		}
+		else if (*character == '-') {
+			sprite = Resources::tile.num[7];
+			sprite.y -= 16;
+		}
+		else if (*character == '=') {
+			sprite = Resources::tile.num[8];
+			sprite.y -= 16;
+		}
+		else if (*character == ' ') {
+			continue;
+		}
+		else {
+			supported = false;
+		}
+
+		if (!supported) {
+			continue;
+		}
+
+		if (red) {
+			blit_sprite_cutout_red(sprite, x, y, scaleFactor, 0);
+		}
+		else {
+			blit_sprite_cutout(sprite, x, y, scaleFactor, 0);
+		}
+	}
+}
 
 void border(I32 x, I32 y, I32 sizeX, I32 sizeY, I32 borderSize, RGBA8 color) {
 	if (!Win32::framebuffer || sizeX <= 0 || sizeY <= 0 || borderSize <= 0) {

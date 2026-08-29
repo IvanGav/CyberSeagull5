@@ -52,11 +52,14 @@ Texture tileset;
 struct {
 	Sprite undef;
 	Sprite grass;
+	Sprite grass_blades;
 	Sprite grassIron;
 	Sprite grassCopper;
 	Sprite grassFlowers;
+	Sprite grassMisc;
 	Sprite sand;
 	Sprite beach;
+	Sprite sandxgrass;
 	Sprite water;
 	Sprite mountain;
 	Sprite oil;
@@ -93,6 +96,7 @@ struct {
 		Sprite outUp;
 	} via;
 	Sprite num[10];
+	Sprite letters[26];
 	struct {
 		Sprite ironOre;
 		Sprite copperOre;
@@ -139,9 +143,8 @@ struct {
 	struct {
 		Sprite full;
 		Sprite top;
-		Sprite left;
 		Sprite right;
-		Sprite topLeft;
+		Sprite topRightBottem;
 		Sprite topRight;
 	} rock;
 	struct {
@@ -197,13 +200,14 @@ Texture winMessage;
 void load() {
 	tileset = load_texture("tileset.png"a);
 	tile.undef = Sprite{ &tileset, 0, 0, 16, 16, 1 };
-	tile.grass = Sprite{ &tileset, 16, 0, 16, 16, 1 };
+	tile.grass = Sprite{ &tileset, 15 * 16, 16 * 3, 16, 16, 6 };
 	tile.grassIron = Sprite{ &tileset, 15 * 16, 32, 16, 16, 4 };	// i marked them as animation frames, but they're resource richness, really
 	tile.grassCopper = Sprite{ &tileset, 15 * 16, 16, 16, 16, 4 };
 	tile.grassFlowers = Sprite{ &tileset, 15 * 16, 0, 16, 16, 4 };
-	tile.sand = Sprite{ &tileset, 0, 16, 16, 16, 1 };
-	tile.beach = Sprite{ &tileset, 16, 16, 16, 16, 1 };
-	tile.water = Sprite{ &tileset, 0, 8 * 16, 16, 16, 2 };
+	tile.grassMisc = Sprite{ &tileset, 15 * 16, 16 * 6, 16, 16, 4 };
+	tile.sand = Sprite{ &tileset, 15 * 16, 16 * 5, 16, 16, 4 };
+	tile.beach = Sprite{ &tileset, 15 * 16, 16 * 4, 16, 16, 2 };
+	tile.water = Sprite{ &tileset, 0, 2 * 16, 16, 16, 1 };
 	tile.mountain = Sprite{ &tileset, 11 * 16, 13 * 16, 16, 16, 1 };
 	tile.oil = Sprite{ &tileset,3 * 16, 5 * 16, 16, 16, 2 };
 	tile.assemblerSmall = Sprite{ &tileset, 16, 48, 16, 16, 1 };
@@ -237,6 +241,12 @@ void load() {
 	for (U32 i = 0; i < 10; i++) {
 		tile.num[i] = Sprite{&tileset, 16*i, 12*16, 16, 16, 1};
 	}
+
+	//Starts at 23 tiles down, and 9 tiles across, having to mod by 9 to not go to far right
+	for (U32 i = 0; i < 26; i++) {
+		tile.letters[i] = Sprite{ &tileset, 16 * (i % 9), 23 * 16 + (i / 9) * 16, 16, 16, 1 };
+	}
+
 	tile.item.ironOre = Sprite{ &tileset, 0, 13 * 16, 16, 16, 1 };
 	tile.item.copperOre = Sprite{ &tileset, 16, 13 * 16, 16, 16, 1 };
 	tile.item.gull = Sprite{ &tileset, 2*16, 13 * 16, 16, 16, 1 };
@@ -268,12 +278,11 @@ void load() {
 	tile.icon.viaOut = Sprite{ &tileset, 11 * 16, 14 * 16, 16, 16, 1 };
 	tile.icon.camera = Sprite{ &tileset, 12 * 16, 14 * 16, 16, 16, 1 };
 
-	tile.rock.topLeft = Sprite{ &tileset, 16 * 10, 11 * 16, 16, 16, 1 };
+	tile.rock.topRight = Sprite{ &tileset, 16 * 10, 11 * 16, 16, 16, 1 };
 	tile.rock.top = Sprite{ &tileset, 16 * 11, 11 * 16, 16, 16, 1 };
-	tile.rock.topRight = Sprite{ &tileset, 16 * 12, 11 * 16, 16, 16, 1 };
-	tile.rock.left = Sprite{ &tileset, 16 * 10, 12 * 16, 16, 16, 1 };
+	tile.rock.right = Sprite{ &tileset, 16 * 10, 12 * 16, 16, 16, 1 };
 	tile.rock.full = Sprite{ &tileset, 16 * 11, 12 * 16, 16, 16, 1 };
-	tile.rock.right = Sprite{ &tileset, 16 * 12, 12 * 16, 16, 16, 1 };
+	tile.rock.topRightBottem = Sprite{ &tileset, 16 * 12, 12 * 16, 16, 16, 1 };
 
 	tile.assembler.downOff = Sprite{ &tileset, 128, 112, 32, 32, 1 };
 	tile.assembler.downOn = Sprite{ &tileset, 160, 112, 32, 32, 1 };

@@ -125,12 +125,11 @@ namespace SelectUI {
 		selections.push_back(&Resources::tile.item.camera);
 		selections.push_back(&Resources::tile.item.ironOre);
 
-		selections.push_back(&Resources::tile.rock.topLeft);
 		selections.push_back(&Resources::tile.rock.top);
 		selections.push_back(&Resources::tile.rock.topRight);
-		selections.push_back(&Resources::tile.rock.left);
-		selections.push_back(&Resources::tile.rock.full);
 		selections.push_back(&Resources::tile.rock.right);
+		selections.push_back(&Resources::tile.rock.full);
+		selections.push_back(&Resources::tile.rock.topRightBottem);
 
 		selectedItem = NO_SELECTION;
 		open = B32_FALSE;
