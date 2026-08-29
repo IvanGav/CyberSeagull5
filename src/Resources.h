@@ -56,6 +56,7 @@ struct {
 	Sprite grassIron;
 	Sprite grassCopper;
 	Sprite grassFlowers;
+	Sprite grassMisc;
 	Sprite sand;
 	Sprite beach;
 	Sprite sandxgrass;
@@ -200,11 +201,12 @@ Texture winMessage;
 void load() {
 	tileset = load_texture("tileset.png"a);
 	tile.undef = Sprite{ &tileset, 0, 0, 16, 16, 1 };
-	tile.grass = Sprite{ &tileset, 15 * 16, 16 * 3, 16, 16, 4 };
+	tile.grass = Sprite{ &tileset, 15 * 16, 16 * 3, 16, 16, 6 };
 	tile.grassIron = Sprite{ &tileset, 15 * 16, 32, 16, 16, 4 };	// i marked them as animation frames, but they're resource richness, really
 	tile.grassCopper = Sprite{ &tileset, 15 * 16, 16, 16, 16, 4 };
 	tile.grassFlowers = Sprite{ &tileset, 15 * 16, 0, 16, 16, 4 };
-	tile.sand = Sprite{ &tileset, 0, 16, 16, 16, 1 };
+	tile.grassMisc = Sprite{ &tileset, 15 * 16, 16 * 6, 16, 16, 4 };
+	tile.sand = Sprite{ &tileset, 15 * 16, 16 * 5, 16, 16, 4 };
 	tile.beach = Sprite{ &tileset, 15 * 16, 16 * 4, 16, 16, 2 };
 	tile.water = Sprite{ &tileset, 0, 2 * 16, 16, 16, 1 };
 	tile.mountain = Sprite{ &tileset, 11 * 16, 13 * 16, 16, 16, 1 };
