@@ -75,6 +75,7 @@ struct Machine {
 	Recipe::RecipeRef selectedRecipe{};
 	World::BeachTileInfo* cameraBeachTiles[CAMERA_SEE_WIDTH];
 	U32 cameraBeachTileCount;
+	Rotation2 orientation;
 
 	ItemStack& get_belt_item();
 	void transfer(ItemStack& incoming, B32 vertical);
@@ -285,6 +286,7 @@ struct MachineDef {
 	U32 processAtOnce = 1;
 	IODef ioDefs[MAX_IO_DEFS];
 	Recipe::RecipeGroup* recipes = nullptr;
+	Rotation2 orientation = Rotation2::ROTATION2_0;
 };
 
 FINLINE V2I direction_offset(Direction2 direction) {
@@ -423,6 +425,7 @@ MachineDef get_assembler(Rotation2 orientation) {
 	result.ioDefs[0] = rotate_iodef(IODef{ V2I{ 0, 1 }, World::MACHINE_INPUT_DOWN }, result.size, orientation);
 	result.ioDefs[1] = rotate_iodef(IODef{ V2I{ 1, 1 }, World::MACHINE_OUTPUT_DOWN }, result.size, orientation);
 	result.recipes = &Recipe::recipeGroups.assembler;
+	result.orientation = orientation;
 	return result;
 }
 
@@ -435,6 +438,7 @@ MachineDef get_smelter(Rotation2 orientation) {
 	result.inventoryStackSize = 6;
 	result.processAtOnce = 1;
 	result.recipes = &Recipe::recipeGroups.smelter;
+	result.orientation = orientation;
 
 	switch (orientation) {
 	case ROTATION2_0:
@@ -473,6 +477,7 @@ MachineDef get_big_assembler(Rotation2 orientation) {
 	result.ioDefs[3] = rotate_iodef(IODef{ V2I{ 1, 0 }, World::MACHINE_OUTPUT_UP }, result.size, orientation);
 	result.size = rotate_bounds(result.size, orientation);
 	result.recipes = &Recipe::recipeGroups.bigAssembler;
+	result.orientation = orientation;
 	return result;
 }
 
@@ -540,6 +545,7 @@ MachineDef get_belt(Direction2 src, Direction2 dst) {
 	result.recipes = &Recipe::recipeGroups.belt;
 	switch (src) {
 	case DIRECTION2_LEFT: {
+		result.orientation = ROTATION2_90;
 		switch (dst) {
 		case DIRECTION2_RIGHT: result.sprite = &Resources::tile.belt.leftToRight; break;
 		case DIRECTION2_FRONT: result.sprite = &Resources::tile.belt.leftToUp; break;
@@ -548,6 +554,7 @@ MachineDef get_belt(Direction2 src, Direction2 dst) {
 		}
 	} break;
 	case DIRECTION2_RIGHT: {
+		result.orientation = ROTATION2_270;
 		switch (dst) {
 		case DIRECTION2_LEFT: result.sprite = &Resources::tile.belt.rightToLeft; break;
 		case DIRECTION2_FRONT: result.sprite = &Resources::tile.belt.rightToUp; break;
@@ -556,6 +563,7 @@ MachineDef get_belt(Direction2 src, Direction2 dst) {
 		}
 	} break;
 	case DIRECTION2_FRONT: {
+		result.orientation = ROTATION2_180;
 		switch (dst) {
 		case DIRECTION2_RIGHT: result.sprite = &Resources::tile.belt.upToRight; break;
 		case DIRECTION2_LEFT: result.sprite = &Resources::tile.belt.upToLeft; break;
@@ -564,6 +572,7 @@ MachineDef get_belt(Direction2 src, Direction2 dst) {
 		}
 	} break;
 	case DIRECTION2_BACK: {
+		result.orientation = ROTATION2_0;
 		switch (dst) {
 		case DIRECTION2_RIGHT: result.sprite = &Resources::tile.belt.downToRight; break;
 		case DIRECTION2_FRONT: result.sprite = &Resources::tile.belt.downToUp; break;
@@ -579,6 +588,7 @@ MachineDef get_belt(Direction2 src, Direction2 dst) {
 MachineDef get_static_machine(MachineType type, Rotation2 orientation) {
 	MachineDef result{};
 	result.type = type;
+	result.orientation = orientation;
 	switch (type) {
 	case MACHINE_SMELTER:
 		result = get_smelter(orientation);
@@ -668,6 +678,7 @@ void apply_machine_def(Machine* machine, const MachineDef& def) {
 	machine->animFrame = 0;
 	machine->inventoryStackSizeLimit = def.inventoryStackSize;
 	machine->recipes = def.recipes;
+	machine->orientation = def.orientation;
 	memcpy(machine->ioDefs, def.ioDefs, sizeof(machine->ioDefs));
 	for (U32 i = 0; i < MAX_IO_DEFS; i++) {
 		if (machine->ioDefs[i].ioDirections != 0) {

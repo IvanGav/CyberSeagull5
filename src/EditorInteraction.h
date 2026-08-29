@@ -625,6 +625,7 @@ void keyboard_callback(Win32::Key key, Win32::ButtonState state) {
 		if (mouse_to_tile(&tile)) {
 			Factory::Machine* picked_machine = Factory::get_machine_from_tile(V2U{ tile.x, tile.y }, Cyber5eagull::activeEditingLayer);
 			Cyber5eagull::CreativeToolkit::set_selected_brush(Cyber5eagull::BeeDemo::brush_for_machine_type(picked_machine), B32_FALSE);
+			Cyber5eagull::CreativeToolkit::selectedRotation = picked_machine ? picked_machine->orientation : ROTATION2_0;
 			return;
 		}
 	}
@@ -647,10 +648,6 @@ void mouse_callback(Win32::MouseButton button, Win32::MouseValue state) {
 	V2F32 mouse = Win32::get_mouse();
 
 	if (button == Win32::MOUSE_BUTTON_RIGHT && state.state == Win32::BUTTON_STATE_DOWN) {
-		if (itemBuildMenuVisible && !build_menu_contains(mouse)) {
-			close_item_build_menu();
-		}
-
 		if (!CreativeToolkit::tilesheetVisible) {
 			V2U32 tile{};
 			if (mouse_to_tile(&tile)) {
