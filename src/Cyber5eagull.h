@@ -26,7 +26,7 @@ static constexpr F32 CAMERA_EDGE_SCROLL_PIXELS = 20.0F;
 static constexpr F32 CAMERA_SCROLL_SPEED = 500.0F;
 static constexpr F32 CAMERA_WASD_MOVE_SPEED = 1000.0F;
 static constexpr F32 SHIFT_SCROLL_PAN_TILES = 2.5F;
-static constexpr F32 MAX_OUT_OF_BOUNDS_VIEW = 250.0F;
+static constexpr F32 MAX_OUT_OF_BOUNDS_VIEW_PERCENTAGE = 0.5F;
 
 F64 lastFrameTime = 0.0;
 F32 dt = 0.0F;
@@ -51,10 +51,12 @@ F32 world_tile_pixels_f32() {
 }
 
 void clamp_camera() {
-	F32 maxCameraX = max(F32(I32(World::size.x) * world_tile_pixels() - Win32::framebufferWidth) + MAX_OUT_OF_BOUNDS_VIEW, -MAX_OUT_OF_BOUNDS_VIEW);
-	F32 maxCameraY = max(F32(I32(World::size.y) * world_tile_pixels() - Win32::framebufferHeight) + MAX_OUT_OF_BOUNDS_VIEW, -MAX_OUT_OF_BOUNDS_VIEW);
-	camera.x = clamp(camera.x, -MAX_OUT_OF_BOUNDS_VIEW, maxCameraX);
-	camera.y = clamp(camera.y, -MAX_OUT_OF_BOUNDS_VIEW, maxCameraY);
+	F32 maxOutOfBoundsViewWidth = Win32::framebufferWidth * MAX_OUT_OF_BOUNDS_VIEW_PERCENTAGE;
+	F32 maxOutOfBoundsViewHeight = Win32::framebufferHeight * MAX_OUT_OF_BOUNDS_VIEW_PERCENTAGE;
+	F32 maxCameraX = max(F32(I32(World::size.x) * world_tile_pixels() - Win32::framebufferWidth) + maxOutOfBoundsViewWidth, -maxOutOfBoundsViewWidth);
+	F32 maxCameraY = max(F32(I32(World::size.y) * world_tile_pixels() - Win32::framebufferHeight) + maxOutOfBoundsViewHeight, -maxOutOfBoundsViewHeight);
+	camera.x = clamp(camera.x, -maxOutOfBoundsViewWidth, maxCameraX);
+	camera.y = clamp(camera.y, -maxOutOfBoundsViewHeight, maxCameraY);
 }
 
 V2F32 screen_to_world(V2F32 screenPosition) {

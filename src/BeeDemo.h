@@ -84,6 +84,8 @@ struct ConveyorDeliveryRequest {
     U32 count = 0u;
     I32 assignedBee = -1;
     ConveyorRequestMode mode = ConveyorRequestMode::DELIVER_TO_BELT;
+	U32 allowDowntime = 10;
+	U32 currentDowntime = 0;
 };
 
 ArenaArrayList<ConveyorDeliveryRequest> conveyorDeliveryRequests{};
@@ -966,7 +968,7 @@ B32 queue_conveyor_pickup(V2U32 tile, U32 count = 1u) {
 
 void cleanup_invalid_conveyor_deliveries() {
     for (U32 i = conveyorDeliveryRequests.size; i-- > 0;) {
-        const ConveyorDeliveryRequest& request = conveyorDeliveryRequests[i];
+        ConveyorDeliveryRequest& request = conveyorDeliveryRequests[i];
 
         if (request.assignedBee >= 0) {
             continue;
@@ -982,9 +984,13 @@ void cleanup_invalid_conveyor_deliveries() {
             continue;
         }
 
-        if (request.mode == ConveyorRequestMode::PICKUP_FROM_BELT && !belt_has_item(request.targetTile)) {
-            colony.unqueue_task_for_tile(request.targetTile);
-            remove_conveyor_delivery_request(i);
+        if (request.mode == ConveyorRequestMode::PICKUP_FROM_BELT) {
+			if (belt_has_item(request.targetTile)) {
+				request.currentDowntime = 0;
+			} else if ((++request.currentDowntime) >= request.allowDowntime) {
+				colony.unqueue_task_for_tile(request.targetTile);
+				remove_conveyor_delivery_request(i);
+			}
         }
     }
 }
@@ -1296,6 +1302,9 @@ void init(V2U32 hiveTile) {
 }
 
 void queue_tile_task(V2U32 tile) {
+	if (Cyber5eagull::BeeDemo::queue_conveyor_pickup(tile, 1)) {
+		return;
+	}
 	if (!tile_is_selectable_task(tile) || colony.is_tile_selected(tile)) {
 		return;
 	}
