@@ -1961,7 +1961,7 @@ void render_bee_progress_bar(const Bee::Bee& bee, V2F32 camera, I32 worldTileSca
 	fill_rect(x, y, I32(roundf32(F32(barWidth) * progress)), barHeight, RGBA8{ 40, 220, 80, 255 });
 }
 
-void render_bee_bzz(const Bee::Bee& bee, V2F32 camera, I32 worldTileScale) {
+void render_bee_bzz(const Bee::Bee& bee, V2F32 camera, I32 worldTileScale, F64 frameTimeSeconds) {
 	if (!bee.is_bzzing()) {
 		return;
 	}
@@ -1987,17 +1987,21 @@ void render_bee_bzz(const Bee::Bee& bee, V2F32 camera, I32 worldTileScale) {
 	I32 y = I32(roundf32(beeScreenCenter.y)) - textHeight * 3;
 
 	// box scales with the rendered text now!!!! : )))))
-	fill_rect_blended(x, y, textWidth, textHeight, RGBA8{ 24, 24, 24, 180 });
+	// fill_rect_blended(x, y, textWidth, textHeight, RGBA8{ 24, 24, 24, 180 });
 
 	I32 textX = x;
+	I32 textY = y;
 	for (I32 i = 0; i < letterCount; i++) {
 		Resources::Sprite& letter =
 			Resources::tile.letters[text[i] - 'A'];
 
+		// sine wave motion
+		textY = (y + sinf32((frameTimeSeconds) * 2.0F + F32(i) * 0.5F) * F32(letterScale) * 5);
+
 		Graphics::blit_sprite_cutout(
 			letter,
 			textX,
-			y,
+			textY,
 			letterScale,
 			0
 		);
@@ -2023,7 +2027,7 @@ void render_bee(const Bee::Bee& bee, V2F32 camera, I32 worldTileScale, F64 frame
 	V2F32 beeScreenTopLeft = beeScreenCenter - V2F32{ F32(beeSprite->width * worldTileScale) * 0.5F, F32(beeSprite->height * worldTileScale) * 0.5F };
 	Graphics::blit_sprite_cutout(*beeSprite, I32(roundf32(beeScreenTopLeft.x)), I32(roundf32(beeScreenTopLeft.y)), worldTileScale, animFrame);
 
-	render_bee_bzz(bee, camera, worldTileScale);
+	render_bee_bzz(bee, camera, worldTileScale, frameTimeSeconds);
 	render_bee_progress_bar(bee, camera, worldTileScale);
 }
 

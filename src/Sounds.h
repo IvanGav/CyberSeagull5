@@ -99,9 +99,22 @@ void play_sound(AudioSource& src, F32 volume = 1.0F) {
 	instances.push_back(AudioInstance{ &src, audioPlaybackTime, volume });
 }
 
+// Added to check to see if device name is "eathanWindows", cause Im cool
+// Also probably super spoofable, but whatever
+bool isComputerName(char* laptopName) {
+	char computerName[MAX_COMPUTERNAME_LENGTH + 1]{};
+	DWORD computerNameLength = sizeof(computerName);
+
+	if (!GetComputerNameA(computerName, &computerNameLength)) {
+		return false;
+	}
+
+	return lstrcmpiA(computerName, laptopName) == 0;
+}
+
 bool windowInFocus() {
 	HWND foreground = GetForegroundWindow();
-	return foreground == Win32::window;
+	return (foreground == Win32::window);
 }
 
 void mix_into_buffer(F32* buffer, U32 numSamples, U32 numChannels, F32 timeAmount) {
@@ -117,7 +130,7 @@ void mix_into_buffer(F32* buffer, U32 numSamples, U32 numChannels, F32 timeAmoun
 			for (U32 j = 0; j < numSamples; j++) {
 				F64 dt = F64(j) / F64(numSamples) * F64(timeAmount);
 				F64 t = (time + dt - inst.startTime) * F64(inst.src->sampleRate);
-				F32 val = U32(t) < inst.src->sampleCount ? inst.src->data[U32(t)] * inst.volume * (windowInFocus() ? GLOBAL_VOLUME : GLOBAL_VOLUME_BUT_WHEN_MAIN_WINDOW_IS_NOT_IN_FOCUS) : 0.0F;
+				F32 val = U32(t) < inst.src->sampleCount ? inst.src->data[U32(t)] * inst.volume * ((windowInFocus() || isComputerName((char*)("eathanWindows"))) ? GLOBAL_VOLUME : GLOBAL_VOLUME_BUT_WHEN_MAIN_WINDOW_IS_NOT_IN_FOCUS) : 0.0F;
 				for (U32 k = 0; k < numChannels; k++) {
 					*buf++ += val;
 				}
