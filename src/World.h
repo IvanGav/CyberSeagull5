@@ -124,6 +124,19 @@ struct BeachTileInfo {
 	}
 };
 
+
+FINLINE I32 world_tile_pixels(I32 worldTileScale) {
+	return 16 * worldTileScale;
+}
+
+FINLINE F32 world_tile_pixels_f32(I32 worldTileScale) {
+	return F32(world_tile_pixels(worldTileScale));
+}
+
+FINLINE V2F32 world_to_screen(V2F32 worldPosition, V2F32 camera, I32 worldTileScale) {
+	return worldPosition * world_tile_pixels_f32(worldTileScale) - camera;
+}
+
 U32 num_beach_tiles;
 BeachTileInfo* beach_tiles;
 

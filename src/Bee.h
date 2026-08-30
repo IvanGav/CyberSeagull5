@@ -37,6 +37,7 @@ FINLINE V2F32 normalize_v2_safe(V2F32 v, F32 epsilon = 0.0001F) {
 	return v / sqrtf32(lenSq);
 }
 
+// Returns a float in the range [0.0, 1.0] based on the input value.
 FINLINE F32 hash01(U32 value) {
 	U32 h = hash32(value);
 	return F32(h & 0xFFFFu) * (1.0F / 65535.0F);
@@ -529,9 +530,11 @@ private:
 
 	F32 bzzTimerSeconds = 0.0F;
 	F32 bzzPeriodTimerSeconds = 2.0F;
+
+	// random bzzing
 	void bzz() {
-		bzzTimerSeconds = 0.8F;
-		bzzPeriodTimerSeconds = 4.0F;
+		bzzTimerSeconds = 0.50F + hash01(U32(current_time_seconds() * 1000.0)) * 0.50F;
+		bzzPeriodTimerSeconds = 1.5F + hash01(U32(current_time_seconds() * 1000.0 + 0x12345678u)) * 2.5F;
 
 		Sounds::play_sound(Sounds::bees);
 	}

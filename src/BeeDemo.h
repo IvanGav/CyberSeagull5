@@ -90,17 +90,6 @@ struct ConveyorDeliveryRequest {
 
 ArenaArrayList<ConveyorDeliveryRequest> conveyorDeliveryRequests{};
 
-FINLINE I32 world_tile_pixels(I32 worldTileScale) {
-	return 16 * worldTileScale;
-}
-
-FINLINE F32 world_tile_pixels_f32(I32 worldTileScale) {
-	return F32(world_tile_pixels(worldTileScale));
-}
-
-FINLINE V2F32 world_to_screen(V2F32 worldPosition, V2F32 camera, I32 worldTileScale) {
-	return worldPosition * world_tile_pixels_f32(worldTileScale) - camera;
-}
 
 FINLINE B32 tile_in_bounds(V2U32 tile) {
 	return TerrainGen::tile_in_bounds(tile);
@@ -1793,10 +1782,10 @@ void fill_rect_blended(I32 x, I32 y, I32 width, I32 height, RGBA8 color) {
 }
 
 void render_tile_selection(V2U32 tile, V2F32 camera, I32 worldTileScale) {
-	V2F32 screenTopLeft = world_to_screen(TileSpace::tile_to_world(tile), camera, worldTileScale);
+	V2F32 screenTopLeft = World::world_to_screen(TileSpace::tile_to_world(tile), camera, worldTileScale);
 	I32 x = I32(roundf32(screenTopLeft.x));
 	I32 y = I32(roundf32(screenTopLeft.y));
-	I32 tilePixels = world_tile_pixels(worldTileScale);
+	I32 tilePixels = World::world_tile_pixels(worldTileScale);
 	fill_rect_blended(x, y, tilePixels, tilePixels, RGBA8{ 215, 215, 215, 72 });
 }
 
@@ -1818,7 +1807,7 @@ struct VisibleTileBounds {
 
 VisibleTileBounds visible_tile_bounds(V2F32 camera, I32 worldTileScale) {
 	VisibleTileBounds result{};
-	F32 tilePixels = world_tile_pixels_f32(worldTileScale);
+	F32 tilePixels = World::world_tile_pixels_f32(worldTileScale);
 	result.minX = max(I32(floorf32(camera.x / tilePixels)) - 1, 0);
 	result.minY = max(I32(floorf32(camera.y / tilePixels)) - 1, 0);
 	result.maxX = min(I32(floorf32((camera.x + F32(Win32::framebufferWidth) - 1.0F) / tilePixels)) + 1, I32(World::size.x) - 1);
@@ -1827,8 +1816,8 @@ VisibleTileBounds visible_tile_bounds(V2F32 camera, I32 worldTileScale) {
 }
 
 void render_tile_overlay(V2U32 tile, V2F32 camera, I32 worldTileScale, RGBA8 color) {
-	V2F32 screenTopLeft = world_to_screen(TileSpace::tile_to_world(tile), camera, worldTileScale);
-	I32 tilePixels = world_tile_pixels(worldTileScale);
+	V2F32 screenTopLeft = World::world_to_screen(TileSpace::tile_to_world(tile), camera, worldTileScale);
+	I32 tilePixels = World::world_tile_pixels(worldTileScale);
 	fill_rect_blended(I32(roundf32(screenTopLeft.x)), I32(roundf32(screenTopLeft.y)), tilePixels, tilePixels, color);
 }
 
@@ -1885,8 +1874,8 @@ void render_main_hive_status(V2F32 camera, I32 worldTileScale) {
 	I32 panelWidth = max(32 * worldTileScale, 120);
 	I32 rowHeight = max(8 * worldTileScale, 20);
 	I32 panelHeight = rowHeight * 3 + 38;
-	V2F32 screenTopLeft = world_to_screen(TileSpace::tile_to_world(hive->tile), camera, worldTileScale);
-	I32 hivePixelWidth = I32(footprint.x) * world_tile_pixels(worldTileScale);
+	V2F32 screenTopLeft = World::world_to_screen(TileSpace::tile_to_world(hive->tile), camera, worldTileScale);
+	I32 hivePixelWidth = I32(footprint.x) * World::world_tile_pixels(worldTileScale);
 	I32 panelX = I32(roundf32(screenTopLeft.x)) + hivePixelWidth / 2 - panelWidth / 2;
 	I32 panelY = I32(roundf32(screenTopLeft.y)) - panelHeight - 8;
 
@@ -1896,7 +1885,7 @@ void render_main_hive_status(V2F32 camera, I32 worldTileScale) {
 	fill_rect(panelX, panelY, 1, panelHeight, RGBA8{ 210, 180, 70, 255 });
 	fill_rect(panelX + panelWidth - 1, panelY, 1, panelHeight, RGBA8{ 210, 180, 70, 255 });
 
-	I32 iconScale = max((worldTileScale * 3) / 4, 1);
+	I32 iconScale = max(worldTileScale / 2 , 2);
 	I32 iconSize = 16 * iconScale;
 	I32 iconX = panelX + 4;
 	I32 valueX = iconX + iconSize + 4;
@@ -1910,13 +1899,13 @@ void render_main_hive_status(V2F32 camera, I32 worldTileScale) {
 	fill_rect_blended(panelX + 2, beeY - 1, panelWidth - 4, rowHeight, RGBA8{ 90, 120, 190, 70 });
 
 	Graphics::blit_sprite_cutout(*Inventory::itemSprite[Inventory::ITEM_POLLEN], iconX, pollenY, iconScale, 0);
-	Graphics::display_num(Inventory::count(Inventory::ITEM_POLLEN), valueX, pollenY, 16);
+	Graphics::display_num(Inventory::count(Inventory::ITEM_POLLEN), valueX, pollenY, iconSize / 2);
 
 	Graphics::blit_sprite_cutout(*Inventory::itemSprite[Inventory::ITEM_HONEY], iconX, honeyY, iconScale, 0);
-	Graphics::display_num(Inventory::count(Inventory::ITEM_HONEY), valueX, honeyY, 16);
+	Graphics::display_num(Inventory::count(Inventory::ITEM_HONEY), valueX, honeyY, iconSize / 2);
 
 	Graphics::blit_sprite_cutout(Resources::tile.beeFly, iconX, beeY, iconScale, 0);
-	Graphics::display_num(colony.total_bee_count(), valueX, beeY, 16);
+	Graphics::display_num(colony.total_bee_count(), valueX, beeY, iconSize / 2);
 
 
 	I32 barOuterX = panelX + 6;
@@ -1938,9 +1927,9 @@ void render_hives(V2F32 camera, I32 worldTileScale) {
 		const HiveDesc& hive = hives[i];
 		Resources::Sprite& hiveSprite = hive.large ? Resources::tile.hiveLarge : Resources::tile.hive;
 		V2U32 footprint = TerrainGen::hive_footprint_size_tiles(hive);
-		I32 desiredPixelWidth = I32(footprint.x) * world_tile_pixels(worldTileScale);
+		I32 desiredPixelWidth = I32(footprint.x) * World::world_tile_pixels(worldTileScale);
 		I32 spriteScale = max(desiredPixelWidth / I32(hiveSprite.width), 1);
-		V2F32 screenTopLeft = world_to_screen(TileSpace::tile_to_world(hive.tile), camera, worldTileScale);
+		V2F32 screenTopLeft = World::world_to_screen(TileSpace::tile_to_world(hive.tile), camera, worldTileScale);
 		Graphics::blit_sprite_cutout(hiveSprite, I32(roundf32(screenTopLeft.x)), I32(roundf32(screenTopLeft.y)), spriteScale, 0);
 	}
 	render_main_hive_status(camera, worldTileScale);
@@ -1953,7 +1942,7 @@ void render_bee_progress_bar(const Bee::Bee& bee, V2F32 camera, I32 worldTileSca
 	F32 progress = bee.work_progress01();
 	I32 barWidth = max(18 * worldTileScale / 4, 12);
 	I32 barHeight = max(4 * worldTileScale / 4, 3);
-	V2F32 beeScreenCenter = world_to_screen(bee.position, camera, worldTileScale);
+	V2F32 beeScreenCenter = World::world_to_screen(bee.position, camera, worldTileScale);
 	I32 x = I32(roundf32(beeScreenCenter.x)) - barWidth / 2;
 	I32 y = I32(roundf32(beeScreenCenter.y)) - max(12 * worldTileScale / 4, 10);
 	fill_rect(x - 1, y - 1, barWidth + 2, barHeight + 2, RGBA8{ 0, 0, 0, 255 });
@@ -1981,13 +1970,10 @@ void render_bee_bzz(const Bee::Bee& bee, V2F32 camera, I32 worldTileScale, F64 f
 		textHeight = max(textHeight, I32(letter.height) * letterScale);
 	}
 
-	V2F32 beeScreenCenter = world_to_screen(bee.position, camera, worldTileScale);
+	V2F32 beeScreenCenter = World::world_to_screen(bee.position, camera, worldTileScale);
 
 	I32 x = I32(roundf32(beeScreenCenter.x)) - textWidth / 2;
 	I32 y = I32(roundf32(beeScreenCenter.y)) - textHeight * 3;
-
-	// box scales with the rendered text now!!!! : )))))
-	// fill_rect_blended(x, y, textWidth, textHeight, RGBA8{ 24, 24, 24, 180 });
 
 	I32 textX = x;
 	I32 textY = y;
@@ -1997,6 +1983,8 @@ void render_bee_bzz(const Bee::Bee& bee, V2F32 camera, I32 worldTileScale, F64 f
 
 		// sine wave motion
 		textY = (y + sinf32((frameTimeSeconds) * 2.0F + F32(i) * 0.5F) * F32(letterScale) * 5);
+
+		fill_rect_blended(textX, textY, I32(letter.width) * letterScale, textHeight, RGBA8{ 24, 24, 24, 180 });
 
 		Graphics::blit_sprite_cutout(
 			letter,
@@ -2023,7 +2011,7 @@ void render_bee(const Bee::Bee& bee, V2F32 camera, I32 worldTileScale, F64 frame
 
 	F32 animTurns = fractf64(frameTimeSeconds * 6.0 + bee.flightPhaseTurns);
 	U32 animFrame = U32(animTurns * F32(beeSprite->animFrames)) % beeSprite->animFrames;
-	V2F32 beeScreenCenter = world_to_screen(bee.position, camera, worldTileScale);
+	V2F32 beeScreenCenter = World::world_to_screen(bee.position, camera, worldTileScale);
 	V2F32 beeScreenTopLeft = beeScreenCenter - V2F32{ F32(beeSprite->width * worldTileScale) * 0.5F, F32(beeSprite->height * worldTileScale) * 0.5F };
 	Graphics::blit_sprite_cutout(*beeSprite, I32(roundf32(beeScreenTopLeft.x)), I32(roundf32(beeScreenTopLeft.y)), worldTileScale, animFrame);
 

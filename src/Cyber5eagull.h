@@ -13,6 +13,7 @@
 #include "EditorInteraction.h"
 #include "Recipe.h"
 #include "Sounds.h"
+#include "AntSystem.h"
 
 namespace Cyber5eagull {
 
@@ -131,6 +132,12 @@ void update() {
 			camera.y += dt * CAMERA_SCROLL_SPEED;
 		}
 	}
+
+	// Crative Toolkit keybind enable
+	if(Win32::keyboardState[Win32::KEY_BACKTICK]){
+		CreativeToolkit::tilesheetVisible = !CreativeToolkit::tilesheetVisible;
+	}
+
 	if (Win32::keyboardState[Win32::KEY_W]) {
 		camera.y -= CAMERA_WASD_MOVE_SPEED * dt;
 	}
@@ -174,6 +181,7 @@ void render() {
 	BeeDemo::render_task_markers(camera, worldTileScale);
 	BeeDemo::render_hives(camera, worldTileScale);
 	BeeDemo::render_bees(camera, worldTileScale, currentFrameTime);
+	AntSystem::render_ants(camera, worldTileScale, currentFrameTime);
 	Factory::render_ui(worldTileScale);
 	Inventory::draw_inv();
 	EditorInteraction::render_item_build_menu();
@@ -263,6 +271,7 @@ U32 run_cyber5eagull() {
 	U32 startHiveX = World::size.x > 2u ? min(START_HIVE_SHORE_OFFSET_X, World::size.x - 2u) : 0u;
 	hiveTile = V2U32{ startHiveX, World::size.y / 2u };
 	BeeDemo::init(hiveTile);
+	BeeSystem::init();
 	center_camera_on_tile(hiveTile);
 	Win32::show_window();
 

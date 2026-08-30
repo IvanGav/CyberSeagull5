@@ -73,6 +73,7 @@ struct {
 	Sprite beeFly;
 	Sprite beeMine;
 	Sprite beeCarry;
+	Sprite antWalk;
 	struct {
 		Sprite downToUp;
 		Sprite downToRight;
@@ -220,6 +221,7 @@ void load() {
 	tile.beeFly = Sprite{ &tileset, 0, 160, 16, 16, 4 };
 	tile.beeMine = Sprite{ &tileset, 0, 144, 16, 16, 4 };
 	tile.beeCarry = Sprite{ &tileset, 0, 176, 16, 16, 4 };
+	tile.antWalk = Sprite{ &tileset, 15 * 16, 18 * 16, 16, 16, 4 };
 	tile.belt.leftToRight = Sprite{ &tileset, 64, 0, 16, 16, 3 };
 	tile.belt.rightToLeft = Sprite{ &tileset, 64, 160, 16, 16, 3 };
 	tile.belt.downToUp = Sprite{ &tileset, 64, 16, 16, 16, 3 };

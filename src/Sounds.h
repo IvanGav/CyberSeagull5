@@ -101,7 +101,7 @@ void play_sound(AudioSource& src, F32 volume = 1.0F) {
 
 // Added to check to see if device name is "eathanWindows", cause Im cool
 // Also probably super spoofable, but whatever
-bool isComputerName(char* laptopName) {
+bool isComputerName(const char* laptopName) {
 	char computerName[MAX_COMPUTERNAME_LENGTH + 1]{};
 	DWORD computerNameLength = sizeof(computerName);
 
