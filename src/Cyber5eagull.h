@@ -110,6 +110,8 @@ void update() {
 	Factory::update(dt);
 	World::beach_update(dt);
 	BeeDemo::update(dt);
+	AntSystem::update(dt);
+
 	EditorInteraction::update_drag_interactions();
 
 	if (totalCyberSeagullsOnShip >= TARGET_CYBERSEAGULL_COUNT) {
@@ -180,6 +182,7 @@ void render() {
 	}
 	BeeDemo::render_task_markers(camera, worldTileScale);
 	BeeDemo::render_hives(camera, worldTileScale);
+	AntSystem::render_hills(camera, worldTileScale);
 	BeeDemo::render_bees(camera, worldTileScale, currentFrameTime);
 	AntSystem::render_ants(camera, worldTileScale, currentFrameTime);
 	Factory::render_ui(worldTileScale);
@@ -271,7 +274,7 @@ U32 run_cyber5eagull() {
 	U32 startHiveX = World::size.x > 2u ? min(START_HIVE_SHORE_OFFSET_X, World::size.x - 2u) : 0u;
 	hiveTile = V2U32{ startHiveX, World::size.y / 2u };
 	BeeDemo::init(hiveTile);
-	BeeSystem::init();
+	AntSystem::init(hiveTile);
 	center_camera_on_tile(hiveTile);
 	Win32::show_window();
 

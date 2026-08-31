@@ -160,6 +160,7 @@
     <ClInclude Include="resource.h" />
     <ClInclude Include="src\Ant.h" />
     <ClInclude Include="src\AntColony.h" />
+    <ClInclude Include="src\AntSystem.h" />
     <ClInclude Include="src\Bee.h" />
     <ClInclude Include="src\BeeDemo.h" />
     <ClInclude Include="src\BeeSystem.h" />
