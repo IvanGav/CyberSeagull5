@@ -15,7 +15,7 @@ namespace AntSystem {
 	static constexpr U32 MAX_ANT_COLONIES = 3;
 	static constexpr U32 ANTS_PER_COLONY_MIN = 1;
 	static constexpr U32 ANTS_PER_COLONY_MAX = 4;
-	static constexpr U32 MIN_COLONY_DISTANCE_FROM_MAIN_HIVE = 16;
+	static constexpr U32 MIN_COLONY_DISTANCE_FROM_MAIN_HIVE = 32;
 	static constexpr U32 MIN_COLONY_DISTANCE_FROM_EACHOTHER = 8;
 
 
@@ -105,6 +105,45 @@ namespace AntSystem {
 	}
 
 
+	B32 ant_path_fn(V2U32 startTile, V2U32 goalTile, V2U32* pathTiles, U32* pathTileCount, U32 maxPathTiles, void* userData) {
+		// This is a placeholder for the actual pathfinding function
+		// this just returna straight line path
+		if (startTile.x == goalTile.x && startTile.y == goalTile.y) {
+			*pathTileCount = 0;
+			return B32_TRUE;
+		}
+		U32 count = 0;
+		V2U32 currentTile = startTile;
+		while (currentTile.x != goalTile.x || currentTile.y != goalTile.y) {
+			if (count >= maxPathTiles) {
+				break;
+			}
+			pathTiles[count++] = currentTile;
+			if (currentTile.x < goalTile.x) {
+				currentTile.x++;
+			}
+			else if (currentTile.x > goalTile.x) {
+				currentTile.x--;
+			}
+			else if (currentTile.y < goalTile.y) {
+				currentTile.y++;
+			}
+			else if (currentTile.y > goalTile.y) {
+				currentTile.y--;
+			}
+		}
+		pathTiles[count++] = goalTile;
+		*pathTileCount = count; 
+
+		return B32_TRUE;
+	}
+
+	B32 ant_pos_collider(V2F32 position, V2U32 startTile, V2U32 goalTile, void* userData){
+		// This is a placeholder for the actual position collider function.
+		return B32_FALSE;
+	}
+
+
 
 	void init(V2U32 playerHiveTile) {
 		colonies.allocator = colonyArena;
@@ -112,6 +151,9 @@ namespace AntSystem {
 
 		mainHiveTile = playerHiveTile;
 		random_seed = 0xA17C0DEu;
+
+		Ant::set_path_finder(ant_path_fn, nullptr);
+		Ant::set_position_collider(ant_pos_collider, nullptr);
 
 		colonyCount = random_range(
 			U32(minStartingColonies),
@@ -191,6 +233,7 @@ namespace AntSystem {
 	}
 
 
+
 	void render_hills(V2F camera, I32 worldTileScale) {
 		for (U32 colonyIndex = 0; colonyIndex < colonies.size; colonyIndex++) {
 			const AntColonies& colony = colonies[colonyIndex];
@@ -198,7 +241,7 @@ namespace AntSystem {
 			V2F32 hillPosition = TileSpace::tile_to_world_center(colony.home.tile);
 			V2F32 screenPosition = World::world_to_screen(hillPosition, camera, worldTileScale);
 
-			Resources::Sprite& hillSprite = Resources::tile.hive;
+			Resources::Sprite& hillSprite = Resources::tile.antHill;
 
 			Graphics::blit_sprite_cutout(
 				hillSprite,

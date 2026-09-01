@@ -675,6 +675,8 @@ void append_preferred_directions(V2U32 current, V2U32 goalTile, TileSpace::Neigh
 	}
 }
 
+
+// Breadth first search for a path from startTile to goalTile
 B32 find_bee_path(V2U32 startTile, V2U32 goalTile, V2U32* pathTilesOut, U32* pathCountOut, U32 maxPathTiles, void*) {
 	*pathCountOut = 0;
 	if (!tile_in_bounds(startTile) || !tile_in_bounds(goalTile) || maxPathTiles == 0) {

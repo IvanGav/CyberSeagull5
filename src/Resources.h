@@ -74,6 +74,7 @@ struct {
 	Sprite beeMine;
 	Sprite beeCarry;
 	Sprite antWalk;
+	Sprite antHill;
 	struct {
 		Sprite downToUp;
 		Sprite downToRight;
@@ -222,6 +223,7 @@ void load() {
 	tile.beeMine = Sprite{ &tileset, 0, 144, 16, 16, 4 };
 	tile.beeCarry = Sprite{ &tileset, 0, 176, 16, 16, 4 };
 	tile.antWalk = Sprite{ &tileset, 15 * 16, 18 * 16, 16, 16, 4 };
+	tile.antHill = Sprite{ &tileset, 18 * 16, 17 * 16, 16, 16, 1 };
 	tile.belt.leftToRight = Sprite{ &tileset, 64, 0, 16, 16, 3 };
 	tile.belt.rightToLeft = Sprite{ &tileset, 64, 160, 16, 16, 3 };
 	tile.belt.downToUp = Sprite{ &tileset, 64, 16, 16, 16, 3 };
