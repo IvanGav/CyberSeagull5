@@ -14,7 +14,7 @@ namespace Ant {
 
 	static constexpr F32 DEFAULT_SPEED = 0.5F;
 	static constexpr F32 WANDER_RADIUS = 4.0F;
-	static constexpr F32 TARGET_EPSILON = 0.15F;
+	static constexpr F32 TARGET_EPSILON = 0.05F;
 	static constexpr U32 MAX_PATH_TILES = 1024u;
 
 	
@@ -57,7 +57,6 @@ namespace Ant {
 
 		V2F32 position{};
 		V2F32 velocity{};
-		V2F32 targetPosition{ 0,0 };
 
 		V2U32 pathTiles[MAX_PATH_TILES]{};
 		U32 pathTileCount = 0;
@@ -80,37 +79,61 @@ namespace Ant {
 		void spawn(V2U32 spawnTile, F32 speed = DEFAULT_SPEED, AntType antType = ANT_WORKER, U32 seed = 0) {
 			homeTile = spawnTile;
 			type = antType;
-			targetPosition = TileSpace::tile_to_world_center(spawnTile);
+			pathGoalTile = spawnTile;
+
 			moveSpeed = speed;
-			walkPhaseTurns = 0.0F;
+			randomSeed = seed;
 
 			position = TileSpace::tile_to_world_center(spawnTile);
+
 			walkPhaseTurns = random01(seed + 1u);
 			targetTimer = 0.0F;
+
 			health = type == ANT_SOLDIER ? 20.0F : 10.0F;
 			attackCooldown = 0.0F;
+
+			pathTileCount = 0;
+			pathTileIndex = 0;
+			velocity = {};
 		}
 
 
-		void move_towards_target(V2F32 targetTile, F32 dt) {
-			if (distance_sq(position, targetTile) <= TARGET_EPSILON * TARGET_EPSILON) {
-				velocity = V2F32{};
+		void move_towards_goal(F32 dt) {
+			if (pathTileCount == 0 || pathTileIndex >= pathTileCount) {
+				velocity = {};
 				return;
 			}
-			velocity = moveSpeed * Bee::normalize_v2_safe(targetTile - position);
-			
-			V2F32 step = velocity * dt;
 
-			position = clamp(position + step, V2F32{ 0.1F, 0.1F }, V2F32{ F32(World::size.x) - 0.1F, F32(World::size.y) - 0.1F });
-		}
+			V2F32 target =
+				TileSpace::tile_to_world_center(pathTiles[pathTileIndex]);
 
-		void move_towards_target(F32 dt) {
-			move_towards_target(targetPosition, dt);
+			V2F32 toTarget = target - position;
+			F32 distance = length(toTarget);
+
+			if (distance <= TARGET_EPSILON) {
+				position = target;
+				pathTileIndex++;
+
+				if (pathTileIndex >= pathTileCount) {
+					velocity = {};
+					return;
+				}
+
+				target =
+					TileSpace::tile_to_world_center(pathTiles[pathTileIndex]);
+
+				toTarget = target - position;
+			}
+
+			velocity =
+				moveSpeed * Bee::normalize_v2_safe(toTarget);
+
+			position += velocity * dt;
 		}
 
 
 		B32 has_valid_path(V2F32 target) {
-			if (target.x && target.y) {
+			if (!target.x && !target.y) {
 				return B32_FALSE;
 			}
 
@@ -120,40 +143,52 @@ namespace Ant {
 
 			V2U32 startTile = TileSpace::world_to_tile(position);
 			V2U32 goalTile = TileSpace::world_to_tile(target);
-			B32 pathFound = gPathFindFn(startTile, goalTile, pathTiles, &pathTileCount, MAX_PATH_TILES, gPathFindUserData);
 
-			return pathFound;
+			if (startTile == goalTile) {
+				return B32_FALSE;
+			}
+
+			pathGoalTile = goalTile;
+			pathTileIndex = 0;
+
+			return gPathFindFn(
+				startTile,
+				pathGoalTile,
+				pathTiles,
+				&pathTileCount,
+				MAX_PATH_TILES,
+				gPathFindUserData
+			);
 		}
 
-		V2F32 get_random_idle_target() {
+		B32 choose_random_idle_target() {
 			V2F32 idle_target{};
 
 
-			while (has_valid_path(idle_target)) {
-				F32 angle = random01(randomSeed + 2u) * 2.0f * MATH_PI;
+			while (!has_valid_path(idle_target)) {
+				F32 angle = random01(randomSeed++) * 2.0F * MATH_PI;
 				F32 distance = random01(randomSeed++) * WANDER_RADIUS;
 				idle_target = TileSpace::tile_to_world_center(homeTile) +
 					V2F32{ cosf32(angle), sinf32(angle) } * distance;
 			}
 	
-			return idle_target;
+			return B32_TRUE;
 		}
 
 		void idle_movement(F32 dt) {
 
-			if (distance_sq(position, targetPosition) <= TARGET_EPSILON * TARGET_EPSILON) {
+			if (world_to_tile(position) == pathGoalTile) {
 				targetTimer -= dt;
 			}
 
 			if (targetTimer <= 0.0F) {
-				targetPosition = get_random_idle_target();
+				choose_random_idle_target();
 				targetTimer = 2.0F + random01(randomSeed++) * 3.0F; // choose a new target every 2-5 seconds
-
 				return;
 			}
 
 
-		    move_towards_target(dt);
+		    move_towards_goal(dt);
 
 		}
 

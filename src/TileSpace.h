@@ -14,7 +14,6 @@ enum class NeighborDirection : U8 {
 };
 
 
-
 B32 same_tile(V2U32 a, V2U32 b) {
 	return a.x == b.x && a.y == b.y;
 }

@@ -258,7 +258,11 @@ namespace AntSystem {
 		V2F32 screenPos = (antPos - camera) * WorldTileScale;
 
 		Resources::Sprite* antSprite = &Resources::tile.antWalk;
-		F32 animTurns = fractf64(frameTimeSeconds * 6.0 + ant.walkPhaseTurns);
+
+		F32 animTurns = 0.0F;
+		if(!(TileSpace::world_to_tile(ant.position) == ant.pathGoalTile))
+			animTurns = fractf64(frameTimeSeconds * (2.0F * (ant.velocity.x + ant.velocity.y)) + ant.walkPhaseTurns); // 2.0 turns per second by veclocity, plus the walk phase turns for a bit of randomness
+
 		U32 animFrame = U32(animTurns * F32(antSprite->animFrames)) % antSprite->animFrames;
 		V2F32 antScreenCenter = World::world_to_screen(antPos, camera, WorldTileScale);
 		V2F32 antScreenTopLeft = antScreenCenter - V2F32{ F32(antSprite->width) * 0.5F, F32(antSprite->height) * 0.5F } * WorldTileScale;
